@@ -1,0 +1,1800 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>编辑器</title>
+    <style>
+        :root {
+            --bg-main: #ffffff;
+            --bg-side: #f9f9fb;
+            --border-color: #edeef0;
+            --accent-color: #2563eb;
+            --text-primary: #1a1c1e;
+            --text-secondary: #64748b;
+            --hover-bg: #f1f5f9;
+            --item-active: #eff6ff;
+            --radius: 6px;
+            --sidebar-w: 300px;
+            --toolbar-h: 56px;
+        }
+
+        * { box-sizing: border-box; outline: none; }
+        body, html {
+            margin: 0; padding: 0; height: 100%;
+            font-family: "Inter", -apple-system, system-ui, sans-serif;
+            color: var(--text-primary);
+            background: var(--bg-main);
+            overflow: hidden;
+        }
+
+        /* 统一按钮样式 */
+        .btn {
+            height: 36px; padding: 0 16px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-main);
+            border-radius: var(--radius);
+            font-size: 14px; cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center;
+            transition: all 0.2s; color: var(--text-primary);
+            min-width: 80px; flex-shrink: 0;
+        }
+        .btn:hover { background: var(--hover-bg); border-color: #cbd5e1; }
+        .btn.primary { background: var(--text-primary); color: white; border: none; }
+        .btn.primary:hover { background: #000; }
+        .btn.danger { color: #ef4444; }
+
+        /* 布局结构 */
+        .app-layout {
+            display: grid;
+            grid-template-columns: var(--sidebar-w) 1fr 320px;
+            height: 100vh;
+        }
+
+        /* 左侧：目录树 */
+        .sidebar {
+            background: var(--bg-side);
+            border-right: 1px solid var(--border-color);
+            display: flex; flex-direction: column;
+            overflow: hidden;
+        }
+
+        .side-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .search-box {
+            width: 100%; padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            margin-top: 12px; font-size: 13px;
+        }
+
+        .tree-view {
+            flex: 1; overflow: auto; padding: 10px; width: 100%;
+        }
+
+        .tree-item { margin-bottom: 2px; min-width: max-content; }
+        .item-row {
+            display: flex; align-items: center;
+            padding: 8px 10px; border-radius: var(--radius);
+            cursor: pointer; font-size: 14px; gap: 8px; position: relative;
+        }
+        .item-row:hover { background: var(--hover-bg); }
+        .item-row.active { background: var(--item-active); color: var(--accent-color); font-weight: 500; }
+        
+        .sticky-folder { position: sticky; top: 0; z-index: 10; background: var(--bg-side); }
+        
+        .node-cb { margin: 0; cursor: pointer; width: 14px; height: 14px; }
+        .index-badge { font-size: 11px; color: var(--text-secondary); margin-right: 2px; }
+        .fold-icon { width: 16px; text-align: center; color: var(--text-secondary); display: inline-block; cursor: pointer; margin-left: -4px;}
+
+        .folder-content { margin-left: 20px; border-left: 1px solid var(--border-color); }
+
+        /* 中间：编辑器 */
+        .editor-main {
+            display: flex; flex-direction: column;
+            background: #fff; border-right: 1px solid var(--border-color);
+            height: 100%; overflow: hidden;
+        }
+
+        .editor-header {
+            height: var(--toolbar-h); padding: 0 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex; align-items: center; justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .breadcrumb { font-size: 13px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .editor-body {
+            flex: 1; padding: 20px 40px;
+            max-width: 900px; width: 100%; margin: 0 auto;
+            display: flex; flex-direction: column; gap: 16px;
+            overflow-y: auto;
+        }
+
+        #editor-title {
+            font-size: 24px; font-weight: 700; border: none; width: 100%; outline: none;
+            color: var(--text-primary); flex-shrink: 0;
+        }
+
+        #editor-content {
+            flex: 1; font-size: 16px; line-height: 1.8;
+            border: none; resize: none; color: #334155; outline: none;
+            min-height: 300px;
+        }
+
+        /* 右侧：工具箱 */
+        .toolbox {
+            background: #fff; padding: 20px;
+            display: flex; flex-direction: column; gap: 24px;
+            overflow-y: auto;
+        }
+
+        .tool-section { border: 1px solid var(--border-color); border-radius: var(--radius); padding: 16px; }
+        .tool-section h4 { margin: 0 0 12px 0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center; }
+
+        .shortcuts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .stat-item { display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 8px; }
+
+        .find-panel { background: var(--bg-side); padding: 12px; border-radius: var(--radius); margin-top: 10px; }
+        .input-group { display: flex; flex-direction: column; gap: 8px; }
+        input[type="text"], input[type="number"], input[type="password"] { border: 1px solid var(--border-color); border-radius: 4px; padding: 6px 10px; font-size: 13px; }
+
+        .duplicate-item { padding: 10px; border-radius: 4px; background: #fff5f5; border: 1px solid #fee2e2; margin-bottom: 8px; font-size: 12px; }
+
+        /* 系统模态框 */
+        .modal-overlay {
+            position: fixed; top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.5); z-index: 2000;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .modal-card {
+            background: var(--bg-main); padding: 24px; border-radius: var(--radius);
+            width: 380px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); max-height: 90vh; overflow-y: auto;
+        }
+
+        /* 轻提示 Toast */
+        .toast-msg {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(26, 28, 30, 0.85); color: #fff;
+            padding: 12px 24px; border-radius: 8px; font-size: 14px; text-align: center;
+            z-index: 5000; opacity: 0; visibility: hidden; pointer-events: none;
+            transition: opacity 0.2s ease, transform 0.2s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .toast-msg.show {
+            opacity: 1; visibility: visible; transform: translate(-50%, -50%) scale(1.05);
+        }
+
+        /* 手机端独有样式 */
+        .mobile-tabbar { display: none; }
+
+        @media (max-width: 768px) {
+            .app-layout { display: block; }
+            .sidebar {
+                position: fixed; left: -100%; top: 0; bottom: 50px; width: 85%;
+                z-index: 1000; transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: 2px 0 8px rgba(0,0,0,0.1);
+            }
+            .sidebar.show { left: 0; }
+            .toolbox {
+                position: fixed; right: -100%; top: 0; bottom: 50px; width: 85%;
+                z-index: 1000; transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: -2px 0 8px rgba(0,0,0,0.1); border-left: 1px solid var(--border-color);
+            }
+            .toolbox.show { right: 0; }
+            .editor-main { height: calc(100vh - 50px); }
+            .editor-body { padding: 16px 20px; }
+
+            .mobile-tabbar {
+                display: flex; position: fixed; bottom: 0; left: 0; right: 0; height: 50px;
+                background: var(--bg-main); border-top: 1px solid var(--border-color); z-index: 1100;
+            }
+            .mobile-tabbar button {
+                flex: 1; border: none; background: transparent;
+                border-right: 1px solid var(--border-color); font-size: 13px;
+                color: var(--text-primary); cursor: pointer;
+            }
+            .mobile-tabbar button:last-child { border-right: none; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-layout" id="mainLayout">
+    <!-- 左侧目录 -->
+    <div class="sidebar" id="sidebar">
+        <div id="resizerLeft" style="position: absolute; right: 0; top: 0; bottom: 0; width: 5px; cursor: col-resize; z-index: 999; background: transparent;"></div>
+
+        <div class="side-header">
+            <div style="display: flex; gap: 8px;">
+                <button class="btn" style="flex:1" onclick="exportJson()">导出</button>
+                <button class="btn" style="flex:1" onclick="importJson()">导入</button>
+            </div>
+            <input type="text" class="search-box" id="searchTree" placeholder="搜索目录..." oninput="renderTree()">
+            <div style="margin-top: 12px; display: flex; gap: 8px;">
+                <button class="btn" style="flex:1" onclick="addNew('folder')">+ 文件夹</button>
+                <button class="btn" style="flex:1" onclick="addNew('item')">+ 文本</button>
+            </div>
+            <div style="margin-top: 8px; display: flex; gap: 8px;">
+                <button class="btn" style="flex:1" onclick="copyCurrentText()">复制内容</button>
+                <button class="btn danger" style="flex:1" onclick="confirmDeleteCurrent()">删除选中</button>
+            </div>
+            <div style="margin-top: 8px; display: flex; gap: 8px;">
+                <button class="btn" style="flex:1" onclick="openBatchModal()">批量管理</button>
+                <button class="btn" style="flex:1" onclick="doRangeSelect()">区间连选</button>
+            </div>
+        </div>
+        <div id="tree" class="tree-view"></div>
+    </div>
+
+    <!-- 主编辑区 -->
+    <div class="editor-main" onclick="closePanelsOnMobile()">
+        <div class="editor-header">
+            <div class="breadcrumb" id="pathDisplay">请选择一个条目</div>
+        </div>
+        <div class="editor-body" id="editorContainer" style="visibility: hidden;">
+            <input type="text" id="editor-title" placeholder="输入标题...">
+            <textarea id="editor-content" placeholder="开始你的创作..."></textarea>
+        </div>
+    </div>
+
+    <!-- 右侧工具栏 -->
+    <div class="toolbox" id="toolbox">
+        <div id="resizerRight" style="position: absolute; left: 0; top: 0; bottom: 0; width: 5px; cursor: col-resize; z-index: 999; background: transparent;"></div>
+
+        <div class="tool-section">
+            <h4>
+                <span>快速插入</span>
+                <button class="btn" style="height:24px; min-width:50px; font-size:12px; padding:0 8px;" onclick="addShortcut()">+ 添加</button>
+            </h4>
+            <div class="shortcuts-grid" id="shortcutGrid"></div>
+        </div>
+
+        <div class="tool-section">
+            <h4>
+                <span>查找与替换</span>
+                <input type="checkbox" id="doubleReplaceSwitch" onchange="toggleDoubleReplace()" style="margin:0; cursor:pointer;" title="双项替换">
+            </h4>
+            <div class="find-panel">
+                <div style="display: flex; gap: 8px; width: 100%;">
+                    <div class="input-group" style="flex: 1; min-width: 0;">
+                        <input type="text" id="findInput" placeholder="查找 1" style="width: 100%;">
+                        <input type="text" id="replaceInput" placeholder="替换为 1" style="width: 100%;">
+                    </div>
+                    <div class="input-group" id="secondReplaceGroup" style="flex: 1; min-width: 0; display: none;">
+                        <input type="text" id="findInput2" placeholder="查找 2" style="width: 100%;">
+                        <input type="text" id="replaceInput2" placeholder="替换为 2" style="width: 100%;">
+                    </div>
+                </div>
+                <div style="display:flex; gap:8px; margin-top:12px;">
+                    <button class="btn" style="flex:1" onclick="doFind()">查找</button>
+                    <button class="btn primary" style="flex:1" onclick="doReplace()">替换</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="tool-section">
+            <h4>占位符互换</h4>
+            <div class="find-panel" style="text-align: center;">
+                <div class="input-group" style="margin-bottom: 12px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size:13px; color:var(--text-secondary)">&lt;Q7Fr&gt; :</span>
+                        <input type="text" id="frDisplay" style="width:120px;" onchange="updatePlaceholderConfig()">
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size:13px; color:var(--text-secondary)">&lt;Q7Sc&gt; :</span>
+                        <input type="text" id="scDisplay" style="width:120px;" onchange="updatePlaceholderConfig()">
+                    </div>
+                </div>
+                <p id="swapStatusText" style="font-size:13px; color:var(--text-secondary); margin-bottom:12px; line-height: 1.6;"></p>
+                <button class="btn primary" style="width:100%;" onclick="toggleRoleSwap()">交替</button>
+            </div>
+        </div>
+
+        <!-- 查重与防重功能面板 -->
+        <div class="tool-section">
+            <h4>全库查重检测</h4>
+            <div class="find-panel">
+                <div class="input-group" style="margin-bottom:12px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size:13px; color:var(--text-secondary)" title="相似内容比例">文本相似度(%) ></span>
+                        <input type="number" id="simThreshold" value="80" style="width:60px;">
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size:13px; color:var(--text-secondary)">标题相似度(%) ></span>
+                        <input type="number" id="titleSimThreshold" value="90" style="width:60px;">
+                    </div>
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <button class="btn" style="flex:1; padding:0;" onclick="openDupSettings()">设置</button>
+                    <button class="btn primary" style="flex:2" onclick="doGlobalCheckDuplicate()">查重</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="tool-section" id="statsPanel">
+            <h4>设置与操作</h4>
+            <div class="stat-item">
+                <span>删除二次确认</span>
+                <input type="checkbox" id="confirmSwitch" onchange="saveConfig()">
+            </div>
+            <div class="stat-item">
+                <span>文本全局查找</span>
+                <input type="checkbox" id="globalFindSwitch" onchange="saveConfig()">
+            </div>
+            <div class="stat-item">
+                <span>文本全局替换</span>
+                <input type="checkbox" id="globalReplaceSwitch" onchange="saveConfig()">
+            </div>			
+            <div class="stat-item">
+                <span>文本编辑锁定</span>
+                <input type="checkbox" id="lockSwitch" onchange="toggleLock()">
+            </div>
+            <div class="stat-item">
+                <span>文本临时修改</span>
+                <input type="checkbox" id="tempEditSwitch" onchange="saveConfig()" title="开启后修改不保存，切换文本即还原">
+            </div>
+            <div class="stat-item">
+                <span>文本复制附加</span>
+                <button class="btn" style="height:24px; min-width:40px; padding:0 8px; font-size:12px;" onclick="openCopyAddonModal()">管理</button>
+            </div>
+            <div class="stat-item">
+                <span>文本随机抽取</span>
+                <div style="display:flex; gap:4px;">
+                    <button class="btn" style="height:24px; min-width:40px; padding:0 8px; font-size:12px;" onclick="doRandom('local')">当前</button>
+                    <button class="btn" style="height:24px; min-width:40px; padding:0 8px; font-size:12px;" onclick="doRandom('global')">全局</button>
+                </div>
+            </div>
+
+            <div style="margin-top:16px; padding-top:16px; border-top:1px dashed var(--border-color); display:flex; flex-direction:column; gap:8px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+                    <span>目录自动折叠分组 (0为关)</span>
+                    <input type="checkbox" id="autoGroupSwitch" onchange="toggleAutoGroup()">
+                </div>
+                <div id="groupSettingsUI" style="display:none; justify-content:space-between; align-items:center; background:var(--hover-bg); padding:8px; border-radius:4px;">
+                    <div style="display:flex; align-items:center; gap:4px;">
+                        <span style="font-size:12px; color:var(--text-secondary)">小分类:</span>
+                        <input type="number" id="groupSmallInput" value="10" style="width:40px; padding:2px 4px; font-size:12px; border:1px solid var(--border-color); border-radius:4px;" onchange="updateGroupConfig()">
+                    </div>
+                    <div style="display:flex; align-items:center; gap:4px;">
+                        <span style="font-size:12px; color:var(--text-secondary)">大分类:</span>
+                        <input type="number" id="groupLargeInput" value="50" style="width:40px; padding:2px 4px; font-size:12px; border:1px solid var(--border-color); border-radius:4px;" onchange="updateGroupConfig()">
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- 手机端底部栏 -->
+<div class="mobile-tabbar">
+    <button onclick="togglePanel('sidebar')">☰ 目录</button>
+    <button onclick="copyCurrentText()">📋 复制</button>
+    <button onclick="toggleRoleSwap()">➰ 替换</button>
+    <button onclick="togglePanel('toolbox')">🛠 工具</button>
+    <button onclick="document.execCommand('undo')">↩ 撤销</button>
+</div>
+
+<!-- 统一多功能系统模态框 -->
+<div id="sysModal" class="modal-overlay" style="display:none;">
+    <div class="modal-card" id="sysModalCard">
+        <h3 id="sysModalTitle" style="margin-top:0;">提示</h3>
+        
+        <!-- 批量文本与云端同步的 Tab 切换区域 -->
+        <div id="sysModalTabs" style="display:none; gap:8px; margin-top:12px; margin-bottom:12px;">
+            <button class="btn primary" id="tabImportBtn" style="flex:1; height:32px; font-size:13px; padding:0 8px;" onclick="switchBatchTab('import')">导入文本</button>
+            <button class="btn" id="tabExportBtn" style="flex:1; height:32px; font-size:13px; padding:0 8px;" onclick="switchBatchTab('export')">导出文本</button>
+            <button class="btn" id="tabSyncBtn" style="flex:1; height:32px; font-size:13px; padding:0 8px;" onclick="switchBatchTab('sync')">云同步</button>
+        </div>
+
+        <p id="sysModalMsg" style="font-size:13px; color:var(--text-secondary); line-height:1.6; white-space:pre-wrap;"></p>
+        
+        <div id="sysModalInputs" style="display:none; flex-direction:column; gap:10px; margin-top:10px;">
+            <input type="text" id="sysModalInput1" class="search-box" style="margin-top:0" placeholder="快捷名称">
+            <input type="text" id="sysModalInput2" class="search-box" style="margin-top:0" placeholder="插入内容">
+        </div>
+        
+        <textarea id="sysModalTextarea" class="search-box" style="margin-top:10px; display:none; height:240px; resize:none; font-family:inherit; line-height:1.5; font-size:13px;" placeholder="在此粘贴文本..."></textarea>
+        
+        <!-- Gist 同步面板 -->
+        <div id="sysModalSyncPanel" style="display:none; flex-direction:column; gap:12px; margin-top:10px;">
+            <div>
+                <div style="font-size:12px; margin-bottom:4px; color:var(--text-secondary);">GitHub Token (仅存储):</div>
+                <input type="password" id="gistTokenInput" class="search-box" style="margin-top:0; width:100%;" placeholder="ghp_xxxxxx" onchange="localStorage.setItem('TMP_GithubToken', this.value)">
+            </div>
+            <div>
+                <div style="font-size:12px; margin-bottom:4px; color:var(--text-secondary);">Gist ID (留空则自动填入):</div>
+                <input type="text" id="gistIdInput" class="search-box" style="margin-top:0; width:100%;" placeholder="1c2a3b4c..." onchange="localStorage.setItem('TMP_GistId', this.value)">
+            </div>
+            <div style="display:flex; gap:8px; margin-top:8px;">
+                <button class="btn primary" style="flex:1; padding:0 8px;" onclick="pullFromGist()">拉取(覆盖本地)</button>
+                <button class="btn primary" style="flex:1; padding:0 8px;" onclick="pushToGist()">推送(更新/新建)</button>
+            </div>
+            <div style="font-size:12px; color:#ef4444; line-height:1.5;">提示：同步时将覆盖对应端数据，请谨慎操作。</div>
+        </div>
+
+        <!-- 动态面板占位 (用于重构的高级内嵌面板) -->
+        <div id="sysModalDynamicPanel" style="display:none; flex-direction:column; margin-top:10px;"></div>
+
+        <div style="margin-top:24px; display:flex; gap:10px; justify-content:flex-end;" id="sysModalActionBox">
+            <button class="btn" id="sysModalClearBtn" onclick="document.getElementById('sysModalTextarea').value=''" style="display:none;">清空</button>
+            <button class="btn" onclick="closeModal()">取消</button>
+            <button class="btn primary" id="sysModalConfirmBtn">确认</button>
+        </div>
+    </div>
+</div>
+
+<!-- 查重对比结果浮窗 (纯行内样式) -->
+<div id="dupModal" class="modal-overlay" style="display:none; align-items:center; justify-content:center; position:fixed; z-index:4000;">
+    <div style="background:var(--bg-main); width:90%; max-width:800px; height:80vh; border-radius:var(--radius); display:flex; flex-direction:column; padding:20px; box-shadow:0 10px 25px -3px rgba(0,0,0,0.5);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h3 id="dupTitle" style="margin:0;">发现重复 (<span id="dupProgress">1/1</span>)</h3>
+            <label style="font-size:13px; display:flex; align-items:center; gap:4px; cursor:pointer;">
+                <input type="checkbox" id="dupApplyAll" style="margin:0;">
+                应用到剩余全部
+            </label>
+        </div>
+        
+        <div style="display:flex; gap:16px; flex:1; overflow:hidden; min-height:0;">
+            <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
+                <div style="font-size:13px; font-weight:bold; color:#d97706; margin-bottom:4px;" id="dupOldLabel">旧文本/文本1</div>
+                <input type="text" id="dupOldTitle" readonly style="margin-bottom:8px; border:1px solid var(--border-color); padding:8px; border-radius:4px; font-size:13px; outline:none; background:#f8fafc;">
+                <textarea id="dupOldText" readonly style="flex:1; resize:none; border:1px solid var(--border-color); padding:8px; font-size:13px; line-height:1.6; border-radius:4px; outline:none; background:#f8fafc;"></textarea>
+            </div>
+            <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
+                <div style="font-size:13px; font-weight:bold; color:#16a34a; margin-bottom:4px;" id="dupNewLabel">新导入/文本2</div>
+                <input type="text" id="dupNewTitle" readonly style="margin-bottom:8px; border:1px solid var(--border-color); padding:8px; border-radius:4px; font-size:13px; outline:none; background:#f0fdf4;">
+                <textarea id="dupNewText" readonly style="flex:1; resize:none; border:1px solid var(--border-color); padding:8px; font-size:13px; line-height:1.6; border-radius:4px; outline:none; background:#f0fdf4;"></textarea>
+            </div>
+        </div>
+        <div style="margin-top:16px; display:flex; gap:12px; justify-content:flex-end;" id="dupActionBtns">
+            <!-- 动态生成查重操作按钮 -->
+        </div>
+    </div>
+</div>
+
+<!-- 居中渐变提示 Toast -->
+<div id="toast" class="toast-msg">操作成功</div>
+
+<script>
+    // HTML 实体转义，防止代码或标签被当做隐藏HTML执行
+    function escapeHTML(str) {
+        return String(str || '').replace(/&/g, '&amp;')
+                                .replace(/</g, '&lt;')
+                                .replace(/>/g, '&gt;')
+                                .replace(/"/g, '&quot;')
+                                .replace(/'/g, '&#039;');
+    }
+
+    const defaultData = { 
+        data: [], 
+        config: { 
+            shortcuts: [
+                { display: "Fr", text: "<Q7Fr>" },
+                { display: "Sc", text: "<Q7Sc>" }
+            ], 
+            deleteConfirmEnabled: true,
+            isLocked: false,
+            isSwapped: false,
+            displayOptions: { fr: "{{user}}", sc: "{{char}}" },
+            globalFind: false,
+            globalReplace: false,
+            tempEdit: false,
+            autoGroup: false,
+            groupSmall: 10,
+            groupLarge: 50,
+            dupSkipPairs: [],     
+            dupSkipPhrases: [],   
+            copyAddon: {
+                prefixEnabled: false, prefixes: [],
+                suffixEnabled: false, suffixes: []
+            }
+        } 
+    };
+
+    let projectData = JSON.parse(JSON.stringify(defaultData));
+    try {
+        const local = localStorage.getItem('textManagerPro');
+        if (local) {
+            const parsed = JSON.parse(local);
+            projectData.data = parsed.data || [];
+            projectData.config = { ...defaultData.config, ...(parsed.config || {}) };
+            if(!projectData.config.dupSkipPairs) projectData.config.dupSkipPairs = [];
+            if(!projectData.config.dupSkipPhrases) projectData.config.dupSkipPhrases = [];
+            
+            // 兼容老版本字符串数组变更为对象数组 {text: '', active: true}
+            projectData.config.dupSkipPhrases = projectData.config.dupSkipPhrases.map(p => {
+                if (typeof p === 'string') return { text: p, active: true };
+                return p;
+            });
+            
+            if(!projectData.config.copyAddon) projectData.config.copyAddon = defaultData.config.copyAddon;
+        }
+    } catch(e) {}
+
+    let currentNode = null;
+    let draggedNodeId = null;
+    let selectedIds = new Set();
+    let checkHistory = []; 
+    let currentVisibleIds = []; 
+    let lastFocusedElement = null; 
+    let lastFindIndex = 0; 
+    
+    // 用于保存虚拟分组折叠状态的对象池
+    let vgCollapseStates = {};
+
+    // 绑定 UI 开关
+    document.getElementById('confirmSwitch').checked = projectData.config.deleteConfirmEnabled;
+    document.getElementById('lockSwitch').checked = projectData.config.isLocked;
+    document.getElementById('globalFindSwitch').checked = projectData.config.globalFind;
+    document.getElementById('globalReplaceSwitch').checked = projectData.config.globalReplace;
+    document.getElementById('tempEditSwitch').checked = projectData.config.tempEdit;
+    document.getElementById('autoGroupSwitch').checked = projectData.config.autoGroup;
+    document.getElementById('groupSmallInput').value = projectData.config.groupSmall;
+    document.getElementById('groupLargeInput').value = projectData.config.groupLarge;
+    
+    document.getElementById('frDisplay').value = projectData.config.displayOptions.fr;
+    document.getElementById('scDisplay').value = projectData.config.displayOptions.sc;
+    
+    updateSwapStatusUI();
+    if (projectData.config.autoGroup) document.getElementById('groupSettingsUI').style.display = 'flex';
+
+    document.addEventListener('focusin', (e) => {
+        if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) lastFocusedElement = e.target;
+    });
+
+    document.addEventListener('click', () => {
+        const toast = document.getElementById('toast');
+        if(toast.classList.contains('show')) toast.classList.remove('show');
+    }, true);
+
+    // --- 解决排版冲突的布局与拖拽逻辑 ---
+    let isResizingLeft = false;
+    let isResizingRight = false;
+    const mainLayout = document.getElementById('mainLayout');
+    const sidebarEl = document.getElementById('sidebar');
+    const toolboxEl = document.getElementById('toolbox');
+
+    function applyDesktopLayoutFix() {
+        if (window.innerWidth <= 768) {
+            sidebarEl.style.position = '';
+            toolboxEl.style.position = '';
+            mainLayout.style.gridTemplateColumns = '';
+        } else {
+            sidebarEl.style.position = 'relative';
+            toolboxEl.style.position = 'relative';
+        }
+    }
+    window.addEventListener('resize', applyDesktopLayoutFix);
+    applyDesktopLayoutFix(); 
+    
+    document.addEventListener('mousedown', (e) => {
+        if (window.innerWidth <= 768) return; 
+        if (e.target.id === 'resizerLeft') { isResizingLeft = true; e.preventDefault(); }
+        if (e.target.id === 'resizerRight') { isResizingRight = true; e.preventDefault(); }
+    });
+    document.addEventListener('mousemove', (e) => {
+        if (!isResizingLeft && !isResizingRight) return;
+        if (window.innerWidth <= 768) {
+            isResizingLeft = isResizingRight = false;
+            mainLayout.style.gridTemplateColumns = '';
+            return;
+        }
+        let currentCols = mainLayout.style.gridTemplateColumns || '300px 1fr 320px';
+        let parts = currentCols.split(' ');
+        
+        if (isResizingLeft) {
+            let newW = e.clientX;
+            if (newW < 200) newW = 200; if (newW > 600) newW = 600;
+            mainLayout.style.gridTemplateColumns = `${newW}px 1fr ${parts[2] || '320px'}`;
+        }
+        if (isResizingRight) {
+            let newW = window.innerWidth - e.clientX;
+            if (newW < 200) newW = 200; if (newW > 600) newW = 600;
+            mainLayout.style.gridTemplateColumns = `${parts[0] || '300px'} 1fr ${newW}px`;
+        }
+    });
+    document.addEventListener('mouseup', () => { isResizingLeft = isResizingRight = false; });
+
+    function saveData() { localStorage.setItem('textManagerPro', JSON.stringify(projectData)); }
+    function saveConfig() {
+        projectData.config.deleteConfirmEnabled = document.getElementById('confirmSwitch').checked;
+        projectData.config.globalFind = document.getElementById('globalFindSwitch').checked;
+        projectData.config.globalReplace = document.getElementById('globalReplaceSwitch').checked;
+        projectData.config.tempEdit = document.getElementById('tempEditSwitch').checked;
+        saveData();
+    }
+
+    let toastTimer;
+    function showToast(msg) {
+        const toast = document.getElementById('toast');
+        toast.innerText = msg; toast.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => { toast.classList.remove('show'); }, 2000);
+    }
+
+    function toggleAutoGroup() {
+        projectData.config.autoGroup = document.getElementById('autoGroupSwitch').checked;
+        document.getElementById('groupSettingsUI').style.display = projectData.config.autoGroup ? 'flex' : 'none';
+        saveData(); renderTree();
+    }
+    function updateGroupConfig() {
+        let s = parseInt(document.getElementById('groupSmallInput').value) || 0;
+        let l = parseInt(document.getElementById('groupLargeInput').value) || 0;
+        projectData.config.groupSmall = s;
+        projectData.config.groupLarge = l;
+        saveData(); renderTree();
+    }
+
+    function updatePlaceholderConfig() {
+        projectData.config.displayOptions.fr = document.getElementById('frDisplay').value || '{{user}}';
+        projectData.config.displayOptions.sc = document.getElementById('scDisplay').value || '{{char}}';
+        saveData(); updateSwapStatusUI(); refreshEditorContent();
+    }
+    function toggleLock() {
+        projectData.config.isLocked = document.getElementById('lockSwitch').checked;
+        saveData(); refreshEditorContent();
+    }
+    function toggleRoleSwap() {
+        if (!projectData.config.isLocked) {
+            projectData.config.isLocked = true;
+            document.getElementById('lockSwitch').checked = true;
+        }
+        projectData.config.isSwapped = !projectData.config.isSwapped;
+        saveData(); updateSwapStatusUI(); refreshEditorContent();
+        const frVal = projectData.config.displayOptions.fr;
+        const scVal = projectData.config.displayOptions.sc;
+        showToast(projectData.config.isSwapped ? `已切换: Fr=${scVal}, Sc=${frVal}` : `已切换: Fr=${frVal}, Sc=${scVal}`);
+    }
+    function updateSwapStatusUI() {
+        const p = document.getElementById('swapStatusText');
+        const frVal = projectData.config.displayOptions.fr;
+        const scVal = projectData.config.displayOptions.sc;
+        if (!projectData.config.isSwapped) {
+            p.innerHTML = `当前显示状态: <br><strong style="color:var(--text-primary)">&lt;Q7Fr&gt; = ${escapeHTML(frVal)}</strong><br><strong style="color:var(--text-primary)">&lt;Q7Sc&gt; = ${escapeHTML(scVal)}</strong>`;
+        } else {
+            p.innerHTML = `当前显示状态: <br><strong style="color:var(--text-primary)">&lt;Q7Fr&gt; = ${escapeHTML(scVal)}</strong><br><strong style="color:var(--text-primary)">&lt;Q7Sc&gt; = ${escapeHTML(frVal)}</strong>`;
+        }
+    }
+    function refreshEditorContent() {
+        if (!currentNode || currentNode.type !== 'item') return;
+        const el = document.getElementById('editor-content');
+        if (projectData.config.isLocked) {
+            let text = currentNode.text || '';
+            const frV = projectData.config.isSwapped ? projectData.config.displayOptions.sc : projectData.config.displayOptions.fr;
+            const scV = projectData.config.isSwapped ? projectData.config.displayOptions.fr : projectData.config.displayOptions.sc;
+            text = text.split('<Q7Fr>').join(frV);
+            text = text.split('<Q7Sc>').join(scV);
+            el.value = text; el.readOnly = true; el.style.backgroundColor = '#f8fafc'; 
+        } else {
+            el.value = currentNode.text || ''; el.readOnly = false; el.style.backgroundColor = '#ffffff';
+        }
+    }
+
+    // --- 树渲染与自动折叠分组双层嵌套逻辑 ---
+    function renderTree() {
+        const treeContainer = document.getElementById('tree');
+        const filter = document.getElementById('searchTree').value.toLowerCase();
+        treeContainer.innerHTML = '';
+        currentVisibleIds = []; 
+        renderLevel(projectData.data, treeContainer, filter, 1);
+    }
+
+    window.toggleVirtualGroup = function(e, vId) {
+        e.stopPropagation();
+        vgCollapseStates[vId] = !vgCollapseStates[vId];
+        renderTree();
+    }
+
+    function renderLevel(nodes, container, filter, baseIndex) {
+        if (projectData.config.autoGroup && !filter) {
+            let large = parseInt(projectData.config.groupLarge) || 0;
+            let small = parseInt(projectData.config.groupSmall) || 0;
+            
+            if (large > 0 && nodes.length > large) {
+                return renderVirtualGroups(nodes, container, filter, baseIndex, large, small, false);
+            } else if (small > 0 && nodes.length > small) {
+                return renderVirtualGroups(nodes, container, filter, baseIndex, small, 0, true);
+            }
+        }
+        return renderActualNodes(nodes, container, filter, baseIndex);
+    }
+
+    function renderVirtualGroups(nodes, container, filter, baseIndex, chunkSize, nextChunkSize, isSmallGroup) {
+        let displayIndex = baseIndex;
+        for (let i = 0; i < nodes.length; i += chunkSize) {
+            const chunk = nodes.slice(i, i + chunkSize);
+            const startIdx = displayIndex;
+            const endIdx = displayIndex + chunk.length - 1;
+            // 保证 ID 唯一性，避免大小分组状态串线
+            const vId = 'vg_' + (container.id || 'root') + '_' + chunkSize + '_' + i + '_' + startIdx;
+            
+            if (vgCollapseStates[vId] === undefined) vgCollapseStates[vId] = true; 
+            
+            const row = document.createElement('div');
+            row.className = 'tree-item';
+            
+            const content = document.createElement('div');
+            content.className = 'item-row sticky-folder';
+            
+            // 行内样式极小化分组倒三角
+            const foldIcon = `<span class="fold-icon" style="font-size:10px; transform:scale(0.8);" onclick="toggleVirtualGroup(event, '${vId}')">${vgCollapseStates[vId] ? '▶' : '▼'}</span>`;
+            // 小分类和大分类图标区分
+            const boxIcon = isSmallGroup ? '📑' : '📦';
+
+            content.innerHTML = `
+                <span class="index-badge">${startIdx}.</span>
+                ${foldIcon} <span>${boxIcon}</span>
+                <span style="flex:1; color:var(--text-secondary); font-size:13px;">${startIdx} - ${endIdx}</span>
+            `;
+            content.onclick = (e) => toggleVirtualGroup(e, vId);
+            row.appendChild(content);
+
+            if (!vgCollapseStates[vId]) {
+                const subContainer = document.createElement('div');
+                subContainer.className = 'folder-content';
+                // 递归切分更小的类
+                if (nextChunkSize > 0 && chunk.length > nextChunkSize) {
+                    renderVirtualGroups(chunk, subContainer, filter, startIdx, nextChunkSize, 0, true);
+                } else {
+                    renderActualNodes(chunk, subContainer, filter, startIdx);
+                }
+                row.appendChild(subContainer);
+            } else {
+                // 如果折叠了，依然把子孙节点ID丢进去用于连选支持
+                const pushHiddenIds = (list) => {
+                    list.forEach(n => {
+                        currentVisibleIds.push(n.id);
+                        if (n.children) pushHiddenIds(n.children);
+                    });
+                };
+                pushHiddenIds(chunk);
+            }
+            displayIndex += chunk.length;
+            container.appendChild(row);
+        }
+        return displayIndex;
+    }
+
+    function renderActualNodes(nodes, container, filter, displayIndex) {
+        let currentIndex = displayIndex;
+        nodes.forEach((node) => {
+            if (filter && !node.name.toLowerCase().includes(filter)) return;
+            if (node._collapsed === undefined) node._collapsed = false;
+
+            currentVisibleIds.push(node.id);
+
+            const row = document.createElement('div');
+            row.className = 'tree-item';
+            
+            const content = document.createElement('div');
+            content.className = `item-row ${currentNode && currentNode.id === node.id ? 'active' : ''}`;
+            if (node.type === 'folder') content.classList.add('sticky-folder');
+            content.draggable = true;
+            
+            const foldIcon = node.type === 'folder' ? `<span class="fold-icon" onclick="toggleFold(event, '${node.id}')">${node._collapsed ? '▶' : '▼'}</span>` : `<span class="fold-icon"></span>`;
+            const typeIcon = node.type === 'folder' ? '📁' : '📄';
+            const isChecked = selectedIds.has(node.id) ? 'checked' : '';
+
+            // 全面转义标题显示
+            content.innerHTML = `
+                <input type="checkbox" class="node-cb" onclick="toggleCheck(event, '${node.id}')" ${isChecked}>
+                <span class="index-badge">${currentIndex}.</span>
+                ${foldIcon} <span>${typeIcon}</span>
+                <span style="flex:1;">${escapeHTML(node.name || '未命名')}</span>
+            `;
+
+            content.onclick = (e) => { if(e.target.tagName !== 'INPUT') selectNode(node); };
+            
+            content.ondragstart = (e) => { draggedNodeId = node.id; e.stopPropagation(); };
+            content.ondragover = (e) => {
+                e.preventDefault(); e.stopPropagation();
+                const rect = content.getBoundingClientRect();
+                const y = e.clientY - rect.top;
+                content.style.borderTop = ''; content.style.borderBottom = ''; content.style.background = '';
+                if (node.type === 'folder') {
+                    if (y < rect.height * 0.25) { dragPos = 'before'; content.style.borderTop = '2px solid var(--accent-color)'; }
+                    else if (y > rect.height * 0.75) { dragPos = 'after'; content.style.borderBottom = '2px solid var(--accent-color)'; }
+                    else { dragPos = 'in'; content.style.background = '#e2e8f0'; }
+                } else {
+                    if (y < rect.height / 2) { dragPos = 'before'; content.style.borderTop = '2px solid var(--accent-color)'; }
+                    else { dragPos = 'after'; content.style.borderBottom = '2px solid var(--accent-color)'; }
+                }
+            };
+            content.ondragleave = () => { content.style.borderTop=''; content.style.borderBottom=''; content.style.background=''; };
+            content.ondrop = (e) => {
+                e.preventDefault(); e.stopPropagation();
+                content.style.borderTop=''; content.style.borderBottom=''; content.style.background='';
+                handleMove(draggedNodeId, node.id, dragPos);
+            };
+
+            row.appendChild(content);
+
+            if (node.type === 'folder' && node.children && !node._collapsed) {
+                const subContainer = document.createElement('div');
+                subContainer.className = 'folder-content';
+                subContainer.id = node.id; 
+                renderLevel(node.children, subContainer, filter, 1);
+                row.appendChild(subContainer);
+            }
+            
+            currentIndex++;
+            container.appendChild(row);
+        });
+        return currentIndex;
+    }
+
+    function toggleCheck(e, id) {
+        e.stopPropagation();
+        if (e.target.checked) {
+            selectedIds.add(id);
+            checkHistory.push(id);
+            if (checkHistory.length > 2) checkHistory.shift(); 
+        } else {
+            selectedIds.delete(id);
+            checkHistory = checkHistory.filter(x => x !== id);
+        }
+    }
+
+    function doRangeSelect() {
+        if (checkHistory.length < 2) { showToast("请先单独勾选两个项作为首尾"); return; }
+        const idx1 = currentVisibleIds.indexOf(checkHistory[0]);
+        const idx2 = currentVisibleIds.indexOf(checkHistory[1]);
+        if (idx1 === -1 || idx2 === -1) { showToast("选中的项被折叠隐藏，请展开"); return; }
+        const start = Math.min(idx1, idx2);
+        const end = Math.max(idx1, idx2);
+        for (let i = start; i <= end; i++) selectedIds.add(currentVisibleIds[i]);
+        renderTree(); showToast(`连选 ${end - start + 1} 项`);
+    }
+
+    function toggleFold(e, id) {
+        e.stopPropagation();
+        const find = (list) => {
+            for(let n of list) {
+                if (n.id === id) { n._collapsed = !n._collapsed; return true; }
+                if (n.children && find(n.children)) return true;
+            }
+        }
+        find(projectData.data); saveData(); renderTree();
+    }
+
+    let tempEditToastTimer = null;
+    function selectNode(node) {
+        currentNode = node; lastFindIndex = 0; 
+        document.getElementById('editorContainer').style.visibility = 'visible';
+        document.getElementById('editor-title').value = node.name;
+        
+        const contentArea = document.getElementById('editor-content');
+        if (node.type === 'item') { contentArea.style.display = 'block'; refreshEditorContent(); } 
+        else { contentArea.style.display = 'none'; }
+
+        const pathArr = getPath(projectData.data, node.id);
+        document.getElementById('pathDisplay').innerText = pathArr ? pathArr.join(' > ') : node.name;
+        
+        document.getElementById('editor-title').oninput = (e) => { node.name = e.target.value; saveData(); renderTree(); };
+        contentArea.oninput = (e) => { 
+            if (projectData.config.isLocked) return;
+            if (projectData.config.tempEdit) {
+                if (!tempEditToastTimer) {
+                    showToast("当前为临时修改，不保存内容");
+                    tempEditToastTimer = setTimeout(() => { tempEditToastTimer = null; }, 3000);
+                }
+                return; 
+            }
+            node.text = e.target.value; saveData(); 
+        };
+
+        if (window.innerWidth <= 768) closePanelsOnMobile();
+        renderTree();
+    }
+
+    function getPath(list, id, currentPath = []) {
+        for (let n of list) {
+            const p = [...currentPath, n.name];
+            if (n.id === id) return p;
+            if (n.children) {
+                const r = getPath(n.children, id, p);
+                if (r) return r;
+            }
+        }
+        return null;
+    }
+
+    function addNew(type) {
+        const newNode = {
+            id: 'd_' + Math.random().toString(36).substr(2, 9),
+            name: type === 'folder' ? '新建文件夹' : '新建文本',
+            type: type, _collapsed: false,
+            text: type === 'item' ? '' : undefined,
+            children: type === 'folder' ? [] : undefined
+        };
+        
+        if (currentNode) {
+            if (currentNode.type === 'folder') {
+                currentNode._collapsed = false; 
+                currentNode.children.push(newNode);
+            } else if (currentNode.type === 'item') {
+                const insertAfter = (list, targetId) => {
+                    for (let i = 0; i < list.length; i++) {
+                        if (list[i].id === targetId) {
+                            list.splice(i + 1, 0, newNode);
+                            return true;
+                        }
+                        if (list[i].children && insertAfter(list[i].children, targetId)) {
+                            return true;
+                        }
+                    }
+                    return false;
+                };
+                insertAfter(projectData.data, currentNode.id);
+            }
+        } else {
+            projectData.data.push(newNode);
+        }
+        
+        saveData(); renderTree(); showToast('新建成功');
+    }
+
+    // --- 批量系统模态框重构，解决冲突与增加新面板 ---
+    function openBatchModal() {
+        document.getElementById('sysModalTabs').style.display = 'flex';
+        document.getElementById('sysModalTitle').innerText = '批量管理与同步';
+        document.getElementById('gistTokenInput').value = localStorage.getItem('TMP_GithubToken') || '';
+        document.getElementById('gistIdInput').value = localStorage.getItem('TMP_GistId') || '';
+
+        // 显示模态框前清除其他专属面板的残留
+        document.getElementById('sysModalInputs').style.display = 'none';
+        document.getElementById('sysModalDynamicPanel').style.display = 'none';
+        
+        document.getElementById('sysModal').style.display = 'flex';
+        switchBatchTab('import');
+    }
+
+    function switchBatchTab(mode) {
+        const tImport = document.getElementById('tabImportBtn');
+        const tExport = document.getElementById('tabExportBtn');
+        const tSync = document.getElementById('tabSyncBtn');
+        const msg = document.getElementById('sysModalMsg');
+        const ta = document.getElementById('sysModalTextarea');
+        const syncPanel = document.getElementById('sysModalSyncPanel');
+        const btn = document.getElementById('sysModalConfirmBtn');
+        const clearBtn = document.getElementById('sysModalClearBtn');
+
+        tImport.classList.remove('primary');
+        tExport.classList.remove('primary');
+        tSync.classList.remove('primary');
+        ta.style.display = 'none';
+        syncPanel.style.display = 'none';
+        btn.style.display = 'none';
+        clearBtn.style.display = 'none';
+
+        if (mode === 'import') {
+            tImport.classList.add('primary');
+            msg.innerText = `⭐导入时会自动触发查重检测\n\n说明：\n1. > 文件夹 - 子目录 表示路径 (无则在根目录)\n2. = 文本 作为标题\n3. 标题下的多行内容为文本内容`;
+            ta.style.display = 'block';
+            ta.readOnly = false;
+            ta.placeholder = "在此粘贴需要批量导入的文本...";
+            if (ta._cacheExport !== undefined && ta.value === ta._cacheExport) ta.value = ''; 
+            btn.style.display = 'inline-flex';
+            btn.innerText = '确认导入';
+            clearBtn.style.display = 'inline-flex';
+            modalCallback = processBatchText;
+        } else if (mode === 'export') {
+            tExport.classList.add('primary');
+            const scopeText = currentNode 
+                ? (currentNode.type === 'folder' ? '⭐已生成【该文件夹及子目录】数据：' : '⭐已生成【当前文本】数据：') 
+                : '⭐已生成【全局所有】的数据：';
+                
+            msg.innerText = `${scopeText}\n\n说明：\n1. 选中文件夹或文本可导出对应文本\n2. 不选择则为全部数据`;
+            
+            const exportText = getBatchExportText(currentNode);
+            ta.style.display = 'block';
+            ta.value = exportText;
+            ta._cacheExport = exportText; 
+            ta.readOnly = true;
+            btn.style.display = 'inline-flex';
+            btn.innerText = '复制并关闭';
+            clearBtn.style.display = 'inline-flex';
+            modalCallback = () => {
+                navigator.clipboard.writeText(ta.value).then(() => { showToast('复制成功'); });
+                closeModal();
+            };
+        } else if (mode === 'sync') {
+            tSync.classList.add('primary');
+            msg.innerHTML = `GitHub Gist 云端数据同步：\n<div style="font-size:12px; color:#999; margin-bottom:15px; margin-top:8px; line-height:1.5;">👉 <a href="https://github.com/settings/tokens/new" target="_blank" style="color:var(--accent-color);">点击前往 GitHub 免费生成 Token (须勾选 gist 权限)</a></div>`;
+            syncPanel.style.display = 'flex';
+            btn.style.display = 'none'; 
+        }
+    }
+
+    function getBatchExportText(targetNode) {
+        let result = "";
+        let lastPathStr = null;
+        function walk(list, basePath) {
+            for (let n of list) {
+                if (n.type === 'folder') walk(n.children, [...basePath, n.name]);
+                else if (n.type === 'item') {
+                    let currentPathStr = basePath.join(" - ");
+                    if (currentPathStr !== lastPathStr) {
+                        result += `> ${currentPathStr}\n`;
+                        lastPathStr = currentPathStr;
+                    }
+                    result += `= ${n.name}\n${n.text || ''}\n\n`;
+                }
+            }
+        }
+
+        if (!targetNode) walk(projectData.data, []);
+        else if (targetNode.type === 'item') {
+            let p = getPath(projectData.data, targetNode.id) || [];
+            p.pop(); 
+            result += `> ${p.join(" - ")}\n`;
+            result += `= ${targetNode.name}\n${targetNode.text || ''}\n\n`;
+        } else if (targetNode.type === 'folder') {
+            let p = getPath(projectData.data, targetNode.id) || [];
+            walk(targetNode.children, p);
+        }
+        return result.trim() || '无可导出文本';
+    }
+
+    // --- 查重算法与防重逻辑增强 ---
+    function getAllItems(list, result = []) {
+        for (let n of list) {
+            if (n.type === 'item') result.push(n);
+            if (n.children) getAllItems(n.children, result);
+        }
+        return result;
+    }
+
+    function getSimilarity(s1, s2, n=2) {
+        if (!s1 || !s2) return 0;
+        s1 = s1.replace(/\s+/g,'').toLowerCase();
+        s2 = s2.replace(/\s+/g,'').toLowerCase();
+        if(s1 === s2) return 100;
+        if(s1.length < n || s2.length < n) return 0;
+        
+        let getGrams = (s) => {
+            let res = new Map();
+            for(let i=0; i<=s.length-n; i++) {
+                let g = s.substr(i,n);
+                res.set(g, (res.get(g)||0)+1);
+            }
+            return res;
+        };
+        let map1 = getGrams(s1), map2 = getGrams(s2);
+        let intersection = 0, sum1 = 0, sum2 = 0;
+        map1.forEach((count, g) => {
+            sum1 += count;
+            if(map2.has(g)) intersection += Math.min(count, map2.get(g));
+        });
+        map2.forEach((count) => sum2 += count);
+        return ((2 * intersection) / (sum1 + sum2)) * 100;
+    }
+
+    function removeNodeById(list, id) {
+        for (let i = list.length - 1; i >= 0; i--) {
+            if (list[i].id === id) { list.splice(i, 1); return true; }
+            else if (list[i].children) { 
+                if(removeNodeById(list[i].children, id)) return true; 
+            }
+        }
+        return false;
+    }
+    
+    function filterSkipPhrases(text) {
+        let res = text || "";
+        projectData.config.dupSkipPhrases.forEach(phrase => {
+            if(phrase && phrase.active && phrase.text.trim()) {
+                res = res.split(phrase.text.trim()).join('');
+            }
+        });
+        return res;
+    }
+
+    // --- 文本导入及批量冲突处理逻辑 ---
+    let dupQueue = [];
+    let dupContext = 'import'; 
+    let dupActionAll = null; 
+    let finalItemsToInsert = [];
+
+    function processBatchText() {
+        const rawText = document.getElementById('sysModalTextarea').value;
+        if (!rawText.trim()) return;
+
+        const lines = rawText.split('\n');
+        let currentPath = []; 
+        let currentItem = null;
+        let itemsToCreate = [];
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            if (line.trim().startsWith('>')) {
+                let pathStr = line.replace(/^>\s*/, '').trim();
+                if (!pathStr) currentPath = [];
+                else currentPath = pathStr.split(/[-/]/).map(s => s.trim()).filter(s => s);
+                currentItem = null; 
+            } else if (line.trim().startsWith('=')) {
+                // 加强了去等号正则，过滤首部所有连续的 = 
+                let title = line.replace(/^=+\s*/, '').trim();
+                if (!title) title = "未命名文本";
+                currentItem = { path: [...currentPath], name: title, textLines: [] };
+                itemsToCreate.push(currentItem);
+            } else {
+                if (currentItem) {
+                    currentItem.textLines.push(line);
+                } else if (line.trim()) {
+                    currentItem = { path: [...currentPath], name: "导入文本片段", textLines: [line] };
+                    itemsToCreate.push(currentItem);
+                }
+            }
+        }
+        startDupCheck(itemsToCreate);
+    }
+
+    function startDupCheck(itemsToCreate) {
+        let allExisting = getAllItems(projectData.data);
+        let simT = parseInt(document.getElementById('simThreshold').value) || 80;
+        let titleT = parseInt(document.getElementById('titleSimThreshold').value) || 90;
+
+        dupQueue = []; finalItemsToInsert = [];
+        
+        for(let item of itemsToCreate) {
+            let newText = item.textLines.join('\n').replace(/^\n+|\n+$/g, '');
+            item._newText = newText;
+            
+            // 过滤忽略词汇进行比较
+            let pureNewText = filterSkipPhrases(newText);
+            
+            let bestMatch = null;
+            for(let exist of allExisting) {
+                let pureOldText = filterSkipPhrases(exist.text);
+                
+                let tSim = getSimilarity(exist.name, item.name, 2);
+                let contentSim = getSimilarity(pureOldText, pureNewText, 3);
+                if(contentSim >= simT || tSim >= titleT) { bestMatch = exist; break; }
+            }
+            if(bestMatch) dupQueue.push({ newItem: item, oldItem: bestMatch });
+            else finalItemsToInsert.push(item);
+        }
+        
+        dupContext = 'import'; dupActionAll = null; document.getElementById('dupApplyAll').checked = false;
+        processNextDup();
+    }
+
+    function processNextDup() {
+        if(dupQueue.length === 0) {
+            document.getElementById('dupModal').style.display = 'none';
+            if(dupContext === 'import') finishImport();
+            else { saveData(); renderTree(); showToast("查重与处理完毕"); }
+            return;
+        }
+        
+        let cur = dupQueue[0];
+        if(dupActionAll) { applyDupAction(dupActionAll); return; }
+        
+        document.getElementById('dupModal').style.display = 'flex';
+        document.getElementById('dupProgress').innerText = `${dupQueue.length} 剩余`;
+        
+        // 彻底转义预览值
+        document.getElementById('dupOldTitle').value = cur.oldItem.name || '';
+        document.getElementById('dupOldText').value = cur.oldItem.text || '';
+        
+        if(dupContext === 'import') {
+            document.getElementById('dupNewTitle').value = cur.newItem.name || '';
+            document.getElementById('dupNewText').value = cur.newItem._newText || '';
+            document.getElementById('dupOldLabel').innerText = "冲突：源库已有文本";
+            document.getElementById('dupNewLabel').innerText = "冲突：准备导入文本";
+            document.getElementById('dupActionBtns').innerHTML = `
+                <button class="btn" onclick="applyDupAction('skip')">跳过(不导入)</button>
+                <button class="btn" onclick="applyDupAction('keep')">都保留(共存)</button>
+                <button class="btn primary" onclick="applyDupAction('replace')">替换源文本</button>
+            `;
+        } else {
+            document.getElementById('dupNewTitle').value = cur.newItem.name || '';
+            document.getElementById('dupNewText').value = cur.newItem.text || '';
+            document.getElementById('dupOldLabel').innerText = "相似：库内文本 1";
+            document.getElementById('dupNewLabel').innerText = "相似：库内文本 2";
+            document.getElementById('dupActionBtns').innerHTML = `
+                <button class="btn" onclick="applyDupAction('skip')">跳过(不再提示两者)</button>
+                <button class="btn danger" onclick="applyDupAction('delRight')">删除文本2</button>
+                <button class="btn danger" onclick="applyDupAction('delLeft')">删除文本1</button>
+            `;
+        }
+    }
+
+    function applyDupAction(action) {
+        let isApplyAll = document.getElementById('dupApplyAll').checked;
+        if(isApplyAll) dupActionAll = action;
+        
+        let cur = dupQueue.shift();
+        if(dupContext === 'import') {
+            if(action === 'replace') {
+                cur.oldItem.name = cur.newItem.name;
+                cur.oldItem.text = cur.newItem._newText;
+            } else if(action === 'keep') {
+                finalItemsToInsert.push(cur.newItem);
+            }
+        } else {
+            if(action === 'delLeft') removeNodeById(projectData.data, cur.oldItem.id);
+            else if(action === 'delRight') removeNodeById(projectData.data, cur.newItem.id);
+            else if(action === 'skip') {
+                // 库内查重跳过，记录双向配对 (加入完整文本缓存用于查看)
+                projectData.config.dupSkipPairs.push({
+                    id1: cur.oldItem.id, id2: cur.newItem.id,
+                    title1: cur.oldItem.name, title2: cur.newItem.name,
+                    txt1: (cur.oldItem.text||"").substring(0,50), txt2: (cur.newItem.text||"").substring(0,50),
+                    txt1_full: cur.oldItem.text||"", txt2_full: cur.newItem.text||""
+                });
+            }
+        }
+        
+        if(dupActionAll) processNextDup();
+        else setTimeout(processNextDup, 50);
+    }
+
+    function finishImport() {
+        let importCount = 0;
+        finalItemsToInsert.forEach(item => {
+            let currentLevel = projectData.data;
+            for (let folderName of item.path) {
+                let folder = currentLevel.find(n => n.type === 'folder' && n.name === folderName);
+                if (!folder) {
+                    folder = {
+                        id: 'd_' + Math.random().toString(36).substr(2, 9),
+                        name: folderName, type: 'folder', _collapsed: false, children: []
+                    };
+                    currentLevel.push(folder);
+                }
+                currentLevel = folder.children;
+            }
+            currentLevel.push({
+                id: 'd_' + Math.random().toString(36).substr(2, 9),
+                name: item.name, type: 'item', text: item._newText
+            });
+            importCount++;
+        });
+        saveData(); renderTree(); 
+        showToast(`操作完成，新增导入 ${importCount} 项`);
+    }
+
+    function doGlobalCheckDuplicate() {
+        showToast("正在全库查重，请稍候...");
+        
+        // 释放UI线程，延时执行耗时查重
+        setTimeout(() => {
+            let allExisting = getAllItems(projectData.data);
+            let simT = parseInt(document.getElementById('simThreshold').value) || 80;
+            let titleT = parseInt(document.getElementById('titleSimThreshold').value) || 90;
+            let pairs = projectData.config.dupSkipPairs || [];
+
+            dupQueue = [];
+            for(let i=0; i<allExisting.length; i++) {
+                for(let j=i+1; j<allExisting.length; j++) {
+                    let itemA = allExisting[i];
+                    let itemB = allExisting[j];
+                    
+                    // 判断是否在跳过白名单 pair 中
+                    let isSkipped = pairs.some(p => 
+                        (p.id1 === itemA.id && p.id2 === itemB.id) || 
+                        (p.id1 === itemB.id && p.id2 === itemA.id)
+                    );
+                    if(isSkipped) continue;
+
+                    let pureA = filterSkipPhrases(itemA.text);
+                    let pureB = filterSkipPhrases(itemB.text);
+                    
+                    let tSim = getSimilarity(itemA.name, itemB.name, 2);
+                    let contentSim = getSimilarity(pureA, pureB, 3);
+                    
+                    if(contentSim >= simT || tSim >= titleT) {
+                        dupQueue.push({ oldItem: itemA, newItem: itemB });
+                    }
+                }
+            }
+            
+            if(dupQueue.length === 0) { showToast("未发现重复项"); return; }
+            
+            dupContext = 'global'; dupActionAll = null; document.getElementById('dupApplyAll').checked = false;
+            processNextDup();
+        }, 100);
+    }
+
+    // --- 动态生成 查重管理 面板 (支持分页、详情查看等) ---
+    let dupSettingsTab = 'pairs';
+    let dupPairPage = 1;
+    let dupPhrasePage = 1;
+
+    function openDupSettings() {
+        showModalClear("查重过滤设置", "");
+        dupSettingsTab = 'pairs';
+        dupPairPage = 1; dupPhrasePage = 1;
+        const panel = document.getElementById('sysModalDynamicPanel');
+        panel.style.display = 'flex';
+        renderDupSettingsMain(panel);
+    }
+
+    window.switchDupTab = function(tabName) {
+        dupSettingsTab = tabName;
+        renderDupSettingsMain(document.getElementById('sysModalDynamicPanel'));
+    }
+
+    function renderDupSettingsMain(container) {
+        container.innerHTML = `
+            <div style="display:flex; gap:8px; margin-bottom:12px;">
+                <button class="btn ${dupSettingsTab==='pairs'?'primary':''}" style="flex:1" onclick="switchDupTab('pairs')">已跳过记录</button>
+                <button class="btn ${dupSettingsTab==='phrases'?'primary':''}" style="flex:1" onclick="switchDupTab('phrases')">已忽略短语</button>
+            </div>
+            <div id="dupTabContentContainer"></div>
+        `;
+        renderDupTabContent();
+    }
+
+    window.removeDupSkipPair = function() {
+        projectData.config.dupSkipPairs.splice(dupPairPage - 1, 1);
+        saveData();
+        renderDupTabContent();
+    }
+
+    window.addPhrase = function() {
+        let val = document.getElementById('newPhraseInput').value || "";
+        if(val.trim()) {
+            projectData.config.dupSkipPhrases.push({text: val.trim(), active: true});
+            saveData();
+            // 添加后跳转到最后一页
+            dupPhrasePage = Math.ceil(projectData.config.dupSkipPhrases.length / 10) || 1;
+            renderDupTabContent();
+        }
+    }
+    
+    window.removePhrase = function(idx) {
+        projectData.config.dupSkipPhrases.splice(idx, 1);
+        saveData(); renderDupTabContent();
+    }
+    
+    window.togglePhraseActive = function(idx, checked) {
+        projectData.config.dupSkipPhrases[idx].active = checked;
+        saveData();
+    }
+
+    function renderDupTabContent() {
+        const c = document.getElementById('dupTabContentContainer');
+        if(!c) return;
+
+        if (dupSettingsTab === 'pairs') {
+            let pairs = projectData.config.dupSkipPairs || [];
+            if(pairs.length === 0) {
+                c.innerHTML = '<div style="text-align:center;color:#999;padding:30px;">暂无已跳过的记录</div>';
+                return;
+            }
+            if (dupPairPage < 1) dupPairPage = 1;
+            if (dupPairPage > pairs.length) dupPairPage = pairs.length;
+            
+            let p = pairs[dupPairPage - 1];
+            
+            c.innerHTML = `
+                <div style="display:flex; flex-direction:column; height:45vh; min-height:300px; gap:8px; margin-bottom:12px;">
+                    <div style="flex:1; display:flex; flex-direction:column; min-height:0; border:1px solid var(--border-color); border-radius:4px; padding:8px; background:#f8fafc;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                            <strong style="font-size:13px; color:#d97706;">文本 1: ${escapeHTML(p.title1)}</strong>
+                            <button class="btn danger" style="height:24px; padding:0 8px; font-size:12px;" onclick="removeDupSkipPair()">撤销跳过</button>
+                        </div>
+                        <textarea readonly style="flex:1; resize:none; border:none; outline:none; font-size:13px; background:transparent; line-height:1.5;">${escapeHTML(p.txt1_full || p.txt1)}</textarea>
+                    </div>
+                    <div style="text-align:center; color:#999; font-size:12px; height:16px;">丨 对 比 丨</div>
+                    <div style="flex:1; display:flex; flex-direction:column; min-height:0; border:1px solid var(--border-color); border-radius:4px; padding:8px; background:#f0fdf4;">
+                        <div style="font-weight:bold; font-size:13px; color:#16a34a; margin-bottom:4px;">文本 2: ${escapeHTML(p.title2)}</div>
+                        <textarea readonly style="flex:1; resize:none; border:none; outline:none; font-size:13px; background:transparent; line-height:1.5;">${escapeHTML(p.txt2_full || p.txt2)}</textarea>
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <button class="btn" onclick="dupPairPage--; renderDupTabContent();" ${dupPairPage<=1?'disabled':''}>上一对</button>
+                    <span style="font-size:13px; color:var(--text-secondary);"> ${dupPairPage} / ${pairs.length} </span>
+                    <button class="btn" onclick="dupPairPage++; renderDupTabContent();" ${dupPairPage>=pairs.length?'disabled':''}>下一对</button>
+                </div>
+            `;
+        } else {
+            let phrases = projectData.config.dupSkipPhrases || [];
+            let totalPages = Math.ceil(phrases.length / 10) || 1;
+            if(dupPhrasePage < 1) dupPhrasePage = 1;
+            if(dupPhrasePage > totalPages) dupPhrasePage = totalPages;
+            
+            let start = (dupPhrasePage - 1) * 10;
+            let pageItems = phrases.slice(start, start + 10);
+            
+            let listHtml = pageItems.map((item, idx) => {
+                let realIdx = start + idx;
+                return `
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:13px;">
+                    <span style="color:#999; width:24px; text-align:right; font-size:12px;">${realIdx + 1}.</span>
+                    <input type="checkbox" style="margin:0;cursor:pointer;" ${item.active?'checked':''} onchange="togglePhraseActive(${realIdx}, this.checked)">
+                    <input type="text" readonly value="${escapeHTML(item.text)}" style="flex:1; border:1px solid var(--border-color); border-radius:4px; padding:4px 8px; font-size:12px; background:#f8fafc;">
+                    <button class="btn danger" style="height:26px; min-width:30px; padding:0 8px; font-size:12px;" onclick="removePhrase(${realIdx})">删</button>
+                </div>
+                `;
+            }).join('');
+            
+            c.innerHTML = `
+                <div style="display:flex; gap:6px; margin-bottom:12px;">
+                    <input type="text" id="newPhraseInput" style="flex:1; border:1px solid var(--border-color); border-radius:4px; padding:6px 10px; font-size:13px;" placeholder="输入新的过滤短语...">
+                    <button class="btn primary" style="height:32px; padding:0 12px; font-size:13px;" onclick="addPhrase()">添加</button>
+                </div>
+                <div style="min-height:280px; max-height:280px; overflow-y:auto; margin-bottom:12px; padding-right:4px;">
+                    ${listHtml || '<div style="text-align:center;color:#999;padding:20px;">暂无过滤短语</div>'}
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <button class="btn" style="padding:0 8px;" onclick="dupPhrasePage--; renderDupTabContent();" ${dupPhrasePage<=1?'disabled':''}>上一页</button>
+                    <div style="font-size:13px; display:flex; align-items:center; gap:4px; color:var(--text-secondary);">
+                        转到 <input type="number" value="${dupPhrasePage}" style="width:40px; padding:2px; text-align:center; border:1px solid var(--border-color); border-radius:4px;" 
+                        onchange="dupPhrasePage=parseInt(this.value); renderDupTabContent();" min="1" max="${totalPages}"> / ${totalPages} 页
+                    </div>
+                    <button class="btn" style="padding:0 8px;" onclick="dupPhrasePage++; renderDupTabContent();" ${dupPhrasePage>=totalPages?'disabled':''}>下一页</button>
+                </div>
+            `;
+        }
+    }
+
+    // --- 动态生成 复制附加管理 面板 (支持多选及Tab) ---
+    let copyAddonTab = 'prefix';
+    
+    function openCopyAddonModal() {
+        showModalClear("复制前后缀管理", "");
+        copyAddonTab = 'prefix';
+        const panel = document.getElementById('sysModalDynamicPanel');
+        panel.style.display = 'flex';
+        renderCopyAddonMain(panel);
+    }
+    
+    window.switchAddonTab = function(tabName) {
+        copyAddonTab = tabName;
+        renderCopyAddonMain(document.getElementById('sysModalDynamicPanel'));
+    }
+
+    window.toggleAddonSwitch = function(isChecked) {
+        if(copyAddonTab === 'prefix') projectData.config.copyAddon.prefixEnabled = isChecked;
+        else projectData.config.copyAddon.suffixEnabled = isChecked;
+        saveData();
+    }
+    
+    window.addAddonItem = function() {
+        let input = document.getElementById('newAddonInput').value;
+        if(!input.trim()) return;
+        let arr = copyAddonTab === 'prefix' ? projectData.config.copyAddon.prefixes : projectData.config.copyAddon.suffixes;
+        arr.push({ text: input, active: true });
+        saveData(); renderAddonTabContent();
+    }
+    
+    window.removeAddonItem = function(idx) {
+        let arr = copyAddonTab === 'prefix' ? projectData.config.copyAddon.prefixes : projectData.config.copyAddon.suffixes;
+        arr.splice(idx, 1);
+        saveData(); renderAddonTabContent();
+    }
+    
+    window.toggleAddonItemSelection = function(idx, checked) {
+        let arr = copyAddonTab === 'prefix' ? projectData.config.copyAddon.prefixes : projectData.config.copyAddon.suffixes;
+        arr[idx].active = checked;
+        saveData();
+    }
+
+    function renderCopyAddonMain(container) {
+        container.innerHTML = `
+            <div style="display:flex; gap:8px; margin-bottom:12px;">
+                <button class="btn ${copyAddonTab==='prefix'?'primary':''}" style="flex:1" onclick="switchAddonTab('prefix')">前缀附加</button>
+                <button class="btn ${copyAddonTab==='suffix'?'primary':''}" style="flex:1" onclick="switchAddonTab('suffix')">后缀附加</button>
+            </div>
+            <div id="addonTabContentContainer"></div>
+        `;
+        renderAddonTabContent();
+    }
+
+    function renderAddonTabContent() {
+        const c = document.getElementById('addonTabContentContainer');
+        if(!c) return;
+        
+        let conf = projectData.config.copyAddon;
+        let isPrefix = copyAddonTab === 'prefix';
+        let arr = isPrefix ? conf.prefixes : conf.suffixes;
+        let isEnabled = isPrefix ? conf.prefixEnabled : conf.suffixEnabled;
+        
+        let listHtml = arr.map((item, i) => `
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                <input type="checkbox" style="margin:0;cursor:pointer;" ${item.active?'checked':''} onchange="toggleAddonItemSelection(${i}, this.checked)">
+                <input type="text" readonly value="${escapeHTML(item.text)}" style="flex:1; border:1px solid var(--border-color); border-radius:4px; padding:6px 8px; font-size:13px; background:#f8fafc;">
+                <button class="btn danger" style="height:28px; min-width:30px; padding:0 8px; font-size:12px;" onclick="removeAddonItem(${i})">删</button>
+            </div>
+        `).join('');
+
+        c.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding:8px; background:var(--hover-bg); border-radius:4px;">
+                <span style="font-size:13px; font-weight:bold;">启用全局${isPrefix?'前':'后'}缀附加功能</span>
+                <label style="font-size:13px; display:flex; align-items:center; gap:4px; cursor:pointer;">
+                    <input type="checkbox" style="margin:0;" ${isEnabled?'checked':''} onchange="toggleAddonSwitch(this.checked)">开启
+                </label>
+            </div>
+            <div style="display:flex; gap:6px; margin-bottom:12px;">
+                <input type="text" id="newAddonInput" style="flex:1; border:1px solid var(--border-color); border-radius:4px; padding:6px 10px; font-size:13px;" placeholder="输入新的${isPrefix?'前':'后'}缀内容...">
+                <button class="btn primary" style="height:32px; padding:0 12px; font-size:13px;" onclick="addAddonItem()">添加</button>
+            </div>
+            <div style="max-height:200px; overflow-y:auto; padding-right:4px;">
+                ${listHtml || '<div style="text-align:center;color:#999;padding:20px;">暂无数据</div>'}
+            </div>
+            <p style="font-size:12px; color:var(--text-secondary); margin-top:12px;">提示：支持多选，复制时所有勾选项将使用换行符依次合并拼接到文本上。</p>
+        `;
+    }
+
+    // 复制增加前后缀打包功能 (支持多选合并)
+    function copyCurrentText() {
+        if (!currentNode) { showToast('请先选择一个文本条目'); return; }
+        if (currentNode.type !== 'item') { showToast('仅支持复制文本'); return; }
+        
+        const el = document.getElementById('editor-content');
+        let text = el.value || '';
+        let prefixStr = '';
+        let suffixStr = '';
+        
+        if (projectData.config.copyAddon?.prefixEnabled) {
+            projectData.config.copyAddon.prefixes.filter(x => x.active).forEach(p => {
+                if(p.text) prefixStr += p.text + '\n';
+            });
+        }
+        if (projectData.config.copyAddon?.suffixEnabled) {
+            projectData.config.copyAddon.suffixes.filter(x => x.active).forEach(s => {
+                if(s.text) suffixStr += '\n' + s.text;
+            });
+        }
+
+        const finalStr = prefixStr + text + suffixStr;
+        navigator.clipboard.writeText(finalStr).then(() => { 
+            if(prefixStr || suffixStr) showToast('已自动附加前/后缀并复制');
+            else showToast('已复制到剪贴板');
+        });
+    }
+
+    function renderShortcuts() {
+        const grid = document.getElementById('shortcutGrid');
+        grid.innerHTML = '';
+        projectData.config.shortcuts.forEach(sc => {
+            const btn = document.createElement('button');
+            btn.className = 'btn'; btn.innerText = sc.display;
+            btn.onclick = () => {
+                if (projectData.config.isLocked) { showToast('锁定状态无法插入内容'); return; }
+                const el = lastFocusedElement || document.getElementById('editor-content');
+                if (el && typeof el.selectionStart === 'number' && !el.readOnly) {
+                    const start = el.selectionStart;
+                    el.setRangeText(sc.text, start, el.selectionEnd, 'end');
+                    el.focus(); el.dispatchEvent(new Event('input')); 
+                }
+            };
+            grid.appendChild(btn);
+        });
+    }
+
+    function addShortcut() {
+        showModalClear('添加快捷词', '请输入名称和内容：', () => {
+            const n = document.getElementById('sysModalInput1').value;
+            const t = document.getElementById('sysModalInput2').value;
+            if (n && t) {
+                projectData.config.shortcuts.push({ display: n, text: t });
+                saveData(); renderShortcuts(); showToast('添加成功');
+            }
+        });
+        document.getElementById('sysModalInputs').style.display = 'flex';
+        document.getElementById('sysModalInput1').value = '';
+        document.getElementById('sysModalInput2').value = '';
+    }
+
+    function toggleDoubleReplace() {
+        const isChecked = document.getElementById('doubleReplaceSwitch').checked;
+        document.getElementById('secondReplaceGroup').style.display = isChecked ? 'flex' : 'none';
+    }
+
+    function doFind() {
+        const f = document.getElementById('findInput').value;
+        if (!f || !currentNode || currentNode.type !== 'item') return;
+        const el = document.getElementById('editor-content');
+        const text = el.value;
+        const idx = text.indexOf(f, lastFindIndex);
+        
+        if (idx !== -1) {
+            el.focus(); el.setSelectionRange(idx, idx + f.length); lastFindIndex = idx + f.length;
+        } else {
+            if (projectData.config.globalFind) {
+                const allItems = getAllItems(projectData.data);
+                const currentListIndex = allItems.findIndex(x => x.id === currentNode.id);
+                if (currentListIndex !== -1) {
+                    for (let i = currentListIndex + 1; i < allItems.length; i++) {
+                        if ((allItems[i].text || '').includes(f)) {
+                            selectNode(allItems[i]);
+                            showToast(`找到并跳至: ${allItems[i].name}`);
+                            setTimeout(doFind, 50);
+                            return;
+                        }
+                    }
+                }
+                lastFindIndex = 0; showToast('已找到末尾，没有更多匹配');
+            } else {
+                lastFindIndex = 0; showToast('本篇已到末尾，再次点击从头查找');
+            }
+        }
+    }
+
+    // 全局替换逻辑扩充
+    function doReplace() {
+        if (projectData.config.isLocked) { showToast('编辑锁定状态下无法替换'); return; }
+        
+        const f1 = document.getElementById('findInput').value;
+        const r1 = document.getElementById('replaceInput').value;
+        const isDouble = document.getElementById('doubleReplaceSwitch').checked;
+        const f2 = document.getElementById('findInput2').value;
+        const r2 = document.getElementById('replaceInput2').value;
+
+        if (!f1) return;
+
+        const isGlobal = projectData.config.globalReplace;
+        
+        if (isGlobal) {
+            let replaceCount = 0;
+            const allItems = getAllItems(projectData.data);
+            allItems.forEach(item => {
+                if(item.text && item.text.includes(f1)) {
+                    let text = item.text;
+                    if (isDouble && f2) {
+                        const placeholder = "<TEMP_REP_" + Date.now() + ">";
+                        text = text.split(f1).join(placeholder);
+                        text = text.split(f2).join(r2);
+                        text = text.split(placeholder).join(r1);
+                    } else {
+                        text = text.split(f1).join(r1);
+                    }
+                    if(item.text !== text) { item.text = text; replaceCount++; }
+                }
+            });
+            if(replaceCount > 0) {
+                saveData(); if(currentNode && currentNode.type === 'item') refreshEditorContent();
+                showToast(`全局替换成功，共修改 ${replaceCount} 篇文本`);
+            } else { showToast("全库未找到可替换的目标"); }
+        } else {
+            if (!currentNode || currentNode.type !== 'item') return;
+            let text = currentNode.text;
+            if (isDouble && f2) {
+                const placeholder = "<TEMP_REP_" + Date.now() + ">";
+                text = text.split(f1).join(placeholder);
+                text = text.split(f2).join(r2);
+                text = text.split(placeholder).join(r1);
+            } else {
+                text = text.split(f1).join(r1);
+            }
+            currentNode.text = text;
+            document.getElementById('editor-content').value = currentNode.text;
+            saveData(); showToast(isDouble ? '执行双项替换成功' : '执行替换成功');
+        }
+    }
+
+    function doRandom(scope) {
+        let pool = [];
+        if (scope === 'global') {
+            pool = getAllItems(projectData.data);
+        } else {
+            if (!currentNode) { showToast("请先选择一个当前文件夹内的项"); return; }
+            const findParentList = (list) => {
+                if (list.find(x => x.id === currentNode.id)) return list;
+                for (let n of list) {
+                    if (n.children) {
+                        const r = findParentList(n.children);
+                        if (r) return r;
+                    }
+                }
+                return null;
+            };
+            let parentList = findParentList(projectData.data);
+            if (parentList) pool = getAllItems(parentList);
+        }
+        
+        if (pool.length === 0) { showToast("无可抽取的文本"); return; }
+        const randItem = pool[Math.floor(Math.random() * pool.length)];
+        selectNode(randItem);
+        showToast(`🎲 随机抽中: ${randItem.name}`);
+    }
+
+    let modalCallback = null;
+    
+    // 专门用于弹出无冲突提示框的函数
+    function showModalClear(title, msg, onConfirm = null) {
+        document.getElementById('sysModalTabs').style.display = 'none';
+        document.getElementById('sysModalInputs').style.display = 'none';
+        document.getElementById('sysModalTextarea').style.display = 'none';
+        document.getElementById('sysModalSyncPanel').style.display = 'none';
+        document.getElementById('sysModalDynamicPanel').style.display = 'none';
+        document.getElementById('sysModalClearBtn').style.display = 'none';
+
+        document.getElementById('sysModalTitle').innerText = title;
+        document.getElementById('sysModalMsg').innerText = msg;
+        document.getElementById('sysModal').style.display = 'flex';
+        
+        const btn = document.getElementById('sysModalConfirmBtn');
+        if (onConfirm) { btn.style.display = 'inline-flex'; modalCallback = onConfirm; } 
+        else { btn.style.display = 'none'; }
+    }
+    
+    function closeModal() {
+        document.getElementById('sysModal').style.display = 'none';
+        document.getElementById('sysModalInputs').style.display = 'none';
+        document.getElementById('sysModalTextarea').style.display = 'none';
+        document.getElementById('sysModalTabs').style.display = 'none'; 
+        document.getElementById('sysModalSyncPanel').style.display = 'none';
+        document.getElementById('sysModalDynamicPanel').style.display = 'none';
+    }
+    document.getElementById('sysModalConfirmBtn').onclick = () => { if (modalCallback) modalCallback(); closeModal(); };
+
+    function exportJson() {
+        const exportData = JSON.parse(JSON.stringify(projectData));
+        exportData.config.isLocked = false; exportData.config.isSwapped = false;
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], {type: 'application/json'});
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+        a.download = `TextManager_${Date.now()}.json`; a.click(); showToast('导出完成');
+    }
+
+    function importJson() {
+        const input = document.createElement('input'); input.type = 'file';
+        input.onchange = (e) => {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                try {
+                    const parsed = JSON.parse(ev.target.result);
+                    projectData.data = parsed.data || [];
+                    projectData.config = { ...defaultData.config, ...(parsed.config || {}) };
+                    if(!projectData.config.dupSkipPairs) projectData.config.dupSkipPairs = [];
+                    if(!projectData.config.dupSkipPhrases) projectData.config.dupSkipPhrases = [];
+                    
+                    projectData.config.dupSkipPhrases = projectData.config.dupSkipPhrases.map(p => {
+                        if (typeof p === 'string') return { text: p, active: true };
+                        return p;
+                    });
+                    
+                    if(!projectData.config.copyAddon) projectData.config.copyAddon = defaultData.config.copyAddon;
+                    
+                    saveData(); renderTree(); renderShortcuts();
+                    
+                    document.getElementById('confirmSwitch').checked = projectData.config.deleteConfirmEnabled;
+                    document.getElementById('lockSwitch').checked = projectData.config.isLocked;
+                    document.getElementById('globalFindSwitch').checked = !!projectData.config.globalFind;
+                    document.getElementById('globalReplaceSwitch').checked = !!projectData.config.globalReplace;
+                    document.getElementById('tempEditSwitch').checked = !!projectData.config.tempEdit;
+                    document.getElementById('autoGroupSwitch').checked = !!projectData.config.autoGroup;
+                    document.getElementById('groupSmallInput').value = projectData.config.groupSmall || 0;
+                    document.getElementById('groupLargeInput').value = projectData.config.groupLarge || 0;
+                    document.getElementById('groupSettingsUI').style.display = projectData.config.autoGroup ? 'flex' : 'none';
+
+                    document.getElementById('frDisplay').value = projectData.config.displayOptions.fr;
+                    document.getElementById('scDisplay').value = projectData.config.displayOptions.sc;
+                    updateSwapStatusUI(); showToast('导入成功');
+                } catch(err) { showToast('导入失败，JSON格式错误'); }
+            };
+            reader.readAsText(e.target.files[0]);
+        };
+        input.click();
+    }
+
+    function togglePanel(id) {
+        const panel = document.getElementById(id);
+        if (panel.classList.contains('show')) { panel.classList.remove('show'); } 
+        else {
+            document.getElementById('sidebar').classList.remove('show');
+            document.getElementById('toolbox').classList.remove('show');
+            panel.classList.add('show');
+        }
+    }
+    function closePanelsOnMobile() {
+        if (window.innerWidth <= 768) {
+            document.getElementById('sidebar').classList.remove('show');
+            document.getElementById('toolbox').classList.remove('show');
+        }
+    }
+
+    renderShortcuts(); renderTree();
+</script>
+</body>
+</html>
