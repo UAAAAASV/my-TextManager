@@ -203,6 +203,10 @@
 </head>
 <body>
 
+<!-- 手机端快捷跳转箭头 -->
+<div id="quickNavLeft" style="display:none; position:fixed; left:0; top:50%; transform:translateY(-50%); z-index:1100; font-size:30px; color:rgba(0,0,0,0.25); padding:20px 10px; cursor:pointer;" onclick="doQuickNav(-1)">&#10094;</div>
+<div id="quickNavRight" style="display:none; position:fixed; right:0; top:50%; transform:translateY(-50%); z-index:1100; font-size:30px; color:rgba(0,0,0,0.25); padding:20px 10px; cursor:pointer;" onclick="doQuickNav(1)">&#10095;</div>
+
 <div class="app-layout" id="mainLayout">
     <!-- 左侧目录 -->
     <div class="sidebar" id="sidebar">
@@ -294,7 +298,6 @@
             </div>
         </div>
 
-        <!-- 查重与防重功能面板 -->
         <div class="tool-section">
             <h4>全库查重检测</h4>
             <div class="find-panel">
@@ -304,13 +307,13 @@
                         <input type="number" id="simThreshold" value="80" style="width:60px;">
                     </div>
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span style="font-size:13px; color:var(--text-secondary)">标题相似度(%) ></span>
+                        <span style="font-size:13px; color:var(--text-secondary)">或 标题相似度(%) ></span>
                         <input type="number" id="titleSimThreshold" value="90" style="width:60px;">
                     </div>
                 </div>
                 <div style="display:flex; gap:8px;">
-                    <button class="btn" style="flex:1; padding:0;" onclick="openDupSettings()">设置</button>
-                    <button class="btn primary" style="flex:2" onclick="doGlobalCheckDuplicate()">查重</button>
+                    <button class="btn" style="flex:1;" onclick="openDupSettings()">设置</button>
+                    <button class="btn primary" style="flex:1;" onclick="doGlobalCheckDuplicate()">查重</button>
                 </div>
             </div>
         </div>
@@ -322,20 +325,24 @@
                 <input type="checkbox" id="confirmSwitch" onchange="saveConfig()">
             </div>
             <div class="stat-item">
+                <span>文本编辑锁定</span>
+                <input type="checkbox" id="lockSwitch" onchange="toggleLock()">
+            </div>
+            <div class="stat-item">
                 <span>文本全局查找</span>
                 <input type="checkbox" id="globalFindSwitch" onchange="saveConfig()">
             </div>
             <div class="stat-item">
                 <span>文本全局替换</span>
                 <input type="checkbox" id="globalReplaceSwitch" onchange="saveConfig()">
-            </div>			
-            <div class="stat-item">
-                <span>文本编辑锁定</span>
-                <input type="checkbox" id="lockSwitch" onchange="toggleLock()">
             </div>
             <div class="stat-item">
                 <span>文本临时修改</span>
                 <input type="checkbox" id="tempEditSwitch" onchange="saveConfig()" title="开启后修改不保存，切换文本即还原">
+            </div>
+            <div class="stat-item">
+                <span>文本快捷跳转</span>
+                <input type="checkbox" id="quickNavSwitch" onchange="saveConfig()" title="手机端可见的左右文本切换">
             </div>
             <div class="stat-item">
                 <span>文本复制附加</span>
@@ -370,7 +377,6 @@
     </div>
 </div>
 
-<!-- 手机端底部栏 -->
 <div class="mobile-tabbar">
     <button onclick="togglePanel('sidebar')">☰ 目录</button>
     <button onclick="copyCurrentText()">📋 复制</button>
@@ -384,7 +390,6 @@
     <div class="modal-card" id="sysModalCard">
         <h3 id="sysModalTitle" style="margin-top:0;">提示</h3>
         
-        <!-- 批量文本与云端同步的 Tab 切换区域 -->
         <div id="sysModalTabs" style="display:none; gap:8px; margin-top:12px; margin-bottom:12px;">
             <button class="btn primary" id="tabImportBtn" style="flex:1; height:32px; font-size:13px; padding:0 8px;" onclick="switchBatchTab('import')">导入文本</button>
             <button class="btn" id="tabExportBtn" style="flex:1; height:32px; font-size:13px; padding:0 8px;" onclick="switchBatchTab('export')">导出文本</button>
@@ -400,7 +405,6 @@
         
         <textarea id="sysModalTextarea" class="search-box" style="margin-top:10px; display:none; height:240px; resize:none; font-family:inherit; line-height:1.5; font-size:13px;" placeholder="在此粘贴文本..."></textarea>
         
-        <!-- Gist 同步面板 -->
         <div id="sysModalSyncPanel" style="display:none; flex-direction:column; gap:12px; margin-top:10px;">
             <div>
                 <div style="font-size:12px; margin-bottom:4px; color:var(--text-secondary);">GitHub Token (仅存储):</div>
@@ -417,18 +421,18 @@
             <div style="font-size:12px; color:#ef4444; line-height:1.5;">提示：同步时将覆盖对应端数据，请谨慎操作。</div>
         </div>
 
-        <!-- 动态面板占位 (用于重构的高级内嵌面板) -->
         <div id="sysModalDynamicPanel" style="display:none; flex-direction:column; margin-top:10px;"></div>
 
-        <div style="margin-top:24px; display:flex; gap:10px; justify-content:flex-end;" id="sysModalActionBox">
+        <div style="margin-top:24px; display:flex; gap:10px; justify-content:flex-end; align-items:center;" id="sysModalActionBox">
+            <button class="btn danger" id="sysModalRevokeBtn" style="display:none;" onclick="handleGlobalRevoke()">撤销</button>
+            <input type="text" id="sysModalSearch" class="search-box" style="display:none; margin:0; width:120px; flex:1;" placeholder="搜索..." oninput="renderSysModalSearch()">
             <button class="btn" id="sysModalClearBtn" onclick="document.getElementById('sysModalTextarea').value=''" style="display:none;">清空</button>
-            <button class="btn" onclick="closeModal()">取消</button>
+            <button class="btn" id="sysModalCancelBtn" onclick="closeModal()">取消</button>
             <button class="btn primary" id="sysModalConfirmBtn">确认</button>
         </div>
     </div>
 </div>
 
-<!-- 查重对比结果浮窗 (纯行内样式) -->
 <div id="dupModal" class="modal-overlay" style="display:none; align-items:center; justify-content:center; position:fixed; z-index:4000;">
     <div style="background:var(--bg-main); width:90%; max-width:800px; height:80vh; border-radius:var(--radius); display:flex; flex-direction:column; padding:20px; box-shadow:0 10px 25px -3px rgba(0,0,0,0.5);">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -443,25 +447,22 @@
             <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
                 <div style="font-size:13px; font-weight:bold; color:#d97706; margin-bottom:4px;" id="dupOldLabel">旧文本/文本1</div>
                 <input type="text" id="dupOldTitle" readonly style="margin-bottom:8px; border:1px solid var(--border-color); padding:8px; border-radius:4px; font-size:13px; outline:none; background:#f8fafc;">
-                <textarea id="dupOldText" readonly style="flex:1; resize:none; border:1px solid var(--border-color); padding:8px; font-size:13px; line-height:1.6; border-radius:4px; outline:none; background:#f8fafc;"></textarea>
+                <div id="dupOldText" style="flex:1; border:1px solid var(--border-color); padding:8px; font-size:13px; line-height:1.6; border-radius:4px; overflow-y:auto; background:#f8fafc; white-space:pre-wrap; word-break:break-all;"></div>
             </div>
             <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
                 <div style="font-size:13px; font-weight:bold; color:#16a34a; margin-bottom:4px;" id="dupNewLabel">新导入/文本2</div>
                 <input type="text" id="dupNewTitle" readonly style="margin-bottom:8px; border:1px solid var(--border-color); padding:8px; border-radius:4px; font-size:13px; outline:none; background:#f0fdf4;">
-                <textarea id="dupNewText" readonly style="flex:1; resize:none; border:1px solid var(--border-color); padding:8px; font-size:13px; line-height:1.6; border-radius:4px; outline:none; background:#f0fdf4;"></textarea>
+                <div id="dupNewText" style="flex:1; border:1px solid var(--border-color); padding:8px; font-size:13px; line-height:1.6; border-radius:4px; overflow-y:auto; background:#f0fdf4; white-space:pre-wrap; word-break:break-all;"></div>
             </div>
         </div>
         <div style="margin-top:16px; display:flex; gap:12px; justify-content:flex-end;" id="dupActionBtns">
-            <!-- 动态生成查重操作按钮 -->
         </div>
     </div>
 </div>
 
-<!-- 居中渐变提示 Toast -->
 <div id="toast" class="toast-msg">操作成功</div>
 
 <script>
-    // HTML 实体转义，防止代码或标签被当做隐藏HTML执行
     function escapeHTML(str) {
         return String(str || '').replace(/&/g, '&amp;')
                                 .replace(/</g, '&lt;')
@@ -484,6 +485,7 @@
             globalFind: false,
             globalReplace: false,
             tempEdit: false,
+            quickNav: false,
             autoGroup: false,
             groupSmall: 10,
             groupLarge: 50,
@@ -505,14 +507,12 @@
             projectData.config = { ...defaultData.config, ...(parsed.config || {}) };
             if(!projectData.config.dupSkipPairs) projectData.config.dupSkipPairs = [];
             if(!projectData.config.dupSkipPhrases) projectData.config.dupSkipPhrases = [];
-            
-            // 兼容老版本字符串数组变更为对象数组 {text: '', active: true}
             projectData.config.dupSkipPhrases = projectData.config.dupSkipPhrases.map(p => {
                 if (typeof p === 'string') return { text: p, active: true };
                 return p;
             });
-            
             if(!projectData.config.copyAddon) projectData.config.copyAddon = defaultData.config.copyAddon;
+            if(projectData.config.quickNav === undefined) projectData.config.quickNav = false;
         }
     } catch(e) {}
 
@@ -523,16 +523,15 @@
     let currentVisibleIds = []; 
     let lastFocusedElement = null; 
     let lastFindIndex = 0; 
-    
-    // 用于保存虚拟分组折叠状态的对象池
+    let hasShownLockToast = false;
     let vgCollapseStates = {};
 
-    // 绑定 UI 开关
     document.getElementById('confirmSwitch').checked = projectData.config.deleteConfirmEnabled;
     document.getElementById('lockSwitch').checked = projectData.config.isLocked;
     document.getElementById('globalFindSwitch').checked = projectData.config.globalFind;
     document.getElementById('globalReplaceSwitch').checked = projectData.config.globalReplace;
     document.getElementById('tempEditSwitch').checked = projectData.config.tempEdit;
+    document.getElementById('quickNavSwitch').checked = projectData.config.quickNav;
     document.getElementById('autoGroupSwitch').checked = projectData.config.autoGroup;
     document.getElementById('groupSmallInput').value = projectData.config.groupSmall;
     document.getElementById('groupLargeInput').value = projectData.config.groupLarge;
@@ -543,31 +542,22 @@
     updateSwapStatusUI();
     if (projectData.config.autoGroup) document.getElementById('groupSettingsUI').style.display = 'flex';
 
-    document.addEventListener('focusin', (e) => {
-        if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) lastFocusedElement = e.target;
-    });
+    document.addEventListener('focusin', (e) => { if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) lastFocusedElement = e.target; });
+    document.addEventListener('click', () => { const toast = document.getElementById('toast'); if(toast.classList.contains('show')) toast.classList.remove('show'); }, true);
 
-    document.addEventListener('click', () => {
-        const toast = document.getElementById('toast');
-        if(toast.classList.contains('show')) toast.classList.remove('show');
-    }, true);
-
-    // --- 解决排版冲突的布局与拖拽逻辑 ---
-    let isResizingLeft = false;
-    let isResizingRight = false;
+    let isResizingLeft = false, isResizingRight = false;
     const mainLayout = document.getElementById('mainLayout');
-    const sidebarEl = document.getElementById('sidebar');
-    const toolboxEl = document.getElementById('toolbox');
 
     function applyDesktopLayoutFix() {
         if (window.innerWidth <= 768) {
-            sidebarEl.style.position = '';
-            toolboxEl.style.position = '';
+            document.getElementById('sidebar').style.position = '';
+            document.getElementById('toolbox').style.position = '';
             mainLayout.style.gridTemplateColumns = '';
         } else {
-            sidebarEl.style.position = 'relative';
-            toolboxEl.style.position = 'relative';
+            document.getElementById('sidebar').style.position = 'relative';
+            document.getElementById('toolbox').style.position = 'relative';
         }
+        updateQuickNavVisibility();
     }
     window.addEventListener('resize', applyDesktopLayoutFix);
     applyDesktopLayoutFix(); 
@@ -579,24 +569,10 @@
     });
     document.addEventListener('mousemove', (e) => {
         if (!isResizingLeft && !isResizingRight) return;
-        if (window.innerWidth <= 768) {
-            isResizingLeft = isResizingRight = false;
-            mainLayout.style.gridTemplateColumns = '';
-            return;
-        }
-        let currentCols = mainLayout.style.gridTemplateColumns || '300px 1fr 320px';
-        let parts = currentCols.split(' ');
-        
-        if (isResizingLeft) {
-            let newW = e.clientX;
-            if (newW < 200) newW = 200; if (newW > 600) newW = 600;
-            mainLayout.style.gridTemplateColumns = `${newW}px 1fr ${parts[2] || '320px'}`;
-        }
-        if (isResizingRight) {
-            let newW = window.innerWidth - e.clientX;
-            if (newW < 200) newW = 200; if (newW > 600) newW = 600;
-            mainLayout.style.gridTemplateColumns = `${parts[0] || '300px'} 1fr ${newW}px`;
-        }
+        if (window.innerWidth <= 768) { isResizingLeft = isResizingRight = false; mainLayout.style.gridTemplateColumns = ''; return; }
+        let parts = (mainLayout.style.gridTemplateColumns || '300px 1fr 320px').split(' ');
+        if (isResizingLeft) { let newW = Math.max(200, Math.min(e.clientX, 600)); mainLayout.style.gridTemplateColumns = `${newW}px 1fr ${parts[2] || '320px'}`; }
+        if (isResizingRight) { let newW = Math.max(200, Math.min(window.innerWidth - e.clientX, 600)); mainLayout.style.gridTemplateColumns = `${parts[0] || '300px'} 1fr ${newW}px`; }
     });
     document.addEventListener('mouseup', () => { isResizingLeft = isResizingRight = false; });
 
@@ -606,15 +582,33 @@
         projectData.config.globalFind = document.getElementById('globalFindSwitch').checked;
         projectData.config.globalReplace = document.getElementById('globalReplaceSwitch').checked;
         projectData.config.tempEdit = document.getElementById('tempEditSwitch').checked;
-        saveData();
+        projectData.config.quickNav = document.getElementById('quickNavSwitch').checked;
+        saveData(); updateQuickNavVisibility();
+    }
+
+    function confirmAction(msg, actionFn) {
+        if (!projectData.config.deleteConfirmEnabled) { actionFn(); return; }
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay'; overlay.style.zIndex = '9999'; 
+        overlay.innerHTML = `
+            <div class="modal-card">
+                <h3 style="margin-top:0;">删除确认</h3>
+                <p style="font-size:13px; color:var(--text-secondary); line-height:1.6; white-space:pre-wrap;">${msg}</p>
+                <div style="margin-top:24px; display:flex; gap:10px; justify-content:flex-end;">
+                    <button class="btn" id="confirmCancelBtn">取消</button>
+                    <button class="btn primary" id="confirmOkBtn">确认</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        document.getElementById('confirmCancelBtn').onclick = () => document.body.removeChild(overlay);
+        document.getElementById('confirmOkBtn').onclick = () => { document.body.removeChild(overlay); actionFn(); };
     }
 
     let toastTimer;
     function showToast(msg) {
-        const toast = document.getElementById('toast');
-        toast.innerText = msg; toast.classList.add('show');
-        clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => { toast.classList.remove('show'); }, 2000);
+        const toast = document.getElementById('toast'); toast.innerText = msg; toast.classList.add('show');
+        clearTimeout(toastTimer); toastTimer = setTimeout(() => { toast.classList.remove('show'); }, 2000);
     }
 
     function toggleAutoGroup() {
@@ -623,10 +617,8 @@
         saveData(); renderTree();
     }
     function updateGroupConfig() {
-        let s = parseInt(document.getElementById('groupSmallInput').value) || 0;
-        let l = parseInt(document.getElementById('groupLargeInput').value) || 0;
-        projectData.config.groupSmall = s;
-        projectData.config.groupLarge = l;
+        projectData.config.groupSmall = parseInt(document.getElementById('groupSmallInput').value) || 0;
+        projectData.config.groupLarge = parseInt(document.getElementById('groupLargeInput').value) || 0;
         saveData(); renderTree();
     }
 
@@ -635,31 +627,21 @@
         projectData.config.displayOptions.sc = document.getElementById('scDisplay').value || '{{char}}';
         saveData(); updateSwapStatusUI(); refreshEditorContent();
     }
-    function toggleLock() {
-        projectData.config.isLocked = document.getElementById('lockSwitch').checked;
-        saveData(); refreshEditorContent();
-    }
+    function toggleLock() { projectData.config.isLocked = document.getElementById('lockSwitch').checked; hasShownLockToast = false; saveData(); refreshEditorContent(); }
     function toggleRoleSwap() {
-        if (!projectData.config.isLocked) {
-            projectData.config.isLocked = true;
-            document.getElementById('lockSwitch').checked = true;
-        }
+        if (!projectData.config.isLocked) { projectData.config.isLocked = true; document.getElementById('lockSwitch').checked = true; }
         projectData.config.isSwapped = !projectData.config.isSwapped;
         saveData(); updateSwapStatusUI(); refreshEditorContent();
-        const frVal = projectData.config.displayOptions.fr;
-        const scVal = projectData.config.displayOptions.sc;
-        showToast(projectData.config.isSwapped ? `已切换: Fr=${scVal}, Sc=${frVal}` : `已切换: Fr=${frVal}, Sc=${scVal}`);
+        showToast(projectData.config.isSwapped ? `已切换: Fr=${projectData.config.displayOptions.sc}, Sc=${projectData.config.displayOptions.fr}` : `已切换: Fr=${projectData.config.displayOptions.fr}, Sc=${projectData.config.displayOptions.sc}`);
     }
     function updateSwapStatusUI() {
         const p = document.getElementById('swapStatusText');
-        const frVal = projectData.config.displayOptions.fr;
-        const scVal = projectData.config.displayOptions.sc;
-        if (!projectData.config.isSwapped) {
-            p.innerHTML = `当前显示状态: <br><strong style="color:var(--text-primary)">&lt;Q7Fr&gt; = ${escapeHTML(frVal)}</strong><br><strong style="color:var(--text-primary)">&lt;Q7Sc&gt; = ${escapeHTML(scVal)}</strong>`;
-        } else {
-            p.innerHTML = `当前显示状态: <br><strong style="color:var(--text-primary)">&lt;Q7Fr&gt; = ${escapeHTML(scVal)}</strong><br><strong style="color:var(--text-primary)">&lt;Q7Sc&gt; = ${escapeHTML(frVal)}</strong>`;
-        }
+        const frVal = escapeHTML(projectData.config.displayOptions.fr); const scVal = escapeHTML(projectData.config.displayOptions.sc);
+        p.innerHTML = projectData.config.isSwapped ? 
+            `当前显示状态: <br><strong style="color:var(--text-primary)">&lt;Q7Fr&gt; = ${scVal}</strong><br><strong style="color:var(--text-primary)">&lt;Q7Sc&gt; = ${frVal}</strong>` :
+            `当前显示状态: <br><strong style="color:var(--text-primary)">&lt;Q7Fr&gt; = ${frVal}</strong><br><strong style="color:var(--text-primary)">&lt;Q7Sc&gt; = ${scVal}</strong>`;
     }
+
     function refreshEditorContent() {
         if (!currentNode || currentNode.type !== 'item') return;
         const el = document.getElementById('editor-content');
@@ -667,39 +649,30 @@
             let text = currentNode.text || '';
             const frV = projectData.config.isSwapped ? projectData.config.displayOptions.sc : projectData.config.displayOptions.fr;
             const scV = projectData.config.isSwapped ? projectData.config.displayOptions.fr : projectData.config.displayOptions.sc;
-            text = text.split('<Q7Fr>').join(frV);
-            text = text.split('<Q7Sc>').join(scV);
+            text = text.split('<Q7Fr>').join(frV).split('<Q7Sc>').join(scV);
             el.value = text; el.readOnly = true; el.style.backgroundColor = '#f8fafc'; 
-        } else {
-            el.value = currentNode.text || ''; el.readOnly = false; el.style.backgroundColor = '#ffffff';
-        }
+        } else { el.value = currentNode.text || ''; el.readOnly = false; el.style.backgroundColor = '#ffffff'; }
     }
 
-    // --- 树渲染与自动折叠分组双层嵌套逻辑 ---
     function renderTree() {
-        const treeContainer = document.getElementById('tree');
-        const filter = document.getElementById('searchTree').value.toLowerCase();
-        treeContainer.innerHTML = '';
-        currentVisibleIds = []; 
+        const treeContainer = document.getElementById('tree'); const filter = document.getElementById('searchTree').value.toLowerCase();
+        treeContainer.innerHTML = ''; currentVisibleIds = []; 
         renderLevel(projectData.data, treeContainer, filter, 1);
     }
+    window.toggleVirtualGroup = function(e, vId) { e.stopPropagation(); vgCollapseStates[vId] = !vgCollapseStates[vId]; renderTree(); }
 
-    window.toggleVirtualGroup = function(e, vId) {
-        e.stopPropagation();
-        vgCollapseStates[vId] = !vgCollapseStates[vId];
-        renderTree();
+    function hasMatchingDescendant(node, filter) {
+        if (!filter) return true;
+        if (node.name.toLowerCase().includes(filter)) return true;
+        if (node.children) { for (let c of node.children) { if (hasMatchingDescendant(c, filter)) return true; } }
+        return false;
     }
 
     function renderLevel(nodes, container, filter, baseIndex) {
         if (projectData.config.autoGroup && !filter) {
-            let large = parseInt(projectData.config.groupLarge) || 0;
-            let small = parseInt(projectData.config.groupSmall) || 0;
-            
-            if (large > 0 && nodes.length > large) {
-                return renderVirtualGroups(nodes, container, filter, baseIndex, large, small, false);
-            } else if (small > 0 && nodes.length > small) {
-                return renderVirtualGroups(nodes, container, filter, baseIndex, small, 0, true);
-            }
+            let large = parseInt(projectData.config.groupLarge) || 0; let small = parseInt(projectData.config.groupSmall) || 0;
+            if (large > 0 && nodes.length > large) { return renderVirtualGroups(nodes, container, filter, baseIndex, large, small, false); } 
+            else if (small > 0 && nodes.length > small) { return renderVirtualGroups(nodes, container, filter, baseIndex, small, 0, true); }
         }
         return renderActualNodes(nodes, container, filter, baseIndex);
     }
@@ -707,55 +680,27 @@
     function renderVirtualGroups(nodes, container, filter, baseIndex, chunkSize, nextChunkSize, isSmallGroup) {
         let displayIndex = baseIndex;
         for (let i = 0; i < nodes.length; i += chunkSize) {
-            const chunk = nodes.slice(i, i + chunkSize);
-            const startIdx = displayIndex;
-            const endIdx = displayIndex + chunk.length - 1;
-            // 保证 ID 唯一性，避免大小分组状态串线
+            const chunk = nodes.slice(i, i + chunkSize); const startIdx = displayIndex; const endIdx = displayIndex + chunk.length - 1;
             const vId = 'vg_' + (container.id || 'root') + '_' + chunkSize + '_' + i + '_' + startIdx;
-            
             if (vgCollapseStates[vId] === undefined) vgCollapseStates[vId] = true; 
             
-            const row = document.createElement('div');
-            row.className = 'tree-item';
-            
-            const content = document.createElement('div');
-            content.className = 'item-row sticky-folder';
-            
-            // 行内样式极小化分组倒三角
+            const row = document.createElement('div'); row.className = 'tree-item';
+            const content = document.createElement('div'); content.className = 'item-row sticky-folder';
             const foldIcon = `<span class="fold-icon" style="font-size:10px; transform:scale(0.8);" onclick="toggleVirtualGroup(event, '${vId}')">${vgCollapseStates[vId] ? '▶' : '▼'}</span>`;
-            // 小分类和大分类图标区分
             const boxIcon = isSmallGroup ? '📑' : '📦';
 
-            content.innerHTML = `
-                <span class="index-badge">${startIdx}.</span>
-                ${foldIcon} <span>${boxIcon}</span>
-                <span style="flex:1; color:var(--text-secondary); font-size:13px;">${startIdx} - ${endIdx}</span>
-            `;
-            content.onclick = (e) => toggleVirtualGroup(e, vId);
-            row.appendChild(content);
+            content.innerHTML = `<span class="index-badge">${startIdx}.</span>${foldIcon} <span>${boxIcon}</span><span style="flex:1; color:var(--text-secondary); font-size:13px;">${startIdx} - ${endIdx}</span>`;
+            content.onclick = (e) => toggleVirtualGroup(e, vId); row.appendChild(content);
 
             if (!vgCollapseStates[vId]) {
-                const subContainer = document.createElement('div');
-                subContainer.className = 'folder-content';
-                // 递归切分更小的类
-                if (nextChunkSize > 0 && chunk.length > nextChunkSize) {
-                    renderVirtualGroups(chunk, subContainer, filter, startIdx, nextChunkSize, 0, true);
-                } else {
-                    renderActualNodes(chunk, subContainer, filter, startIdx);
-                }
+                const subContainer = document.createElement('div'); subContainer.className = 'folder-content';
+                if (nextChunkSize > 0 && chunk.length > nextChunkSize) { renderVirtualGroups(chunk, subContainer, filter, startIdx, nextChunkSize, 0, true); } 
+                else { renderActualNodes(chunk, subContainer, filter, startIdx); }
                 row.appendChild(subContainer);
             } else {
-                // 如果折叠了，依然把子孙节点ID丢进去用于连选支持
-                const pushHiddenIds = (list) => {
-                    list.forEach(n => {
-                        currentVisibleIds.push(n.id);
-                        if (n.children) pushHiddenIds(n.children);
-                    });
-                };
-                pushHiddenIds(chunk);
+                const pushHiddenIds = (list) => { list.forEach(n => { currentVisibleIds.push(n.id); if (n.children) pushHiddenIds(n.children); }); }; pushHiddenIds(chunk);
             }
-            displayIndex += chunk.length;
-            container.appendChild(row);
+            displayIndex += chunk.length; container.appendChild(row);
         }
         return displayIndex;
     }
@@ -763,38 +708,28 @@
     function renderActualNodes(nodes, container, filter, displayIndex) {
         let currentIndex = displayIndex;
         nodes.forEach((node) => {
-            if (filter && !node.name.toLowerCase().includes(filter)) return;
-            if (node._collapsed === undefined) node._collapsed = false;
+            const isMatch = filter && node.name.toLowerCase().includes(filter);
+            const childMatch = filter && node.children && hasMatchingDescendant(node, filter);
+            if (filter && !isMatch && !childMatch) return;
+            if (childMatch) node._collapsed = false;
 
+            if (node._collapsed === undefined) node._collapsed = false;
             currentVisibleIds.push(node.id);
 
-            const row = document.createElement('div');
-            row.className = 'tree-item';
-            
-            const content = document.createElement('div');
-            content.className = `item-row ${currentNode && currentNode.id === node.id ? 'active' : ''}`;
-            if (node.type === 'folder') content.classList.add('sticky-folder');
-            content.draggable = true;
+            const row = document.createElement('div'); row.className = 'tree-item';
+            const content = document.createElement('div'); content.className = `item-row ${currentNode && currentNode.id === node.id ? 'active' : ''}`;
+            if (node.type === 'folder') content.classList.add('sticky-folder'); content.draggable = true;
             
             const foldIcon = node.type === 'folder' ? `<span class="fold-icon" onclick="toggleFold(event, '${node.id}')">${node._collapsed ? '▶' : '▼'}</span>` : `<span class="fold-icon"></span>`;
             const typeIcon = node.type === 'folder' ? '📁' : '📄';
             const isChecked = selectedIds.has(node.id) ? 'checked' : '';
 
-            // 全面转义标题显示
-            content.innerHTML = `
-                <input type="checkbox" class="node-cb" onclick="toggleCheck(event, '${node.id}')" ${isChecked}>
-                <span class="index-badge">${currentIndex}.</span>
-                ${foldIcon} <span>${typeIcon}</span>
-                <span style="flex:1;">${escapeHTML(node.name || '未命名')}</span>
-            `;
-
+            content.innerHTML = `<input type="checkbox" class="node-cb" onclick="toggleCheck(event, '${node.id}')" ${isChecked}><span class="index-badge">${currentIndex}.</span>${foldIcon} <span>${typeIcon}</span><span style="flex:1;">${escapeHTML(node.name || '未命名')}</span>`;
             content.onclick = (e) => { if(e.target.tagName !== 'INPUT') selectNode(node); };
-            
             content.ondragstart = (e) => { draggedNodeId = node.id; e.stopPropagation(); };
             content.ondragover = (e) => {
                 e.preventDefault(); e.stopPropagation();
-                const rect = content.getBoundingClientRect();
-                const y = e.clientY - rect.top;
+                const rect = content.getBoundingClientRect(); const y = e.clientY - rect.top;
                 content.style.borderTop = ''; content.style.borderBottom = ''; content.style.background = '';
                 if (node.type === 'folder') {
                     if (y < rect.height * 0.25) { dragPos = 'before'; content.style.borderTop = '2px solid var(--accent-color)'; }
@@ -806,59 +741,35 @@
                 }
             };
             content.ondragleave = () => { content.style.borderTop=''; content.style.borderBottom=''; content.style.background=''; };
-            content.ondrop = (e) => {
-                e.preventDefault(); e.stopPropagation();
-                content.style.borderTop=''; content.style.borderBottom=''; content.style.background='';
-                handleMove(draggedNodeId, node.id, dragPos);
-            };
+            content.ondrop = (e) => { e.preventDefault(); e.stopPropagation(); content.style.borderTop=''; content.style.borderBottom=''; content.style.background=''; handleMove(draggedNodeId, node.id, dragPos); };
 
             row.appendChild(content);
-
             if (node.type === 'folder' && node.children && !node._collapsed) {
-                const subContainer = document.createElement('div');
-                subContainer.className = 'folder-content';
-                subContainer.id = node.id; 
-                renderLevel(node.children, subContainer, filter, 1);
-                row.appendChild(subContainer);
+                const subContainer = document.createElement('div'); subContainer.className = 'folder-content'; subContainer.id = node.id; 
+                renderLevel(node.children, subContainer, filter, 1); row.appendChild(subContainer);
             }
-            
-            currentIndex++;
-            container.appendChild(row);
+            currentIndex++; container.appendChild(row);
         });
         return currentIndex;
     }
 
     function toggleCheck(e, id) {
         e.stopPropagation();
-        if (e.target.checked) {
-            selectedIds.add(id);
-            checkHistory.push(id);
-            if (checkHistory.length > 2) checkHistory.shift(); 
-        } else {
-            selectedIds.delete(id);
-            checkHistory = checkHistory.filter(x => x !== id);
-        }
+        if (e.target.checked) { selectedIds.add(id); checkHistory.push(id); if (checkHistory.length > 2) checkHistory.shift(); } 
+        else { selectedIds.delete(id); checkHistory = checkHistory.filter(x => x !== id); }
     }
-
     function doRangeSelect() {
         if (checkHistory.length < 2) { showToast("请先单独勾选两个项作为首尾"); return; }
-        const idx1 = currentVisibleIds.indexOf(checkHistory[0]);
-        const idx2 = currentVisibleIds.indexOf(checkHistory[1]);
+        const idx1 = currentVisibleIds.indexOf(checkHistory[0]); const idx2 = currentVisibleIds.indexOf(checkHistory[1]);
         if (idx1 === -1 || idx2 === -1) { showToast("选中的项被折叠隐藏，请展开"); return; }
-        const start = Math.min(idx1, idx2);
-        const end = Math.max(idx1, idx2);
+        const start = Math.min(idx1, idx2); const end = Math.max(idx1, idx2);
         for (let i = start; i <= end; i++) selectedIds.add(currentVisibleIds[i]);
         renderTree(); showToast(`连选 ${end - start + 1} 项`);
     }
 
     function toggleFold(e, id) {
         e.stopPropagation();
-        const find = (list) => {
-            for(let n of list) {
-                if (n.id === id) { n._collapsed = !n._collapsed; return true; }
-                if (n.children && find(n.children)) return true;
-            }
-        }
+        const find = (list) => { for(let n of list) { if (n.id === id) { n._collapsed = !n._collapsed; return true; } if (n.children && find(n.children)) return true; } }
         find(projectData.data); saveData(); renderTree();
     }
 
@@ -869,8 +780,7 @@
         document.getElementById('editor-title').value = node.name;
         
         const contentArea = document.getElementById('editor-content');
-        if (node.type === 'item') { contentArea.style.display = 'block'; refreshEditorContent(); } 
-        else { contentArea.style.display = 'none'; }
+        if (node.type === 'item') { contentArea.style.display = 'block'; refreshEditorContent(); } else { contentArea.style.display = 'none'; }
 
         const pathArr = getPath(projectData.data, node.id);
         document.getElementById('pathDisplay').innerText = pathArr ? pathArr.join(' > ') : node.name;
@@ -879,27 +789,45 @@
         contentArea.oninput = (e) => { 
             if (projectData.config.isLocked) return;
             if (projectData.config.tempEdit) {
-                if (!tempEditToastTimer) {
-                    showToast("当前为临时修改，不保存内容");
-                    tempEditToastTimer = setTimeout(() => { tempEditToastTimer = null; }, 3000);
-                }
+                if (!tempEditToastTimer) { showToast("当前为临时修改，不保存内容"); tempEditToastTimer = setTimeout(() => { tempEditToastTimer = null; }, 3000); }
                 return; 
             }
             node.text = e.target.value; saveData(); 
         };
+        
+        contentArea.onclick = () => { if (projectData.config.isLocked && !hasShownLockToast) { showToast("已锁定编辑"); hasShownLockToast = true; } };
+        contentArea.onfocus = () => updateQuickNavVisibility(true);
+        contentArea.onblur = () => setTimeout(()=>updateQuickNavVisibility(false), 200);
 
         if (window.innerWidth <= 768) closePanelsOnMobile();
-        renderTree();
+        renderTree(); updateQuickNavVisibility();
+    }
+
+    function updateQuickNavVisibility(forceHide = false) {
+        const left = document.getElementById('quickNavLeft'); const right = document.getElementById('quickNavRight');
+        if (forceHide || window.innerWidth > 768 || !projectData.config.quickNav || !currentNode || currentNode.type !== 'item') {
+            left.style.display = 'none'; right.style.display = 'none';
+        } else { left.style.display = 'block'; right.style.display = 'block'; }
+    }
+    
+    function doQuickNav(dir) {
+        if (!currentNode || currentNode.type !== 'item') return;
+        const findParentList = (list) => {
+            if (list.some(n => n.id === currentNode.id)) return list;
+            for (let n of list) { if (n.children) { let r = findParentList(n.children); if (r) return r; } } return null;
+        };
+        let pList = findParentList(projectData.data); if (!pList) return;
+        let items = pList.filter(x => x.type === 'item'); if (items.length === 0) return;
+        let idx = items.findIndex(x => x.id === currentNode.id);
+        idx += dir; if (idx < 0) idx = items.length - 1; if (idx >= items.length) idx = 0;
+        selectNode(items[idx]);
     }
 
     function getPath(list, id, currentPath = []) {
         for (let n of list) {
             const p = [...currentPath, n.name];
             if (n.id === id) return p;
-            if (n.children) {
-                const r = getPath(n.children, id, p);
-                if (r) return r;
-            }
+            if (n.children) { const r = getPath(n.children, id, p); if (r) return r; }
         }
         return null;
     }
@@ -908,169 +836,112 @@
         const newNode = {
             id: 'd_' + Math.random().toString(36).substr(2, 9),
             name: type === 'folder' ? '新建文件夹' : '新建文本',
-            type: type, _collapsed: false,
-            text: type === 'item' ? '' : undefined,
-            children: type === 'folder' ? [] : undefined
+            type: type, _collapsed: false, text: type === 'item' ? '' : undefined, children: type === 'folder' ? [] : undefined
         };
         
         if (currentNode) {
             if (currentNode.type === 'folder') {
-                currentNode._collapsed = false; 
-                currentNode.children.push(newNode);
+                currentNode._collapsed = false; currentNode.children.push(newNode);
             } else if (currentNode.type === 'item') {
                 const insertAfter = (list, targetId) => {
                     for (let i = 0; i < list.length; i++) {
-                        if (list[i].id === targetId) {
-                            list.splice(i + 1, 0, newNode);
-                            return true;
-                        }
-                        if (list[i].children && insertAfter(list[i].children, targetId)) {
-                            return true;
-                        }
-                    }
-                    return false;
+                        if (list[i].id === targetId) { list.splice(i + 1, 0, newNode); return true; }
+                        if (list[i].children && insertAfter(list[i].children, targetId)) return true;
+                    } return false;
                 };
                 insertAfter(projectData.data, currentNode.id);
             }
-        } else {
-            projectData.data.push(newNode);
-        }
+        } else { projectData.data.push(newNode); }
         
-        saveData(); renderTree(); showToast('新建成功');
+        saveData(); renderTree(); selectNode(newNode); showToast('新建成功');
+        setTimeout(() => { const tEl = document.getElementById('editor-title'); if (tEl) { tEl.focus(); tEl.select(); } }, 100);
     }
 
-    // --- 批量系统模态框重构，解决冲突与增加新面板 ---
+    // --- 批量管理 ---
     function openBatchModal() {
         document.getElementById('sysModalTabs').style.display = 'flex';
         document.getElementById('sysModalTitle').innerText = '批量管理与同步';
         document.getElementById('gistTokenInput').value = localStorage.getItem('TMP_GithubToken') || '';
         document.getElementById('gistIdInput').value = localStorage.getItem('TMP_GistId') || '';
 
-        // 显示模态框前清除其他专属面板的残留
         document.getElementById('sysModalInputs').style.display = 'none';
         document.getElementById('sysModalDynamicPanel').style.display = 'none';
+        document.getElementById('sysModalSearch').style.display = 'none'; document.getElementById('sysModalSearch').value = '';
+        document.getElementById('sysModalRevokeBtn').style.display = 'none';
         
         document.getElementById('sysModal').style.display = 'flex';
         switchBatchTab('import');
     }
 
     function switchBatchTab(mode) {
-        const tImport = document.getElementById('tabImportBtn');
-        const tExport = document.getElementById('tabExportBtn');
-        const tSync = document.getElementById('tabSyncBtn');
-        const msg = document.getElementById('sysModalMsg');
-        const ta = document.getElementById('sysModalTextarea');
-        const syncPanel = document.getElementById('sysModalSyncPanel');
-        const btn = document.getElementById('sysModalConfirmBtn');
-        const clearBtn = document.getElementById('sysModalClearBtn');
+        const tImport = document.getElementById('tabImportBtn'); const tExport = document.getElementById('tabExportBtn'); const tSync = document.getElementById('tabSyncBtn');
+        const msg = document.getElementById('sysModalMsg'); const ta = document.getElementById('sysModalTextarea');
+        const syncPanel = document.getElementById('sysModalSyncPanel'); const btn = document.getElementById('sysModalConfirmBtn'); const clearBtn = document.getElementById('sysModalClearBtn');
 
-        tImport.classList.remove('primary');
-        tExport.classList.remove('primary');
-        tSync.classList.remove('primary');
-        ta.style.display = 'none';
-        syncPanel.style.display = 'none';
-        btn.style.display = 'none';
-        clearBtn.style.display = 'none';
+        tImport.classList.remove('primary'); tExport.classList.remove('primary'); tSync.classList.remove('primary');
+        ta.style.display = 'none'; syncPanel.style.display = 'none'; btn.style.display = 'none'; clearBtn.style.display = 'none';
 
         if (mode === 'import') {
             tImport.classList.add('primary');
-            msg.innerText = `⭐导入时会自动触发查重检测\n\n说明：\n1. > 文件夹 - 子目录 表示路径 (无则在根目录)\n2. = 文本 作为标题\n3. 标题下的多行内容为文本内容`;
-            ta.style.display = 'block';
-            ta.readOnly = false;
-            ta.placeholder = "在此粘贴需要批量导入的文本...";
+            msg.innerText = `⭐导入时会自动触发查重检测\n\n说明：\n1. 用 > 文件夹 - 子目录 表示路径 (无则在根目录)\n2. 用 = 文本 作为标题\n3. 标题下的多行内容为文本内容`;
+            ta.style.display = 'block'; ta.readOnly = false; ta.placeholder = "在此粘贴需要批量导入的文本...";
             if (ta._cacheExport !== undefined && ta.value === ta._cacheExport) ta.value = ''; 
-            btn.style.display = 'inline-flex';
-            btn.innerText = '确认导入';
-            clearBtn.style.display = 'inline-flex';
+            btn.style.display = 'inline-flex'; btn.innerText = '确认导入'; clearBtn.style.display = 'inline-flex';
             modalCallback = processBatchText;
         } else if (mode === 'export') {
             tExport.classList.add('primary');
-            const scopeText = currentNode 
-                ? (currentNode.type === 'folder' ? '⭐已生成【该文件夹及子目录】数据：' : '⭐已生成【当前文本】数据：') 
-                : '⭐已生成【全局所有】的数据：';
-                
+            const scopeText = currentNode ? (currentNode.type === 'folder' ? '⭐已生成【该文件夹及子目录】数据：' : '⭐已生成【当前文本】数据：') : '⭐已生成【全局所有】的数据：';
             msg.innerText = `${scopeText}\n\n说明：\n1. 选中文件夹或文本可导出对应文本\n2. 不选择则为全部数据`;
-            
             const exportText = getBatchExportText(currentNode);
-            ta.style.display = 'block';
-            ta.value = exportText;
-            ta._cacheExport = exportText; 
-            ta.readOnly = true;
-            btn.style.display = 'inline-flex';
-            btn.innerText = '复制并关闭';
-            clearBtn.style.display = 'inline-flex';
-            modalCallback = () => {
-                navigator.clipboard.writeText(ta.value).then(() => { showToast('复制成功'); });
-                closeModal();
-            };
+            ta.style.display = 'block'; ta.value = exportText; ta._cacheExport = exportText; ta.readOnly = true;
+            btn.style.display = 'inline-flex'; btn.innerText = '复制并关闭'; clearBtn.style.display = 'inline-flex';
+            modalCallback = () => { navigator.clipboard.writeText(ta.value).then(() => { showToast('复制成功'); }); closeModal(); };
         } else if (mode === 'sync') {
             tSync.classList.add('primary');
             msg.innerHTML = `GitHub Gist 云端数据同步：\n<div style="font-size:12px; color:#999; margin-bottom:15px; margin-top:8px; line-height:1.5;">👉 <a href="https://github.com/settings/tokens/new" target="_blank" style="color:var(--accent-color);">点击前往 GitHub 免费生成 Token (须勾选 gist 权限)</a></div>`;
-            syncPanel.style.display = 'flex';
-            btn.style.display = 'none'; 
+            syncPanel.style.display = 'flex'; btn.style.display = 'none'; 
         }
     }
 
     function getBatchExportText(targetNode) {
-        let result = "";
-        let lastPathStr = null;
+        let result = ""; let lastPathStr = null;
         function walk(list, basePath) {
             for (let n of list) {
                 if (n.type === 'folder') walk(n.children, [...basePath, n.name]);
                 else if (n.type === 'item') {
                     let currentPathStr = basePath.join(" - ");
-                    if (currentPathStr !== lastPathStr) {
-                        result += `> ${currentPathStr}\n`;
-                        lastPathStr = currentPathStr;
-                    }
+                    if (currentPathStr !== lastPathStr) { result += `> ${currentPathStr}\n`; lastPathStr = currentPathStr; }
                     result += `= ${n.name}\n${n.text || ''}\n\n`;
                 }
             }
         }
-
         if (!targetNode) walk(projectData.data, []);
         else if (targetNode.type === 'item') {
-            let p = getPath(projectData.data, targetNode.id) || [];
-            p.pop(); 
-            result += `> ${p.join(" - ")}\n`;
-            result += `= ${targetNode.name}\n${targetNode.text || ''}\n\n`;
-        } else if (targetNode.type === 'folder') {
-            let p = getPath(projectData.data, targetNode.id) || [];
-            walk(targetNode.children, p);
-        }
+            let p = getPath(projectData.data, targetNode.id) || []; p.pop(); 
+            result += `> ${p.join(" - ")}\n`; result += `= ${targetNode.name}\n${targetNode.text || ''}\n\n`;
+        } else if (targetNode.type === 'folder') { let p = getPath(projectData.data, targetNode.id) || []; walk(targetNode.children, p); }
         return result.trim() || '无可导出文本';
     }
 
-    // --- 查重算法与防重逻辑增强 ---
+    // --- 查重算法逻辑 ---
     function getAllItems(list, result = []) {
-        for (let n of list) {
-            if (n.type === 'item') result.push(n);
-            if (n.children) getAllItems(n.children, result);
-        }
+        for (let n of list) { if (n.type === 'item') result.push(n); if (n.children) getAllItems(n.children, result); }
         return result;
     }
 
     function getSimilarity(s1, s2, n=2) {
         if (!s1 || !s2) return 0;
-        s1 = s1.replace(/\s+/g,'').toLowerCase();
-        s2 = s2.replace(/\s+/g,'').toLowerCase();
+        s1 = s1.replace(/\s+/g,'').toLowerCase(); s2 = s2.replace(/\s+/g,'').toLowerCase();
         if(s1 === s2) return 100;
         if(s1.length < n || s2.length < n) return 0;
         
         let getGrams = (s) => {
             let res = new Map();
-            for(let i=0; i<=s.length-n; i++) {
-                let g = s.substr(i,n);
-                res.set(g, (res.get(g)||0)+1);
-            }
-            return res;
+            for(let i=0; i<=s.length-n; i++) { let g = s.substr(i,n); res.set(g, (res.get(g)||0)+1); } return res;
         };
         let map1 = getGrams(s1), map2 = getGrams(s2);
         let intersection = 0, sum1 = 0, sum2 = 0;
-        map1.forEach((count, g) => {
-            sum1 += count;
-            if(map2.has(g)) intersection += Math.min(count, map2.get(g));
-        });
+        map1.forEach((count, g) => { sum1 += count; if(map2.has(g)) intersection += Math.min(count, map2.get(g)); });
         map2.forEach((count) => sum2 += count);
         return ((2 * intersection) / (sum1 + sum2)) * 100;
     }
@@ -1078,9 +949,7 @@
     function removeNodeById(list, id) {
         for (let i = list.length - 1; i >= 0; i--) {
             if (list[i].id === id) { list.splice(i, 1); return true; }
-            else if (list[i].children) { 
-                if(removeNodeById(list[i].children, id)) return true; 
-            }
+            else if (list[i].children) { if(removeNodeById(list[i].children, id)) return true; }
         }
         return false;
     }
@@ -1088,48 +957,57 @@
     function filterSkipPhrases(text) {
         let res = text || "";
         projectData.config.dupSkipPhrases.forEach(phrase => {
-            if(phrase && phrase.active && phrase.text.trim()) {
-                res = res.split(phrase.text.trim()).join('');
-            }
+            if(phrase && phrase.active && phrase.text.trim()) { res = res.split(phrase.text.trim()).join(''); }
         });
         return res;
     }
 
-    // --- 文本导入及批量冲突处理逻辑 ---
-    let dupQueue = [];
-    let dupContext = 'import'; 
-    let dupActionAll = null; 
-    let finalItemsToInsert = [];
+    // 细粒度高亮短语替换（滑动分句标色，彻底解决漏色）
+    function getHighlightedHTML(t1, t2) {
+        let e1 = escapeHTML(t1 || '');
+        let e2 = escapeHTML(t2 || '');
+        
+        function extractPhrases(text) {
+            return (text||'').split(/[\s\n，。！？；：,.!?;:"'“”‘’\(\)\[\]【】《》]+/).map(x=>x.trim()).filter(x=>x.length>=4);
+        }
+        let p1 = extractPhrases(t1); let p2 = extractPhrases(t2); let s2 = new Set(p2);
+        let common = [...new Set(p1.filter(x => s2.has(x)))].sort((a,b)=>b.length - a.length);
+
+        common.forEach(p => {
+            let ep = escapeHTML(p);
+            if (ep) {
+                e1 = e1.split(ep).join(`@@M_S@@${ep}@@M_E@@`);
+                e2 = e2.split(ep).join(`@@M_S@@${ep}@@M_E@@`);
+            }
+        });
+        
+        const m = '<mark style="background:#fef08a;color:#854d0e;border-radius:2px;padding:0 2px;">';
+        e1 = e1.replace(/@@M_S@@/g, m).replace(/@@M_E@@/g, '</mark>');
+        e2 = e2.replace(/@@M_S@@/g, m).replace(/@@M_E@@/g, '</mark>');
+        
+        return {h1: e1, h2: e2};
+    }
+
+    let dupQueue = []; let dupContext = 'import'; let dupActionAll = null; let finalItemsToInsert = [];
 
     function processBatchText() {
         const rawText = document.getElementById('sysModalTextarea').value;
         if (!rawText.trim()) return;
-
         const lines = rawText.split('\n');
-        let currentPath = []; 
-        let currentItem = null;
-        let itemsToCreate = [];
+        let currentPath = []; let currentItem = null; let itemsToCreate = [];
 
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
             if (line.trim().startsWith('>')) {
                 let pathStr = line.replace(/^>\s*/, '').trim();
-                if (!pathStr) currentPath = [];
-                else currentPath = pathStr.split(/[-/]/).map(s => s.trim()).filter(s => s);
+                if (!pathStr) currentPath = []; else currentPath = pathStr.split(/[-/]/).map(s => s.trim()).filter(s => s);
                 currentItem = null; 
             } else if (line.trim().startsWith('=')) {
-                // 加强了去等号正则，过滤首部所有连续的 = 
-                let title = line.replace(/^=+\s*/, '').trim();
-                if (!title) title = "未命名文本";
-                currentItem = { path: [...currentPath], name: title, textLines: [] };
-                itemsToCreate.push(currentItem);
+                let title = line.replace(/^=+\s*/, '').trim(); if (!title) title = "未命名文本";
+                currentItem = { path: [...currentPath], name: title, textLines: [] }; itemsToCreate.push(currentItem);
             } else {
-                if (currentItem) {
-                    currentItem.textLines.push(line);
-                } else if (line.trim()) {
-                    currentItem = { path: [...currentPath], name: "导入文本片段", textLines: [line] };
-                    itemsToCreate.push(currentItem);
-                }
+                if (currentItem) { currentItem.textLines.push(line); } 
+                else if (line.trim()) { currentItem = { path: [...currentPath], name: "导入文本片段", textLines: [line] }; itemsToCreate.push(currentItem); }
             }
         }
         startDupCheck(itemsToCreate);
@@ -1139,28 +1017,19 @@
         let allExisting = getAllItems(projectData.data);
         let simT = parseInt(document.getElementById('simThreshold').value) || 80;
         let titleT = parseInt(document.getElementById('titleSimThreshold').value) || 90;
-
         dupQueue = []; finalItemsToInsert = [];
         
         for(let item of itemsToCreate) {
-            let newText = item.textLines.join('\n').replace(/^\n+|\n+$/g, '');
-            item._newText = newText;
-            
-            // 过滤忽略词汇进行比较
+            let newText = item.textLines.join('\n').replace(/^\n+|\n+$/g, ''); item._newText = newText;
             let pureNewText = filterSkipPhrases(newText);
-            
             let bestMatch = null;
             for(let exist of allExisting) {
                 let pureOldText = filterSkipPhrases(exist.text);
-                
-                let tSim = getSimilarity(exist.name, item.name, 2);
-                let contentSim = getSimilarity(pureOldText, pureNewText, 3);
+                let tSim = getSimilarity(exist.name, item.name, 2); let contentSim = getSimilarity(pureOldText, pureNewText, 3);
                 if(contentSim >= simT || tSim >= titleT) { bestMatch = exist; break; }
             }
-            if(bestMatch) dupQueue.push({ newItem: item, oldItem: bestMatch });
-            else finalItemsToInsert.push(item);
+            if(bestMatch) dupQueue.push({ newItem: item, oldItem: bestMatch }); else finalItemsToInsert.push(item);
         }
-        
         dupContext = 'import'; dupActionAll = null; document.getElementById('dupApplyAll').checked = false;
         processNextDup();
     }
@@ -1168,8 +1037,7 @@
     function processNextDup() {
         if(dupQueue.length === 0) {
             document.getElementById('dupModal').style.display = 'none';
-            if(dupContext === 'import') finishImport();
-            else { saveData(); renderTree(); showToast("查重与处理完毕"); }
+            if(dupContext === 'import') finishImport(); else { saveData(); renderTree(); showToast("查重与处理完毕"); }
             return;
         }
         
@@ -1179,13 +1047,15 @@
         document.getElementById('dupModal').style.display = 'flex';
         document.getElementById('dupProgress').innerText = `${dupQueue.length} 剩余`;
         
-        // 彻底转义预览值
         document.getElementById('dupOldTitle').value = cur.oldItem.name || '';
-        document.getElementById('dupOldText').value = cur.oldItem.text || '';
+        let newTextForHl = dupContext === 'import' ? cur.newItem._newText : cur.newItem.text;
+        
+        let hl = getHighlightedHTML(cur.oldItem.text, newTextForHl);
+        document.getElementById('dupOldText').innerHTML = hl.h1;
+        document.getElementById('dupNewText').innerHTML = hl.h2;
         
         if(dupContext === 'import') {
             document.getElementById('dupNewTitle').value = cur.newItem.name || '';
-            document.getElementById('dupNewText').value = cur.newItem._newText || '';
             document.getElementById('dupOldLabel').innerText = "冲突：源库已有文本";
             document.getElementById('dupNewLabel').innerText = "冲突：准备导入文本";
             document.getElementById('dupActionBtns').innerHTML = `
@@ -1195,11 +1065,10 @@
             `;
         } else {
             document.getElementById('dupNewTitle').value = cur.newItem.name || '';
-            document.getElementById('dupNewText').value = cur.newItem.text || '';
             document.getElementById('dupOldLabel').innerText = "相似：库内文本 1";
             document.getElementById('dupNewLabel').innerText = "相似：库内文本 2";
             document.getElementById('dupActionBtns').innerHTML = `
-                <button class="btn" onclick="applyDupAction('skip')">跳过(不再提示两者)</button>
+                <button class="btn" onclick="applyDupAction('skip')">跳过(不再提示)</button>
                 <button class="btn danger" onclick="applyDupAction('delRight')">删除文本2</button>
                 <button class="btn danger" onclick="applyDupAction('delLeft')">删除文本1</button>
             `;
@@ -1212,17 +1081,12 @@
         
         let cur = dupQueue.shift();
         if(dupContext === 'import') {
-            if(action === 'replace') {
-                cur.oldItem.name = cur.newItem.name;
-                cur.oldItem.text = cur.newItem._newText;
-            } else if(action === 'keep') {
-                finalItemsToInsert.push(cur.newItem);
-            }
+            if(action === 'replace') { cur.oldItem.name = cur.newItem.name; cur.oldItem.text = cur.newItem._newText; } 
+            else if(action === 'keep') { finalItemsToInsert.push(cur.newItem); }
         } else {
             if(action === 'delLeft') removeNodeById(projectData.data, cur.oldItem.id);
             else if(action === 'delRight') removeNodeById(projectData.data, cur.newItem.id);
             else if(action === 'skip') {
-                // 库内查重跳过，记录双向配对 (加入完整文本缓存用于查看)
                 projectData.config.dupSkipPairs.push({
                     id1: cur.oldItem.id, id2: cur.newItem.id,
                     title1: cur.oldItem.name, title2: cur.newItem.name,
@@ -1231,9 +1095,7 @@
                 });
             }
         }
-        
-        if(dupActionAll) processNextDup();
-        else setTimeout(processNextDup, 50);
+        if(dupActionAll) processNextDup(); else setTimeout(processNextDup, 50);
     }
 
     function finishImport() {
@@ -1243,28 +1105,19 @@
             for (let folderName of item.path) {
                 let folder = currentLevel.find(n => n.type === 'folder' && n.name === folderName);
                 if (!folder) {
-                    folder = {
-                        id: 'd_' + Math.random().toString(36).substr(2, 9),
-                        name: folderName, type: 'folder', _collapsed: false, children: []
-                    };
+                    folder = { id: 'd_' + Math.random().toString(36).substr(2, 9), name: folderName, type: 'folder', _collapsed: false, children: [] };
                     currentLevel.push(folder);
                 }
                 currentLevel = folder.children;
             }
-            currentLevel.push({
-                id: 'd_' + Math.random().toString(36).substr(2, 9),
-                name: item.name, type: 'item', text: item._newText
-            });
+            currentLevel.push({ id: 'd_' + Math.random().toString(36).substr(2, 9), name: item.name, type: 'item', text: item._newText });
             importCount++;
         });
-        saveData(); renderTree(); 
-        showToast(`操作完成，新增导入 ${importCount} 项`);
+        saveData(); renderTree(); showToast(`操作完成，新增导入 ${importCount} 项`);
     }
 
     function doGlobalCheckDuplicate() {
         showToast("正在全库查重，请稍候...");
-        
-        // 释放UI线程，延时执行耗时查重
         setTimeout(() => {
             let allExisting = getAllItems(projectData.data);
             let simT = parseInt(document.getElementById('simThreshold').value) || 80;
@@ -1274,52 +1127,42 @@
             dupQueue = [];
             for(let i=0; i<allExisting.length; i++) {
                 for(let j=i+1; j<allExisting.length; j++) {
-                    let itemA = allExisting[i];
-                    let itemB = allExisting[j];
-                    
-                    // 判断是否在跳过白名单 pair 中
-                    let isSkipped = pairs.some(p => 
-                        (p.id1 === itemA.id && p.id2 === itemB.id) || 
-                        (p.id1 === itemB.id && p.id2 === itemA.id)
-                    );
+                    let itemA = allExisting[i]; let itemB = allExisting[j];
+                    let isSkipped = pairs.some(p => (p.id1 === itemA.id && p.id2 === itemB.id) || (p.id1 === itemB.id && p.id2 === itemA.id));
                     if(isSkipped) continue;
 
-                    let pureA = filterSkipPhrases(itemA.text);
-                    let pureB = filterSkipPhrases(itemB.text);
-                    
-                    let tSim = getSimilarity(itemA.name, itemB.name, 2);
-                    let contentSim = getSimilarity(pureA, pureB, 3);
-                    
-                    if(contentSim >= simT || tSim >= titleT) {
-                        dupQueue.push({ oldItem: itemA, newItem: itemB });
-                    }
+                    let pureA = filterSkipPhrases(itemA.text); let pureB = filterSkipPhrases(itemB.text);
+                    let tSim = getSimilarity(itemA.name, itemB.name, 2); let contentSim = getSimilarity(pureA, pureB, 3);
+                    if(contentSim >= simT || tSim >= titleT) { dupQueue.push({ oldItem: itemA, newItem: itemB }); }
                 }
             }
-            
-            if(dupQueue.length === 0) { showToast("未发现重复项"); return; }
-            
+            if(dupQueue.length === 0) { showToast("未发现任何重复项"); return; }
             dupContext = 'global'; dupActionAll = null; document.getElementById('dupApplyAll').checked = false;
             processNextDup();
         }, 100);
     }
 
-    // --- 动态生成 查重管理 面板 (支持分页、详情查看等) ---
+    // --- 查重过滤设置面板 ---
     let dupSettingsTab = 'pairs';
-    let dupPairPage = 1;
-    let dupPhrasePage = 1;
+    let dupPairPage = 1; let dupPhrasePage = 1;
+    let currentActivePairIdx = -1; 
 
     function openDupSettings() {
         showModalClear("查重过滤设置", "");
-        dupSettingsTab = 'pairs';
-        dupPairPage = 1; dupPhrasePage = 1;
-        const panel = document.getElementById('sysModalDynamicPanel');
-        panel.style.display = 'flex';
-        renderDupSettingsMain(panel);
+        dupSettingsTab = 'pairs'; dupPairPage = 1; dupPhrasePage = 1;
+        document.getElementById('sysModalSearch').style.display = 'inline-block';
+        document.getElementById('sysModalSearch').value = '';
+        const panel = document.getElementById('sysModalDynamicPanel'); panel.style.display = 'flex'; renderDupSettingsMain(panel);
+    }
+
+    window.renderSysModalSearch = function() {
+        if(document.getElementById('sysModalDynamicPanel').style.display !== 'none') {
+            if(dupSettingsTab === 'pairs' || dupSettingsTab === 'phrases') { renderDupTabContent(); }
+        }
     }
 
     window.switchDupTab = function(tabName) {
-        dupSettingsTab = tabName;
-        renderDupSettingsMain(document.getElementById('sysModalDynamicPanel'));
+        dupSettingsTab = tabName; renderDupSettingsMain(document.getElementById('sysModalDynamicPanel'));
     }
 
     function renderDupSettingsMain(container) {
@@ -1333,61 +1176,78 @@
         renderDupTabContent();
     }
 
-    window.removeDupSkipPair = function() {
-        projectData.config.dupSkipPairs.splice(dupPairPage - 1, 1);
-        saveData();
-        renderDupTabContent();
+    window.handleGlobalRevoke = function() {
+        if (currentActivePairIdx !== -1) {
+            confirmAction("确定要撤销跳过这一对记录吗？", () => {
+                projectData.config.dupSkipPairs.splice(currentActivePairIdx, 1);
+                saveData(); renderDupTabContent(); showToast('已撤销跳过');
+            });
+        }
     }
 
     window.addPhrase = function() {
         let val = document.getElementById('newPhraseInput').value || "";
         if(val.trim()) {
             projectData.config.dupSkipPhrases.push({text: val.trim(), active: true});
-            saveData();
-            // 添加后跳转到最后一页
-            dupPhrasePage = Math.ceil(projectData.config.dupSkipPhrases.length / 10) || 1;
+            saveData(); dupPhrasePage = Math.ceil(projectData.config.dupSkipPhrases.length / 10) || 1;
             renderDupTabContent();
         }
     }
     
     window.removePhrase = function(idx) {
-        projectData.config.dupSkipPhrases.splice(idx, 1);
-        saveData(); renderDupTabContent();
+        confirmAction("确定删除该条过滤短语吗？", () => {
+            projectData.config.dupSkipPhrases.splice(idx, 1);
+            saveData(); renderDupTabContent();
+        });
     }
     
-    window.togglePhraseActive = function(idx, checked) {
-        projectData.config.dupSkipPhrases[idx].active = checked;
-        saveData();
+    window.togglePhraseActive = function(idx, checked) { projectData.config.dupSkipPhrases[idx].active = checked; saveData(); }
+    window.updatePhraseText = function(idx, val) { projectData.config.dupSkipPhrases[idx].text = val; saveData(); }
+
+    window.locateNode = function(id) {
+        const find = (list, tid) => { for(let n of list) { if (n.id === tid) return n; if (n.children) { let r = find(n.children, tid); if (r) return r; } } return null; };
+        let n = find(projectData.data, id);
+        if (n) {
+            closeModal();
+            const expandP = (list, tid) => { for(let node of list) { if (node.id === tid) return true; if (node.children && expandP(node.children, tid)) { node._collapsed = false; return true; } } return false; };
+            expandP(projectData.data, n.id); selectNode(n); showToast("已定位到该文本");
+        } else { showToast("未找到原文本，可能已被删除"); }
     }
 
     function renderDupTabContent() {
-        const c = document.getElementById('dupTabContentContainer');
-        if(!c) return;
+        const c = document.getElementById('dupTabContentContainer'); if(!c) return;
+        const q = (document.getElementById('sysModalSearch').value || "").toLowerCase();
+        const revokeBtn = document.getElementById('sysModalRevokeBtn');
 
         if (dupSettingsTab === 'pairs') {
-            let pairs = projectData.config.dupSkipPairs || [];
-            if(pairs.length === 0) {
-                c.innerHTML = '<div style="text-align:center;color:#999;padding:30px;">暂无已跳过的记录</div>';
-                return;
+            let allPairs = projectData.config.dupSkipPairs || [];
+            let pairs = allPairs.map((p,i) => ({...p, _idx:i})).filter(p => !q || p.title1.toLowerCase().includes(q) || p.title2.toLowerCase().includes(q));
+            
+            if(pairs.length === 0) { 
+                currentActivePairIdx = -1; revokeBtn.style.display = 'none';
+                c.innerHTML = '<div style="text-align:center;color:#999;padding:30px;">暂无对应记录</div>'; return; 
             }
-            if (dupPairPage < 1) dupPairPage = 1;
-            if (dupPairPage > pairs.length) dupPairPage = pairs.length;
+            if (dupPairPage < 1) dupPairPage = 1; if (dupPairPage > pairs.length) dupPairPage = pairs.length;
             
             let p = pairs[dupPairPage - 1];
-            
+            currentActivePairIdx = p._idx;
+            revokeBtn.style.display = 'inline-flex';
+
             c.innerHTML = `
                 <div style="display:flex; flex-direction:column; height:45vh; min-height:300px; gap:8px; margin-bottom:12px;">
                     <div style="flex:1; display:flex; flex-direction:column; min-height:0; border:1px solid var(--border-color); border-radius:4px; padding:8px; background:#f8fafc;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                            <strong style="font-size:13px; color:#d97706;">文本 1: ${escapeHTML(p.title1)}</strong>
-                            <button class="btn danger" style="height:24px; padding:0 8px; font-size:12px;" onclick="removeDupSkipPair()">撤销跳过</button>
+                            <strong style="font-size:13px; color:#d97706; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">1. ${escapeHTML(p.title1)}</strong>
+                            <button class="btn primary" style="height:24px; padding:0 8px; font-size:12px;" onclick="locateNode('${p.id1}')">定位 1</button>
                         </div>
-                        <textarea readonly style="flex:1; resize:none; border:none; outline:none; font-size:13px; background:transparent; line-height:1.5;">${escapeHTML(p.txt1_full || p.txt1)}</textarea>
+                        <div style="flex:1; overflow-y:auto; border:none; outline:none; font-size:13px; background:transparent; line-height:1.5; white-space:pre-wrap; word-break:break-all;">${escapeHTML(p.txt1_full || p.txt1)}</div>
                     </div>
-                    <div style="text-align:center; color:#999; font-size:12px; height:16px;">丨 对 比 丨</div>
                     <div style="flex:1; display:flex; flex-direction:column; min-height:0; border:1px solid var(--border-color); border-radius:4px; padding:8px; background:#f0fdf4;">
-                        <div style="font-weight:bold; font-size:13px; color:#16a34a; margin-bottom:4px;">文本 2: ${escapeHTML(p.title2)}</div>
-                        <textarea readonly style="flex:1; resize:none; border:none; outline:none; font-size:13px; background:transparent; line-height:1.5;">${escapeHTML(p.txt2_full || p.txt2)}</textarea>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                            <strong style="font-size:13px; color:#16a34a; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">2. ${escapeHTML(p.title2)}</strong>
+                            <button class="btn primary" style="height:24px; padding:0 8px; font-size:12px;" onclick="locateNode('${p.id2}')">定位 2</button>
+                        </div>
+                        <div style="flex:1; overflow-y:auto; border:none; outline:none; font-size:13px; background:transparent; line-height:1.5; white-space:pre-wrap; word-break:break-all;">${escapeHTML(p.txt2_full || p.txt2)}</div>
                     </div>
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -1397,21 +1257,22 @@
                 </div>
             `;
         } else {
-            let phrases = projectData.config.dupSkipPhrases || [];
+            revokeBtn.style.display = 'none'; currentActivePairIdx = -1;
+
+            let allPhrases = projectData.config.dupSkipPhrases || [];
+            let phrases = allPhrases.map((p,i) => ({...p, _idx:i})).filter(p => !q || p.text.toLowerCase().includes(q));
             let totalPages = Math.ceil(phrases.length / 10) || 1;
-            if(dupPhrasePage < 1) dupPhrasePage = 1;
-            if(dupPhrasePage > totalPages) dupPhrasePage = totalPages;
+            if(dupPhrasePage < 1) dupPhrasePage = 1; if(dupPhrasePage > totalPages) dupPhrasePage = totalPages;
             
-            let start = (dupPhrasePage - 1) * 10;
-            let pageItems = phrases.slice(start, start + 10);
+            let start = (dupPhrasePage - 1) * 10; let pageItems = phrases.slice(start, start + 10);
             
             let listHtml = pageItems.map((item, idx) => {
-                let realIdx = start + idx;
+                let realIdx = item._idx; let displayIdx = start + idx + 1;
                 return `
                 <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:13px;">
-                    <span style="color:#999; width:24px; text-align:right; font-size:12px;">${realIdx + 1}.</span>
+                    <span style="color:#999; width:24px; text-align:right; font-size:12px;">${displayIdx}.</span>
                     <input type="checkbox" style="margin:0;cursor:pointer;" ${item.active?'checked':''} onchange="togglePhraseActive(${realIdx}, this.checked)">
-                    <input type="text" readonly value="${escapeHTML(item.text)}" style="flex:1; border:1px solid var(--border-color); border-radius:4px; padding:4px 8px; font-size:12px; background:#f8fafc;">
+                    <input type="text" value="${escapeHTML(item.text)}" onchange="updatePhraseText(${realIdx}, this.value)" style="flex:1; border:1px solid var(--border-color); border-radius:4px; padding:4px 8px; font-size:12px; background:#f8fafc;">
                     <button class="btn danger" style="height:26px; min-width:30px; padding:0 8px; font-size:12px;" onclick="removePhrase(${realIdx})">删</button>
                 </div>
                 `;
@@ -1437,46 +1298,36 @@
         }
     }
 
-    // --- 动态生成 复制附加管理 面板 (支持多选及Tab) ---
+    // --- 动态生成 复制附加管理 面板 ---
     let copyAddonTab = 'prefix';
     
     function openCopyAddonModal() {
-        showModalClear("复制前后缀管理", "");
-        copyAddonTab = 'prefix';
+        showModalClear("复制前后缀管理", ""); copyAddonTab = 'prefix';
+        document.getElementById('sysModalSearch').style.display = 'none';
         const panel = document.getElementById('sysModalDynamicPanel');
-        panel.style.display = 'flex';
-        renderCopyAddonMain(panel);
+        panel.style.display = 'flex'; renderCopyAddonMain(panel);
     }
     
-    window.switchAddonTab = function(tabName) {
-        copyAddonTab = tabName;
-        renderCopyAddonMain(document.getElementById('sysModalDynamicPanel'));
-    }
-
+    window.switchAddonTab = function(tabName) { copyAddonTab = tabName; renderCopyAddonMain(document.getElementById('sysModalDynamicPanel')); }
     window.toggleAddonSwitch = function(isChecked) {
-        if(copyAddonTab === 'prefix') projectData.config.copyAddon.prefixEnabled = isChecked;
-        else projectData.config.copyAddon.suffixEnabled = isChecked;
-        saveData();
+        if(copyAddonTab === 'prefix') projectData.config.copyAddon.prefixEnabled = isChecked; else projectData.config.copyAddon.suffixEnabled = isChecked; saveData();
     }
-    
     window.addAddonItem = function() {
-        let input = document.getElementById('newAddonInput').value;
-        if(!input.trim()) return;
+        let input = document.getElementById('newAddonInput').value; if(!input.trim()) return;
         let arr = copyAddonTab === 'prefix' ? projectData.config.copyAddon.prefixes : projectData.config.copyAddon.suffixes;
-        arr.push({ text: input, active: true });
-        saveData(); renderAddonTabContent();
+        arr.push({ text: input, active: true }); saveData(); renderAddonTabContent();
     }
-    
     window.removeAddonItem = function(idx) {
-        let arr = copyAddonTab === 'prefix' ? projectData.config.copyAddon.prefixes : projectData.config.copyAddon.suffixes;
-        arr.splice(idx, 1);
-        saveData(); renderAddonTabContent();
+        confirmAction("确定要删除该附加项吗？", () => {
+            let arr = copyAddonTab === 'prefix' ? projectData.config.copyAddon.prefixes : projectData.config.copyAddon.suffixes;
+            arr.splice(idx, 1); saveData(); renderAddonTabContent();
+        });
     }
-    
     window.toggleAddonItemSelection = function(idx, checked) {
-        let arr = copyAddonTab === 'prefix' ? projectData.config.copyAddon.prefixes : projectData.config.copyAddon.suffixes;
-        arr[idx].active = checked;
-        saveData();
+        let arr = copyAddonTab === 'prefix' ? projectData.config.copyAddon.prefixes : projectData.config.copyAddon.suffixes; arr[idx].active = checked; saveData();
+    }
+    window.updateAddonItemText = function(idx, val) {
+        let arr = copyAddonTab === 'prefix' ? projectData.config.copyAddon.prefixes : projectData.config.copyAddon.suffixes; arr[idx].text = val; saveData();
     }
 
     function renderCopyAddonMain(container) {
@@ -1491,310 +1342,226 @@
     }
 
     function renderAddonTabContent() {
-        const c = document.getElementById('addonTabContentContainer');
-        if(!c) return;
-        
-        let conf = projectData.config.copyAddon;
-        let isPrefix = copyAddonTab === 'prefix';
-        let arr = isPrefix ? conf.prefixes : conf.suffixes;
-        let isEnabled = isPrefix ? conf.prefixEnabled : conf.suffixEnabled;
+        const c = document.getElementById('addonTabContentContainer'); if(!c) return;
+        let conf = projectData.config.copyAddon; let isPrefix = copyAddonTab === 'prefix';
+        let arr = isPrefix ? conf.prefixes : conf.suffixes; let isEnabled = isPrefix ? conf.prefixEnabled : conf.suffixEnabled;
         
         let listHtml = arr.map((item, i) => `
             <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
                 <input type="checkbox" style="margin:0;cursor:pointer;" ${item.active?'checked':''} onchange="toggleAddonItemSelection(${i}, this.checked)">
-                <input type="text" readonly value="${escapeHTML(item.text)}" style="flex:1; border:1px solid var(--border-color); border-radius:4px; padding:6px 8px; font-size:13px; background:#f8fafc;">
+                <input type="text" value="${escapeHTML(item.text)}" onchange="updateAddonItemText(${i}, this.value)" style="flex:1; border:1px solid var(--border-color); border-radius:4px; padding:6px 8px; font-size:13px; background:#f8fafc;">
                 <button class="btn danger" style="height:28px; min-width:30px; padding:0 8px; font-size:12px;" onclick="removeAddonItem(${i})">删</button>
             </div>
         `).join('');
 
         c.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding:8px; background:var(--hover-bg); border-radius:4px;">
-                <span style="font-size:13px; font-weight:bold;">启用全局${isPrefix?'前':'后'}缀附加功能</span>
-                <label style="font-size:13px; display:flex; align-items:center; gap:4px; cursor:pointer;">
-                    <input type="checkbox" style="margin:0;" ${isEnabled?'checked':''} onchange="toggleAddonSwitch(this.checked)">开启
-                </label>
+                <span style="font-size:13px; font-weight:bold;">启用全局${isPrefix?'前':'后'}缀附加</span>
+                <label style="font-size:13px; display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" style="margin:0;" ${isEnabled?'checked':''} onchange="toggleAddonSwitch(this.checked)">开启</label>
             </div>
             <div style="display:flex; gap:6px; margin-bottom:12px;">
-                <input type="text" id="newAddonInput" style="flex:1; border:1px solid var(--border-color); border-radius:4px; padding:6px 10px; font-size:13px;" placeholder="输入新的${isPrefix?'前':'后'}缀内容...">
+                <input type="text" id="newAddonInput" style="flex:1; border:1px solid var(--border-color); border-radius:4px; padding:6px 10px; font-size:13px;" placeholder="输入新的${isPrefix?'前':'后'}缀...">
                 <button class="btn primary" style="height:32px; padding:0 12px; font-size:13px;" onclick="addAddonItem()">添加</button>
             </div>
-            <div style="max-height:200px; overflow-y:auto; padding-right:4px;">
-                ${listHtml || '<div style="text-align:center;color:#999;padding:20px;">暂无数据</div>'}
-            </div>
-            <p style="font-size:12px; color:var(--text-secondary); margin-top:12px;">提示：支持多选，复制时所有勾选项将使用换行符依次合并拼接到文本上。</p>
+            <div style="max-height:200px; overflow-y:auto; padding-right:4px;">${listHtml || '<div style="text-align:center;color:#999;padding:20px;">暂无数据</div>'}</div>
+            <p style="font-size:12px; color:var(--text-secondary); margin-top:12px;">提示：支持多选，复制时勾选项将使用换行符依次拼接到文本上。</p>
         `;
     }
 
-    // 复制增加前后缀打包功能 (支持多选合并)
     function copyCurrentText() {
         if (!currentNode) { showToast('请先选择一个文本条目'); return; }
         if (currentNode.type !== 'item') { showToast('仅支持复制文本'); return; }
         
-        const el = document.getElementById('editor-content');
-        let text = el.value || '';
-        let prefixStr = '';
-        let suffixStr = '';
+        const el = document.getElementById('editor-content'); let text = el.value || '';
+        let prefixStr = ''; let suffixStr = '';
         
-        if (projectData.config.copyAddon?.prefixEnabled) {
-            projectData.config.copyAddon.prefixes.filter(x => x.active).forEach(p => {
-                if(p.text) prefixStr += p.text + '\n';
-            });
-        }
-        if (projectData.config.copyAddon?.suffixEnabled) {
-            projectData.config.copyAddon.suffixes.filter(x => x.active).forEach(s => {
-                if(s.text) suffixStr += '\n' + s.text;
-            });
-        }
+        if (projectData.config.copyAddon?.prefixEnabled) { projectData.config.copyAddon.prefixes.filter(x => x.active).forEach(p => { if(p.text) prefixStr += p.text + '\n'; }); }
+        if (projectData.config.copyAddon?.suffixEnabled) { projectData.config.copyAddon.suffixes.filter(x => x.active).forEach(s => { if(s.text) suffixStr += '\n' + s.text; }); }
 
-        const finalStr = prefixStr + text + suffixStr;
-        navigator.clipboard.writeText(finalStr).then(() => { 
-            if(prefixStr || suffixStr) showToast('已自动附加前/后缀并复制');
-            else showToast('已复制到剪贴板');
+        navigator.clipboard.writeText(prefixStr + text + suffixStr).then(() => { 
+            if(prefixStr || suffixStr) showToast('已附加前/后缀并复制'); else showToast('已复制到剪贴板');
         });
     }
 
     function renderShortcuts() {
-        const grid = document.getElementById('shortcutGrid');
-        grid.innerHTML = '';
+        const grid = document.getElementById('shortcutGrid'); grid.innerHTML = '';
         projectData.config.shortcuts.forEach(sc => {
-            const btn = document.createElement('button');
-            btn.className = 'btn'; btn.innerText = sc.display;
+            const btn = document.createElement('button'); btn.className = 'btn'; btn.innerText = sc.display;
             btn.onclick = () => {
                 if (projectData.config.isLocked) { showToast('锁定状态无法插入内容'); return; }
                 const el = lastFocusedElement || document.getElementById('editor-content');
                 if (el && typeof el.selectionStart === 'number' && !el.readOnly) {
-                    const start = el.selectionStart;
-                    el.setRangeText(sc.text, start, el.selectionEnd, 'end');
-                    el.focus(); el.dispatchEvent(new Event('input')); 
+                    const start = el.selectionStart; el.setRangeText(sc.text, start, el.selectionEnd, 'end'); el.focus(); el.dispatchEvent(new Event('input')); 
                 }
-            };
-            grid.appendChild(btn);
+            }; grid.appendChild(btn);
         });
     }
 
     function addShortcut() {
         showModalClear('添加快捷词', '请输入名称和内容：', () => {
-            const n = document.getElementById('sysModalInput1').value;
-            const t = document.getElementById('sysModalInput2').value;
-            if (n && t) {
-                projectData.config.shortcuts.push({ display: n, text: t });
-                saveData(); renderShortcuts(); showToast('添加成功');
-            }
+            const n = document.getElementById('sysModalInput1').value; const t = document.getElementById('sysModalInput2').value;
+            if (n && t) { projectData.config.shortcuts.push({ display: n, text: t }); saveData(); renderShortcuts(); showToast('添加成功'); }
         });
+        document.getElementById('sysModalSearch').style.display = 'none';
         document.getElementById('sysModalInputs').style.display = 'flex';
-        document.getElementById('sysModalInput1').value = '';
-        document.getElementById('sysModalInput2').value = '';
+        document.getElementById('sysModalInput1').value = ''; document.getElementById('sysModalInput2').value = '';
     }
 
     function toggleDoubleReplace() {
-        const isChecked = document.getElementById('doubleReplaceSwitch').checked;
-        document.getElementById('secondReplaceGroup').style.display = isChecked ? 'flex' : 'none';
+        document.getElementById('secondReplaceGroup').style.display = document.getElementById('doubleReplaceSwitch').checked ? 'flex' : 'none';
     }
 
     function doFind() {
         const f = document.getElementById('findInput').value;
         if (!f || !currentNode || currentNode.type !== 'item') return;
-        const el = document.getElementById('editor-content');
-        const text = el.value;
-        const idx = text.indexOf(f, lastFindIndex);
+        const el = document.getElementById('editor-content'); const text = el.value; const idx = text.indexOf(f, lastFindIndex);
         
-        if (idx !== -1) {
-            el.focus(); el.setSelectionRange(idx, idx + f.length); lastFindIndex = idx + f.length;
-        } else {
+        if (idx !== -1) { el.focus(); el.setSelectionRange(idx, idx + f.length); lastFindIndex = idx + f.length; } 
+        else {
             if (projectData.config.globalFind) {
-                const allItems = getAllItems(projectData.data);
-                const currentListIndex = allItems.findIndex(x => x.id === currentNode.id);
+                const allItems = getAllItems(projectData.data); const currentListIndex = allItems.findIndex(x => x.id === currentNode.id);
                 if (currentListIndex !== -1) {
                     for (let i = currentListIndex + 1; i < allItems.length; i++) {
-                        if ((allItems[i].text || '').includes(f)) {
-                            selectNode(allItems[i]);
-                            showToast(`找到并跳至: ${allItems[i].name}`);
-                            setTimeout(doFind, 50);
-                            return;
-                        }
+                        if ((allItems[i].text || '').includes(f)) { selectNode(allItems[i]); showToast(`找到并跳至: ${allItems[i].name}`); setTimeout(doFind, 50); return; }
                     }
                 }
                 lastFindIndex = 0; showToast('已找到末尾，没有更多匹配');
-            } else {
-                lastFindIndex = 0; showToast('本篇已到末尾，再次点击从头查找');
-            }
+            } else { lastFindIndex = 0; showToast('本篇已到末尾，再次点击从头查找'); }
         }
     }
 
-    // 全局替换逻辑扩充
     function doReplace() {
         if (projectData.config.isLocked) { showToast('编辑锁定状态下无法替换'); return; }
-        
-        const f1 = document.getElementById('findInput').value;
-        const r1 = document.getElementById('replaceInput').value;
-        const isDouble = document.getElementById('doubleReplaceSwitch').checked;
-        const f2 = document.getElementById('findInput2').value;
-        const r2 = document.getElementById('replaceInput2').value;
-
+        const f1 = document.getElementById('findInput').value; const r1 = document.getElementById('replaceInput').value;
+        const isDouble = document.getElementById('doubleReplaceSwitch').checked; const f2 = document.getElementById('findInput2').value; const r2 = document.getElementById('replaceInput2').value;
         if (!f1) return;
 
-        const isGlobal = projectData.config.globalReplace;
-        
-        if (isGlobal) {
-            let replaceCount = 0;
-            const allItems = getAllItems(projectData.data);
+        if (projectData.config.globalReplace) {
+            let replaceCount = 0; const allItems = getAllItems(projectData.data);
             allItems.forEach(item => {
                 if(item.text && item.text.includes(f1)) {
                     let text = item.text;
-                    if (isDouble && f2) {
-                        const placeholder = "<TEMP_REP_" + Date.now() + ">";
-                        text = text.split(f1).join(placeholder);
-                        text = text.split(f2).join(r2);
-                        text = text.split(placeholder).join(r1);
-                    } else {
-                        text = text.split(f1).join(r1);
-                    }
+                    if (isDouble && f2) { const ph = "<TEMP_REP_" + Date.now() + ">"; text = text.split(f1).join(ph).split(f2).join(r2).split(ph).join(r1); } 
+                    else { text = text.split(f1).join(r1); }
                     if(item.text !== text) { item.text = text; replaceCount++; }
                 }
             });
-            if(replaceCount > 0) {
-                saveData(); if(currentNode && currentNode.type === 'item') refreshEditorContent();
-                showToast(`全局替换成功，共修改 ${replaceCount} 篇文本`);
-            } else { showToast("全库未找到可替换的目标"); }
+            if(replaceCount > 0) { saveData(); if(currentNode && currentNode.type === 'item') refreshEditorContent(); showToast(`全局替换成功，共修改 ${replaceCount} 篇文本`); } 
+            else { showToast("全库未找到可替换的目标"); }
         } else {
             if (!currentNode || currentNode.type !== 'item') return;
             let text = currentNode.text;
-            if (isDouble && f2) {
-                const placeholder = "<TEMP_REP_" + Date.now() + ">";
-                text = text.split(f1).join(placeholder);
-                text = text.split(f2).join(r2);
-                text = text.split(placeholder).join(r1);
-            } else {
-                text = text.split(f1).join(r1);
-            }
-            currentNode.text = text;
-            document.getElementById('editor-content').value = currentNode.text;
+            if (isDouble && f2) { const ph = "<TEMP_REP_" + Date.now() + ">"; text = text.split(f1).join(ph).split(f2).join(r2).split(ph).join(r1); } 
+            else { text = text.split(f1).join(r1); }
+            currentNode.text = text; document.getElementById('editor-content').value = currentNode.text;
             saveData(); showToast(isDouble ? '执行双项替换成功' : '执行替换成功');
         }
     }
 
     function doRandom(scope) {
         let pool = [];
-        if (scope === 'global') {
-            pool = getAllItems(projectData.data);
-        } else {
+        if (scope === 'global') { pool = getAllItems(projectData.data); } 
+        else {
             if (!currentNode) { showToast("请先选择一个当前文件夹内的项"); return; }
-            const findParentList = (list) => {
-                if (list.find(x => x.id === currentNode.id)) return list;
-                for (let n of list) {
-                    if (n.children) {
-                        const r = findParentList(n.children);
-                        if (r) return r;
-                    }
-                }
-                return null;
-            };
-            let parentList = findParentList(projectData.data);
-            if (parentList) pool = getAllItems(parentList);
+            const findParentList = (list) => { if (list.some(x => x.id === currentNode.id)) return list; for (let n of list) { if (n.children) { let r = findParentList(n.children); if (r) return r; } } return null; };
+            let parentList = findParentList(projectData.data); if (parentList) pool = getAllItems(parentList);
         }
-        
         if (pool.length === 0) { showToast("无可抽取的文本"); return; }
-        const randItem = pool[Math.floor(Math.random() * pool.length)];
-        selectNode(randItem);
-        showToast(`🎲 随机抽中: ${randItem.name}`);
+        selectNode(pool[Math.floor(Math.random() * pool.length)]); showToast(`🎲 随机抽中: ${currentNode.name}`);
     }
 
     let modalCallback = null;
-    
-    // 专门用于弹出无冲突提示框的函数
     function showModalClear(title, msg, onConfirm = null) {
-        document.getElementById('sysModalTabs').style.display = 'none';
-        document.getElementById('sysModalInputs').style.display = 'none';
-        document.getElementById('sysModalTextarea').style.display = 'none';
-        document.getElementById('sysModalSyncPanel').style.display = 'none';
-        document.getElementById('sysModalDynamicPanel').style.display = 'none';
-        document.getElementById('sysModalClearBtn').style.display = 'none';
+        document.getElementById('sysModalTabs').style.display = 'none'; document.getElementById('sysModalInputs').style.display = 'none';
+        document.getElementById('sysModalTextarea').style.display = 'none'; document.getElementById('sysModalSyncPanel').style.display = 'none';
+        document.getElementById('sysModalDynamicPanel').style.display = 'none'; document.getElementById('sysModalClearBtn').style.display = 'none';
+        document.getElementById('sysModalSearch').style.display = 'none';
+        document.getElementById('sysModalRevokeBtn').style.display = 'none'; 
 
-        document.getElementById('sysModalTitle').innerText = title;
-        document.getElementById('sysModalMsg').innerText = msg;
+        document.getElementById('sysModalTitle').innerText = title; document.getElementById('sysModalMsg').innerText = msg;
         document.getElementById('sysModal').style.display = 'flex';
         
         const btn = document.getElementById('sysModalConfirmBtn');
-        if (onConfirm) { btn.style.display = 'inline-flex'; modalCallback = onConfirm; } 
-        else { btn.style.display = 'none'; }
+        if (onConfirm) { btn.style.display = 'inline-flex'; modalCallback = onConfirm; } else { btn.style.display = 'none'; }
     }
     
     function closeModal() {
-        document.getElementById('sysModal').style.display = 'none';
-        document.getElementById('sysModalInputs').style.display = 'none';
-        document.getElementById('sysModalTextarea').style.display = 'none';
-        document.getElementById('sysModalTabs').style.display = 'none'; 
-        document.getElementById('sysModalSyncPanel').style.display = 'none';
-        document.getElementById('sysModalDynamicPanel').style.display = 'none';
+        document.getElementById('sysModal').style.display = 'none'; document.getElementById('sysModalInputs').style.display = 'none';
+        document.getElementById('sysModalTextarea').style.display = 'none'; document.getElementById('sysModalTabs').style.display = 'none'; 
+        document.getElementById('sysModalSyncPanel').style.display = 'none'; document.getElementById('sysModalDynamicPanel').style.display = 'none';
+        document.getElementById('sysModalSearch').style.display = 'none';
+        document.getElementById('sysModalRevokeBtn').style.display = 'none';
     }
     document.getElementById('sysModalConfirmBtn').onclick = () => { if (modalCallback) modalCallback(); closeModal(); };
 
-    function exportJson() {
-        const exportData = JSON.parse(JSON.stringify(projectData));
-        exportData.config.isLocked = false; exportData.config.isSwapped = false;
-        const blob = new Blob([JSON.stringify(exportData, null, 2)], {type: 'application/json'});
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-        a.download = `TextManager_${Date.now()}.json`; a.click(); showToast('导出完成');
+    // API 云同步
+    async function pushToGist() {
+        const token = localStorage.getItem('TMP_GithubToken'); if(!token) return showToast("需填写 Token 推送");
+        showToast("开始推送数据...");
+        const dataObj = JSON.parse(JSON.stringify(projectData)); dataObj.config.isLocked = false; dataObj.config.isSwapped = false;
+        let currentGistId = localStorage.getItem('TMP_GistId') || '';
+        try {
+            const res = await fetch('https://api.github.com/gists' + (currentGistId ? `/${currentGistId}` : ''), {
+                method: currentGistId ? 'PATCH' : 'POST', headers: { 'Accept': 'application/vnd.github+json', 'Authorization': `Bearer ${token}`, 'X-GitHub-Api-Version': '2022-11-28' },
+                body: JSON.stringify({ description: "TextManagerPro Sync", public: false, files: { "textManagerData.json": { content: JSON.stringify(dataObj, null, 2) } } })
+            });
+            if(!res.ok) throw new Error("API Error " + res.status);
+            const resData = await res.json(); localStorage.setItem('TMP_GistId', resData.id); document.getElementById('gistIdInput').value = resData.id; showToast("云端同步推送成功");
+        } catch(e) { showToast("推送失败: " + e.message); }
+    }
+    async function pullFromGist() {
+        const token = localStorage.getItem('TMP_GithubToken'); const currentGistId = localStorage.getItem('TMP_GistId');
+        if(!currentGistId) return showToast("需要提供 Gist ID");
+        showToast("拉取云端数据...");
+        try {
+            const res = await fetch(`https://api.github.com/gists/${currentGistId}`, { headers: token ? { 'Authorization': `Bearer ${token}` } : {} });
+            if(!res.ok) throw new Error("获取失败 " + res.status);
+            const parsed = JSON.parse((await res.json()).files["textManagerData.json"].content);
+            projectData.data = parsed.data || []; projectData.config = { ...defaultData.config, ...(parsed.config || {}) };
+            saveData(); renderTree(); showToast("拉取覆盖成功");
+        } catch(e) { showToast("拉取失败: " + e.message); }
     }
 
+    function exportJson() {
+        const exportData = JSON.parse(JSON.stringify(projectData)); exportData.config.isLocked = false; exportData.config.isSwapped = false;
+        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(exportData, null, 2)], {type: 'application/json'}));
+        a.download = `TextManager_${Date.now()}.json`; a.click(); showToast('导出完成');
+    }
     function importJson() {
         const input = document.createElement('input'); input.type = 'file';
         input.onchange = (e) => {
             const reader = new FileReader();
             reader.onload = (ev) => {
                 try {
-                    const parsed = JSON.parse(ev.target.result);
-                    projectData.data = parsed.data || [];
-                    projectData.config = { ...defaultData.config, ...(parsed.config || {}) };
+                    const parsed = JSON.parse(ev.target.result); projectData.data = parsed.data || []; projectData.config = { ...defaultData.config, ...(parsed.config || {}) };
                     if(!projectData.config.dupSkipPairs) projectData.config.dupSkipPairs = [];
                     if(!projectData.config.dupSkipPhrases) projectData.config.dupSkipPhrases = [];
-                    
-                    projectData.config.dupSkipPhrases = projectData.config.dupSkipPhrases.map(p => {
-                        if (typeof p === 'string') return { text: p, active: true };
-                        return p;
-                    });
-                    
+                    projectData.config.dupSkipPhrases = projectData.config.dupSkipPhrases.map(p => typeof p === 'string' ? { text: p, active: true } : p);
                     if(!projectData.config.copyAddon) projectData.config.copyAddon = defaultData.config.copyAddon;
-                    
+                    if(projectData.config.quickNav === undefined) projectData.config.quickNav = false;
                     saveData(); renderTree(); renderShortcuts();
                     
-                    document.getElementById('confirmSwitch').checked = projectData.config.deleteConfirmEnabled;
-                    document.getElementById('lockSwitch').checked = projectData.config.isLocked;
-                    document.getElementById('globalFindSwitch').checked = !!projectData.config.globalFind;
-                    document.getElementById('globalReplaceSwitch').checked = !!projectData.config.globalReplace;
-                    document.getElementById('tempEditSwitch').checked = !!projectData.config.tempEdit;
-                    document.getElementById('autoGroupSwitch').checked = !!projectData.config.autoGroup;
-                    document.getElementById('groupSmallInput').value = projectData.config.groupSmall || 0;
-                    document.getElementById('groupLargeInput').value = projectData.config.groupLarge || 0;
-                    document.getElementById('groupSettingsUI').style.display = projectData.config.autoGroup ? 'flex' : 'none';
-
-                    document.getElementById('frDisplay').value = projectData.config.displayOptions.fr;
-                    document.getElementById('scDisplay').value = projectData.config.displayOptions.sc;
-                    updateSwapStatusUI(); showToast('导入成功');
-                } catch(err) { showToast('导入失败，JSON格式错误'); }
-            };
-            reader.readAsText(e.target.files[0]);
-        };
-        input.click();
+                    document.getElementById('confirmSwitch').checked = projectData.config.deleteConfirmEnabled; document.getElementById('lockSwitch').checked = projectData.config.isLocked;
+                    document.getElementById('globalFindSwitch').checked = !!projectData.config.globalFind; document.getElementById('globalReplaceSwitch').checked = !!projectData.config.globalReplace;
+                    document.getElementById('tempEditSwitch').checked = !!projectData.config.tempEdit; document.getElementById('quickNavSwitch').checked = !!projectData.config.quickNav;
+                    document.getElementById('autoGroupSwitch').checked = !!projectData.config.autoGroup; document.getElementById('groupSmallInput').value = projectData.config.groupSmall || 0;
+                    document.getElementById('groupLargeInput').value = projectData.config.groupLarge || 0; document.getElementById('groupSettingsUI').style.display = projectData.config.autoGroup ? 'flex' : 'none';
+                    document.getElementById('frDisplay').value = projectData.config.displayOptions.fr; document.getElementById('scDisplay').value = projectData.config.displayOptions.sc;
+                    
+                    updateSwapStatusUI(); updateQuickNavVisibility(); showToast('导入成功');
+                } catch(err) { showToast('导入失败，格式错误'); }
+            }; reader.readAsText(e.target.files[0]);
+        }; input.click();
     }
 
     function togglePanel(id) {
         const panel = document.getElementById(id);
         if (panel.classList.contains('show')) { panel.classList.remove('show'); } 
-        else {
-            document.getElementById('sidebar').classList.remove('show');
-            document.getElementById('toolbox').classList.remove('show');
-            panel.classList.add('show');
-        }
+        else { document.getElementById('sidebar').classList.remove('show'); document.getElementById('toolbox').classList.remove('show'); panel.classList.add('show'); }
     }
-    function closePanelsOnMobile() {
-        if (window.innerWidth <= 768) {
-            document.getElementById('sidebar').classList.remove('show');
-            document.getElementById('toolbox').classList.remove('show');
-        }
-    }
+    function closePanelsOnMobile() { if (window.innerWidth <= 768) { document.getElementById('sidebar').classList.remove('show'); document.getElementById('toolbox').classList.remove('show'); } }
 
-    renderShortcuts(); renderTree();
+    renderShortcuts(); renderTree(); updateQuickNavVisibility();
 </script>
 </body>
 </html>
