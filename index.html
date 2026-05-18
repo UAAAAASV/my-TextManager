@@ -358,7 +358,7 @@
 
             <div style="margin-top:16px; padding-top:16px; border-top:1px dashed var(--border-color); display:flex; flex-direction:column; gap:8px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
-                    <span>目录自动折叠分组 (0为关)</span>
+                    <span>目录折叠分组 (0为关)</span>
                     <input type="checkbox" id="autoGroupSwitch" onchange="toggleAutoGroup()">
                 </div>
                 <div id="groupSettingsUI" style="display:none; justify-content:space-between; align-items:center; background:var(--hover-bg); padding:8px; border-radius:4px;">
@@ -393,7 +393,7 @@
         <div id="sysModalTabs" style="display:none; gap:8px; margin-top:12px; margin-bottom:12px;">
             <button class="btn primary" id="tabImportBtn" style="flex:1; height:32px; font-size:13px; padding:0 8px;" onclick="switchBatchTab('import')">导入文本</button>
             <button class="btn" id="tabExportBtn" style="flex:1; height:32px; font-size:13px; padding:0 8px;" onclick="switchBatchTab('export')">导出文本</button>
-            <button class="btn" id="tabSyncBtn" style="flex:1; height:32px; font-size:13px; padding:0 8px;" onclick="switchBatchTab('sync')">云同步</button>
+            <button class="btn" id="tabSyncBtn" style="flex:1; height:32px; font-size:13px; padding:0 8px;" onclick="switchBatchTab('sync')">云端同步</button>
         </div>
 
         <p id="sysModalMsg" style="font-size:13px; color:var(--text-secondary); line-height:1.6; white-space:pre-wrap;"></p>
@@ -476,7 +476,9 @@
         config: { 
             shortcuts: [
                 { display: "Fr", text: "<Q7Fr>" },
-                { display: "Sc", text: "<Q7Sc>" }
+                { display: "Sc", text: "<Q7Sc>" },
+                { display: "U", text: "{{user}}" },
+                { display: "C", text: "{{char}}" }
             ], 
             deleteConfirmEnabled: true,
             isLocked: false,
@@ -505,6 +507,14 @@
             const parsed = JSON.parse(local);
             projectData.data = parsed.data || [];
             projectData.config = { ...defaultData.config, ...(parsed.config || {}) };
+            
+            // 为已有缓存的老用户兼容补齐新增的快速插入项
+            if(!projectData.config.shortcuts) projectData.config.shortcuts = JSON.parse(JSON.stringify(defaultData.config.shortcuts));
+            const hasU = projectData.config.shortcuts.some(s => s.display === 'U');
+            const hasC = projectData.config.shortcuts.some(s => s.display === 'C');
+            if (!hasU) projectData.config.shortcuts.push({ display: 'U', text: '{{user}}' });
+            if (!hasC) projectData.config.shortcuts.push({ display: 'C', text: '{{char}}' });
+
             if(!projectData.config.dupSkipPairs) projectData.config.dupSkipPairs = [];
             if(!projectData.config.dupSkipPhrases) projectData.config.dupSkipPhrases = [];
             projectData.config.dupSkipPhrases = projectData.config.dupSkipPhrases.map(p => {
@@ -518,6 +528,7 @@
 
     let currentNode = null;
     let draggedNodeId = null;
+    let dragPos = ''; // 拖动排版占位
     let selectedIds = new Set();
     let checkHistory = []; 
     let currentVisibleIds = []; 
@@ -525,6 +536,7 @@
     let lastFindIndex = 0; 
     let hasShownLockToast = false;
     let vgCollapseStates = {};
+    let modalCallback = null;
 
     document.getElementById('confirmSwitch').checked = projectData.config.deleteConfirmEnabled;
     document.getElementById('lockSwitch').checked = projectData.config.isLocked;
@@ -632,7 +644,7 @@
         if (!projectData.config.isLocked) { projectData.config.isLocked = true; document.getElementById('lockSwitch').checked = true; }
         projectData.config.isSwapped = !projectData.config.isSwapped;
         saveData(); updateSwapStatusUI(); refreshEditorContent();
-        showToast(projectData.config.isSwapped ? `已切换: Fr=${projectData.config.displayOptions.sc}, Sc=${projectData.config.displayOptions.fr}` : `已切换: Fr=${projectData.config.displayOptions.fr}, Sc=${projectData.config.displayOptions.sc}`);
+        showToast(projectData.config.isSwapped ? `已切换\nFr=${projectData.config.displayOptions.sc}, Sc=${projectData.config.displayOptions.fr}` : `已切换\nFr=${projectData.config.displayOptions.fr}, Sc=${projectData.config.displayOptions.sc}`);
     }
     function updateSwapStatusUI() {
         const p = document.getElementById('swapStatusText');
@@ -703,6 +715,49 @@
             displayIndex += chunk.length; container.appendChild(row);
         }
         return displayIndex;
+    }
+
+    function handleMove(sourceId, targetId, pos) {
+        if (!sourceId || !targetId || sourceId === targetId) return;
+        
+        const isDescendant = (list, pid, cid) => {
+            const p = list.find(n => n.id === pid);
+            if(!p || !p.children) return false;
+            if(p.children.some(n => n.id === cid)) return true;
+            return p.children.some(n => isDescendant(p.children, n.id, cid));
+        };
+        if(isDescendant(projectData.data, sourceId, targetId)) { showToast("不能移动到其子目录中"); return; }
+
+        let sourceNode = null;
+        const removeSource = (list) => {
+            for(let i = 0; i < list.length; i++) {
+                if(list[i].id === sourceId) { sourceNode = list.splice(i, 1)[0]; return true; }
+                if(list[i].children && removeSource(list[i].children)) return true;
+            } return false;
+        };
+        
+        const insertNode = (list) => {
+            for(let i = 0; i < list.length; i++) {
+                if(list[i].id === targetId) {
+                    if(pos === 'in' && list[i].type === 'folder') {
+                        if(!list[i].children) list[i].children = [];
+                        list[i].children.push(sourceNode); list[i]._collapsed = false;
+                    } else if(pos === 'before') {
+                        list.splice(i, 0, sourceNode);
+                    } else if(pos === 'after') {
+                        list.splice(i + 1, 0, sourceNode);
+                    }
+                    return true;
+                }
+                if(list[i].children && insertNode(list[i].children)) return true;
+            } return false;
+        };
+
+        removeSource(projectData.data);
+        if(sourceNode) {
+            insertNode(projectData.data);
+            saveData(); renderTree();
+        }
     }
 
     function renderActualNodes(nodes, container, filter, displayIndex) {
@@ -857,6 +912,29 @@
         setTimeout(() => { const tEl = document.getElementById('editor-title'); if (tEl) { tEl.focus(); tEl.select(); } }, 100);
     }
 
+    function confirmDeleteCurrent() {
+        if (selectedIds.size === 0) { showToast('请先勾选要删除的项'); return; }
+        confirmAction(`确定要删除选定的 ${selectedIds.size} 项吗？`, () => {
+            let count = 0;
+            selectedIds.forEach(id => {
+                if(removeNodeById(projectData.data, id)) count++;
+            });
+            selectedIds.clear(); checkHistory = [];
+            
+            if (currentNode && document.getElementById('editorContainer').style.visibility === 'visible') {
+                const stillExists = (list, id) => {
+                    for(let n of list) { if(n.id === id) return true; if(n.children && stillExists(n.children, id)) return true; } return false;
+                };
+                if(!stillExists(projectData.data, currentNode.id)) {
+                    currentNode = null;
+                    document.getElementById('editorContainer').style.visibility = 'hidden';
+                    document.getElementById('pathDisplay').innerText = '请选择一个条目';
+                }
+            }
+            saveData(); renderTree(); showToast(`成功删除 ${count} 项`);
+        });
+    }
+
     // --- 批量管理 ---
     function openBatchModal() {
         document.getElementById('sysModalTabs').style.display = 'flex';
@@ -883,7 +961,7 @@
 
         if (mode === 'import') {
             tImport.classList.add('primary');
-            msg.innerText = `⭐导入时会自动触发查重检测\n\n说明：\n1. 用 > 文件夹 - 子目录 表示路径 (无则在根目录)\n2. 用 = 文本 作为标题\n3. 标题下的多行内容为文本内容`;
+            msg.innerText = `⭐导入时会自动触发查重检测\n\n说明：\n1. > 文件夹 - 子目录 表示路径 (无则在根目录)\n2. = 文本 作为标题\n3. 标题下的多行内容为文本内容`;
             ta.style.display = 'block'; ta.readOnly = false; ta.placeholder = "在此粘贴需要批量导入的文本...";
             if (ta._cacheExport !== undefined && ta.value === ta._cacheExport) ta.value = ''; 
             btn.style.display = 'inline-flex'; btn.innerText = '确认导入'; clearBtn.style.display = 'inline-flex';
@@ -891,15 +969,16 @@
         } else if (mode === 'export') {
             tExport.classList.add('primary');
             const scopeText = currentNode ? (currentNode.type === 'folder' ? '⭐已生成【该文件夹及子目录】数据：' : '⭐已生成【当前文本】数据：') : '⭐已生成【全局所有】的数据：';
-            msg.innerText = `${scopeText}\n\n说明：\n1. 选中文件夹或文本可导出对应文本\n2. 不选择则为全部数据`;
+            msg.innerText = `${scopeText}\n\n说明：\n1. 选中文件夹或文本可导出对应文本\n2. 不选择则为全部数据\n3. 占位`;
             const exportText = getBatchExportText(currentNode);
             ta.style.display = 'block'; ta.value = exportText; ta._cacheExport = exportText; ta.readOnly = true;
-            btn.style.display = 'inline-flex'; btn.innerText = '复制并关闭'; clearBtn.style.display = 'inline-flex';
+            btn.style.display = 'inline-flex'; btn.innerText = '复制关闭'; clearBtn.style.display = 'inline-flex';
             modalCallback = () => { navigator.clipboard.writeText(ta.value).then(() => { showToast('复制成功'); }); closeModal(); };
         } else if (mode === 'sync') {
             tSync.classList.add('primary');
             msg.innerHTML = `GitHub Gist 云端数据同步：\n<div style="font-size:12px; color:#999; margin-bottom:15px; margin-top:8px; line-height:1.5;">👉 <a href="https://github.com/settings/tokens/new" target="_blank" style="color:var(--accent-color);">点击前往 GitHub 免费生成 Token (须勾选 gist 权限)</a></div>`;
             syncPanel.style.display = 'flex'; btn.style.display = 'none'; 
+            modalCallback = null;
         }
     }
 
@@ -1462,15 +1541,14 @@
         let pool = [];
         if (scope === 'global') { pool = getAllItems(projectData.data); } 
         else {
-            if (!currentNode) { showToast("请先选择一个当前文件夹内的项"); return; }
+            if (!currentNode) { showToast("请先选择文件夹内的文本"); return; }
             const findParentList = (list) => { if (list.some(x => x.id === currentNode.id)) return list; for (let n of list) { if (n.children) { let r = findParentList(n.children); if (r) return r; } } return null; };
             let parentList = findParentList(projectData.data); if (parentList) pool = getAllItems(parentList);
         }
         if (pool.length === 0) { showToast("无可抽取的文本"); return; }
-        selectNode(pool[Math.floor(Math.random() * pool.length)]); showToast(`🎲 随机抽中: ${currentNode.name}`);
+        selectNode(pool[Math.floor(Math.random() * pool.length)]); showToast(`🎲\n${currentNode.name}`);
     }
 
-    let modalCallback = null;
     function showModalClear(title, msg, onConfirm = null) {
         document.getElementById('sysModalTabs').style.display = 'none'; document.getElementById('sysModalInputs').style.display = 'none';
         document.getElementById('sysModalTextarea').style.display = 'none'; document.getElementById('sysModalSyncPanel').style.display = 'none';
@@ -1482,7 +1560,14 @@
         document.getElementById('sysModal').style.display = 'flex';
         
         const btn = document.getElementById('sysModalConfirmBtn');
-        if (onConfirm) { btn.style.display = 'inline-flex'; modalCallback = onConfirm; } else { btn.style.display = 'none'; }
+        if (onConfirm) { 
+            btn.style.display = 'inline-flex'; 
+            btn.innerText = '确认'; 
+            modalCallback = onConfirm; 
+        } else { 
+            btn.style.display = 'none'; 
+            modalCallback = null;
+        }
     }
     
     function closeModal() {
@@ -1491,6 +1576,7 @@
         document.getElementById('sysModalSyncPanel').style.display = 'none'; document.getElementById('sysModalDynamicPanel').style.display = 'none';
         document.getElementById('sysModalSearch').style.display = 'none';
         document.getElementById('sysModalRevokeBtn').style.display = 'none';
+        modalCallback = null;
     }
     document.getElementById('sysModalConfirmBtn').onclick = () => { if (modalCallback) modalCallback(); closeModal(); };
 
