@@ -28,6 +28,18 @@
             overflow: hidden;
         }
 
+        /* 折叠动画专用样式 */
+        .foldable-area {
+            max-height: 300px; /* 足够容纳里面的按钮 */
+            opacity: 1;
+            overflow: hidden;
+            transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .foldable-area.is-folded {
+            max-height: 0;
+            opacity: 0;
+        }
+
         /* 统一按钮样式 */
         .btn {
             height: 36px; padding: 0 16px;
@@ -203,9 +215,15 @@
 </head>
 <body>
 
-<!-- 手机端快捷跳转箭头 -->
+<!-- 手机端快捷悬浮元素 -->
 <div id="quickNavLeft" style="display:none; position:fixed; left:0; top:50%; transform:translateY(-50%); z-index:1100; font-size:30px; color:rgba(0,0,0,0.25); padding:20px 10px; cursor:pointer;" onclick="doQuickNav(-1)">&#10094;</div>
 <div id="quickNavRight" style="display:none; position:fixed; right:0; top:50%; transform:translateY(-50%); z-index:1100; font-size:30px; color:rgba(0,0,0,0.25); padding:20px 10px; cursor:pointer;" onclick="doQuickNav(1)">&#10095;</div>
+
+<div id="mobileRandomFloat" style="display:none; position:fixed; bottom: 65px; left: 50%; transform: translateX(-50%); z-index:1100; align-items:center; background: rgba(255,255,255,0.95); padding:8px 16px; border-radius:20px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border:1px solid var(--border-color);">
+    <button style="border:none; background:transparent; font-size:13px; font-weight:bold; color:var(--text-primary); cursor:pointer;" onclick="doRandom('local')">当前</button>
+    <div style="width:1px; height:14px; background:var(--border-color); margin:0 12px;"></div>
+    <button style="border:none; background:transparent; font-size:13px; font-weight:bold; color:var(--text-primary); cursor:pointer;" onclick="doRandom('global')">全局</button>
+</div>
 
 <div class="app-layout" id="mainLayout">
     <!-- 左侧目录 -->
@@ -213,22 +231,37 @@
         <div id="resizerLeft" style="position: absolute; right: 0; top: 0; bottom: 0; width: 5px; cursor: col-resize; z-index: 999; background: transparent;"></div>
 
         <div class="side-header">
-            <div style="display: flex; gap: 8px;">
+            <!-- 加上 class="foldable-area" -->
+            <div id="topActions" class="foldable-area" style="display: flex; gap: 8px;">
                 <button class="btn" style="flex:1" onclick="exportJson()">导出</button>
                 <button class="btn" style="flex:1" onclick="importJson()">导入</button>
             </div>
+            
             <input type="text" class="search-box" id="searchTree" placeholder="搜索目录..." oninput="renderTree()">
-            <div style="margin-top: 12px; display: flex; gap: 8px;">
-                <button class="btn" style="flex:1" onclick="addNew('folder')">+ 文件夹</button>
-                <button class="btn" style="flex:1" onclick="addNew('item')">+ 文本</button>
+            
+            <!-- 同样加上 class="foldable-area" -->
+            <div id="sideHeaderActions" class="foldable-area">
+                <div style="margin-top: 12px; display: flex; gap: 8px;">
+                    <button class="btn" style="flex:1" onclick="addNew('folder')">+ 文件夹</button>
+                    <!-- 下面的按钮代码保持原样... -->
+                    <button class="btn" style="flex:1" onclick="addNew('item')">+ 文本</button>
+                </div>
+                <div style="margin-top: 8px; display: flex; gap: 8px;">
+                    <button class="btn" style="flex:1" onclick="copyCurrentText()">复制内容</button>
+                    <button class="btn danger" style="flex:1" onclick="confirmDeleteCurrent()">删除选中</button>
+                </div>
+                <div style="margin-top: 8px; display: flex; gap: 8px;">
+                    <button class="btn" style="flex:1" onclick="openBatchModal()">批量管理</button>
+                    <button class="btn" style="flex:1" onclick="doRangeSelect()">区间连选</button>
+                </div>
+                <div style="margin-top: 8px; display: flex; gap: 8px;">
+                    <button class="btn" style="flex:1" id="starFilterBtn" onclick="toggleStarFilter()">收藏筛选</button>
+                    <button class="btn" style="flex:1" onclick="toggleStarSelected()">收藏选中</button>
+                </div>
             </div>
-            <div style="margin-top: 8px; display: flex; gap: 8px;">
-                <button class="btn" style="flex:1" onclick="copyCurrentText()">复制内容</button>
-                <button class="btn danger" style="flex:1" onclick="confirmDeleteCurrent()">删除选中</button>
-            </div>
-            <div style="margin-top: 8px; display: flex; gap: 8px;">
-                <button class="btn" style="flex:1" onclick="openBatchModal()">批量管理</button>
-                <button class="btn" style="flex:1" onclick="doRangeSelect()">区间连选</button>
+            
+            <div style="text-align:center; margin-top:12px; cursor:pointer; color:var(--text-secondary); font-size:12px;" onclick="toggleSideActions()">
+                <span id="sideActionsFoldIcon">▲</span>
             </div>
         </div>
         <div id="tree" class="tree-view"></div>
@@ -343,6 +376,10 @@
             <div class="stat-item">
                 <span>文本快捷跳转</span>
                 <input type="checkbox" id="quickNavSwitch" onchange="saveConfig()" title="手机端可见的左右文本切换">
+            </div>
+            <div class="stat-item">
+                <span>文本快捷随机</span>
+                <input type="checkbox" id="quickRandomSwitch" onchange="saveConfig()" title="手机端可见的底部悬浮随机按钮">
             </div>
             <div class="stat-item">
                 <span>文本复制附加</span>
@@ -488,6 +525,7 @@
             globalReplace: false,
             tempEdit: false,
             quickNav: false,
+            quickRandom: false,
             autoGroup: false,
             groupSmall: 10,
             groupLarge: 50,
@@ -508,7 +546,6 @@
             projectData.data = parsed.data || [];
             projectData.config = { ...defaultData.config, ...(parsed.config || {}) };
             
-            // 为已有缓存的老用户兼容补齐新增的快速插入项
             if(!projectData.config.shortcuts) projectData.config.shortcuts = JSON.parse(JSON.stringify(defaultData.config.shortcuts));
             const hasU = projectData.config.shortcuts.some(s => s.display === 'U');
             const hasC = projectData.config.shortcuts.some(s => s.display === 'C');
@@ -523,12 +560,13 @@
             });
             if(!projectData.config.copyAddon) projectData.config.copyAddon = defaultData.config.copyAddon;
             if(projectData.config.quickNav === undefined) projectData.config.quickNav = false;
+            if(projectData.config.quickRandom === undefined) projectData.config.quickRandom = false;
         }
     } catch(e) {}
 
     let currentNode = null;
     let draggedNodeId = null;
-    let dragPos = ''; // 拖动排版占位
+    let dragPos = ''; 
     let selectedIds = new Set();
     let checkHistory = []; 
     let currentVisibleIds = []; 
@@ -537,6 +575,7 @@
     let hasShownLockToast = false;
     let vgCollapseStates = {};
     let modalCallback = null;
+    let isStarFilterMode = false;
 
     document.getElementById('confirmSwitch').checked = projectData.config.deleteConfirmEnabled;
     document.getElementById('lockSwitch').checked = projectData.config.isLocked;
@@ -544,6 +583,7 @@
     document.getElementById('globalReplaceSwitch').checked = projectData.config.globalReplace;
     document.getElementById('tempEditSwitch').checked = projectData.config.tempEdit;
     document.getElementById('quickNavSwitch').checked = projectData.config.quickNav;
+    document.getElementById('quickRandomSwitch').checked = projectData.config.quickRandom;
     document.getElementById('autoGroupSwitch').checked = projectData.config.autoGroup;
     document.getElementById('groupSmallInput').value = projectData.config.groupSmall;
     document.getElementById('groupLargeInput').value = projectData.config.groupLarge;
@@ -588,6 +628,19 @@
     });
     document.addEventListener('mouseup', () => { isResizingLeft = isResizingRight = false; });
 
+    function toggleSideActions() {
+        const topEl = document.getElementById('topActions');
+        const bottomEl = document.getElementById('sideHeaderActions');
+        const icon = document.getElementById('sideActionsFoldIcon');
+        
+        // 一键切换 is-folded 类，CSS动画会自动触发
+        topEl.classList.toggle('is-folded');
+        const isFolded = bottomEl.classList.toggle('is-folded');
+        
+        // 动态改变箭头方向
+        icon.innerText = isFolded ? '▼' : '▲';
+    }
+
     function saveData() { localStorage.setItem('textManagerPro', JSON.stringify(projectData)); }
     function saveConfig() {
         projectData.config.deleteConfirmEnabled = document.getElementById('confirmSwitch').checked;
@@ -595,6 +648,7 @@
         projectData.config.globalReplace = document.getElementById('globalReplaceSwitch').checked;
         projectData.config.tempEdit = document.getElementById('tempEditSwitch').checked;
         projectData.config.quickNav = document.getElementById('quickNavSwitch').checked;
+        projectData.config.quickRandom = document.getElementById('quickRandomSwitch').checked;
         saveData(); updateQuickNavVisibility();
     }
 
@@ -666,6 +720,56 @@
         } else { el.value = currentNode.text || ''; el.readOnly = false; el.style.backgroundColor = '#ffffff'; }
     }
 
+    function toggleStarFilter() {
+        isStarFilterMode = !isStarFilterMode;
+        const btn = document.getElementById('starFilterBtn');
+        if(isStarFilterMode) btn.classList.add('primary');
+        else btn.classList.remove('primary');
+        renderTree();
+    }
+
+    function toggleStarSelected() {
+        if (selectedIds.size === 0) { showToast('请先勾选要操作的项'); return; }
+        let allStarred = true;
+        const checkNodes = (list) => {
+            for(let n of list) {
+                if (selectedIds.has(n.id) && !n.isStarred) allStarred = false;
+                if (n.children) checkNodes(n.children);
+            }
+        };
+        checkNodes(projectData.data);
+        
+        const applyNodes = (list) => {
+            for(let n of list) {
+                if (selectedIds.has(n.id)) n.isStarred = !allStarred;
+                if (n.children) applyNodes(n.children);
+            }
+        }
+        applyNodes(projectData.data);
+        saveData(); renderTree();
+        showToast(allStarred ? '已取消选中项的收藏' : '已收藏选中项');
+    }
+
+    function hasStarredDescendant(list) {
+        for (let c of list) {
+            if (c.isStarred) return true;
+            if (c.children && hasStarredDescendant(c.children)) return true;
+        }
+        return false;
+    }
+
+    function containsCurrentNode(list) {
+        if (!currentNode) return false;
+        const find = (arr) => {
+            for(let n of arr) {
+                if (n.id === currentNode.id) return true;
+                if (n.children && find(n.children)) return true;
+            }
+            return false;
+        }
+        return find(list);
+    }
+
     function renderTree() {
         const treeContainer = document.getElementById('tree'); const filter = document.getElementById('searchTree').value.toLowerCase();
         treeContainer.innerHTML = ''; currentVisibleIds = []; 
@@ -681,7 +785,7 @@
     }
 
     function renderLevel(nodes, container, filter, baseIndex) {
-        if (projectData.config.autoGroup && !filter) {
+        if (projectData.config.autoGroup && !filter && !isStarFilterMode) {
             let large = parseInt(projectData.config.groupLarge) || 0; let small = parseInt(projectData.config.groupSmall) || 0;
             if (large > 0 && nodes.length > large) { return renderVirtualGroups(nodes, container, filter, baseIndex, large, small, false); } 
             else if (small > 0 && nodes.length > small) { return renderVirtualGroups(nodes, container, filter, baseIndex, small, 0, true); }
@@ -697,7 +801,11 @@
             if (vgCollapseStates[vId] === undefined) vgCollapseStates[vId] = true; 
             
             const row = document.createElement('div'); row.className = 'tree-item';
-            const content = document.createElement('div'); content.className = 'item-row sticky-folder';
+            
+            const isVgCollapsedAndContainsCurrent = vgCollapseStates[vId] && containsCurrentNode(chunk);
+            const content = document.createElement('div'); 
+            content.className = 'item-row sticky-folder' + (isVgCollapsedAndContainsCurrent ? ' active' : '');
+            
             const foldIcon = `<span class="fold-icon" style="font-size:10px; transform:scale(0.8);" onclick="toggleVirtualGroup(event, '${vId}')">${vgCollapseStates[vId] ? '▶' : '▼'}</span>`;
             const boxIcon = isSmallGroup ? '📑' : '📦';
 
@@ -765,21 +873,36 @@
         nodes.forEach((node) => {
             const isMatch = filter && node.name.toLowerCase().includes(filter);
             const childMatch = filter && node.children && hasMatchingDescendant(node, filter);
+            
+            const isStarMatch = !isStarFilterMode || node.isStarred;
+            const childStarMatch = isStarFilterMode && node.children && hasStarredDescendant(node.children);
+
             if (filter && !isMatch && !childMatch) return;
+            if (isStarFilterMode && !isStarMatch && !childStarMatch) return;
+
             if (childMatch) node._collapsed = false;
+            if (childStarMatch && isStarFilterMode) node._collapsed = false;
 
             if (node._collapsed === undefined) node._collapsed = false;
             currentVisibleIds.push(node.id);
 
             const row = document.createElement('div'); row.className = 'tree-item';
-            const content = document.createElement('div'); content.className = `item-row ${currentNode && currentNode.id === node.id ? 'active' : ''}`;
+            const content = document.createElement('div'); 
+            
+            const isFolderCollapsedAndContainsCurrent = node.type === 'folder' && node._collapsed && node.children && containsCurrentNode(node.children);
+            let rowClass = 'item-row';
+            if (currentNode && currentNode.id === node.id) rowClass += ' active';
+            else if (isFolderCollapsedAndContainsCurrent) rowClass += ' active';
+            
+            content.className = rowClass;
             if (node.type === 'folder') content.classList.add('sticky-folder'); content.draggable = true;
             
             const foldIcon = node.type === 'folder' ? `<span class="fold-icon" onclick="toggleFold(event, '${node.id}')">${node._collapsed ? '▶' : '▼'}</span>` : `<span class="fold-icon"></span>`;
             const typeIcon = node.type === 'folder' ? '📁' : '📄';
             const isChecked = selectedIds.has(node.id) ? 'checked' : '';
+            const starIcon = node.isStarred ? '<span style="color:#eab308;margin-left:4px;font-size:12px;">★</span>' : '';
 
-            content.innerHTML = `<input type="checkbox" class="node-cb" onclick="toggleCheck(event, '${node.id}')" ${isChecked}><span class="index-badge">${currentIndex}.</span>${foldIcon} <span>${typeIcon}</span><span style="flex:1;">${escapeHTML(node.name || '未命名')}</span>`;
+            content.innerHTML = `<input type="checkbox" class="node-cb" onclick="toggleCheck(event, '${node.id}')" ${isChecked}><span class="index-badge">${currentIndex}.</span>${foldIcon} <span>${typeIcon}</span><span style="flex:1;">${escapeHTML(node.name || '未命名')}${starIcon}</span>`;
             content.onclick = (e) => { if(e.target.tagName !== 'INPUT') selectNode(node); };
             content.ondragstart = (e) => { draggedNodeId = node.id; e.stopPropagation(); };
             content.ondragover = (e) => {
@@ -863,6 +986,13 @@
         if (forceHide || window.innerWidth > 768 || !projectData.config.quickNav || !currentNode || currentNode.type !== 'item') {
             left.style.display = 'none'; right.style.display = 'none';
         } else { left.style.display = 'block'; right.style.display = 'block'; }
+        
+        const randFloat = document.getElementById('mobileRandomFloat');
+        if (window.innerWidth <= 768 && projectData.config.quickRandom && !forceHide) {
+            randFloat.style.display = 'flex';
+        } else {
+            randFloat.style.display = 'none';
+        }
     }
     
     function doQuickNav(dir) {
@@ -891,7 +1021,7 @@
         const newNode = {
             id: 'd_' + Math.random().toString(36).substr(2, 9),
             name: type === 'folder' ? '新建文件夹' : '新建文本',
-            type: type, _collapsed: false, text: type === 'item' ? '' : undefined, children: type === 'folder' ? [] : undefined
+            type: type, _collapsed: false, text: type === 'item' ? '' : undefined, children: type === 'folder' ? [] : undefined, isStarred: false
         };
         
         if (currentNode) {
@@ -1189,7 +1319,7 @@
                 }
                 currentLevel = folder.children;
             }
-            currentLevel.push({ id: 'd_' + Math.random().toString(36).substr(2, 9), name: item.name, type: 'item', text: item._newText });
+            currentLevel.push({ id: 'd_' + Math.random().toString(36).substr(2, 9), name: item.name, type: 'item', text: item._newText, isStarred: false });
             importCount++;
         });
         saveData(); renderTree(); showToast(`操作完成，新增导入 ${importCount} 项`);
@@ -1625,11 +1755,13 @@
                     projectData.config.dupSkipPhrases = projectData.config.dupSkipPhrases.map(p => typeof p === 'string' ? { text: p, active: true } : p);
                     if(!projectData.config.copyAddon) projectData.config.copyAddon = defaultData.config.copyAddon;
                     if(projectData.config.quickNav === undefined) projectData.config.quickNav = false;
+                    if(projectData.config.quickRandom === undefined) projectData.config.quickRandom = false;
                     saveData(); renderTree(); renderShortcuts();
                     
                     document.getElementById('confirmSwitch').checked = projectData.config.deleteConfirmEnabled; document.getElementById('lockSwitch').checked = projectData.config.isLocked;
                     document.getElementById('globalFindSwitch').checked = !!projectData.config.globalFind; document.getElementById('globalReplaceSwitch').checked = !!projectData.config.globalReplace;
                     document.getElementById('tempEditSwitch').checked = !!projectData.config.tempEdit; document.getElementById('quickNavSwitch').checked = !!projectData.config.quickNav;
+                    document.getElementById('quickRandomSwitch').checked = !!projectData.config.quickRandom;
                     document.getElementById('autoGroupSwitch').checked = !!projectData.config.autoGroup; document.getElementById('groupSmallInput').value = projectData.config.groupSmall || 0;
                     document.getElementById('groupLargeInput').value = projectData.config.groupLarge || 0; document.getElementById('groupSettingsUI').style.display = projectData.config.autoGroup ? 'flex' : 'none';
                     document.getElementById('frDisplay').value = projectData.config.displayOptions.fr; document.getElementById('scDisplay').value = projectData.config.displayOptions.sc;
