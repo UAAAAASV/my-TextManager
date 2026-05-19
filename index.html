@@ -219,7 +219,7 @@
 <div id="quickNavLeft" style="display:none; position:fixed; left:0; top:50%; transform:translateY(-50%); z-index:1100; font-size:30px; color:rgba(0,0,0,0.25); padding:20px 10px; cursor:pointer;" onclick="doQuickNav(-1)">&#10094;</div>
 <div id="quickNavRight" style="display:none; position:fixed; right:0; top:50%; transform:translateY(-50%); z-index:1100; font-size:30px; color:rgba(0,0,0,0.25); padding:20px 10px; cursor:pointer;" onclick="doQuickNav(1)">&#10095;</div>
 
-<div id="mobileRandomFloat" style="display:none; position:fixed; bottom: 65px; left: 50%; transform: translateX(-50%); z-index:1100; align-items:center; background: rgba(255,255,255,0.95); padding:8px 16px; border-radius:20px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border:1px solid var(--border-color);">
+<div id="mobileRandomFloat" style="display:none; position:fixed; bottom: 65px; left: 50%; transform: translateX(-50%); z-index:1100; align-items:center; background: rgba(255,255,255,0.35); padding:8px 16px; border-radius:20px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border:1px solid var(--border-color);">
     <button style="border:none; background:transparent; font-size:13px; font-weight:bold; color:var(--text-primary); cursor:pointer;" onclick="doRandom('local')">当前</button>
     <div style="width:1px; height:14px; background:var(--border-color); margin:0 12px;"></div>
     <button style="border:none; background:transparent; font-size:13px; font-weight:bold; color:var(--text-primary); cursor:pointer;" onclick="doRandom('global')">全局</button>
@@ -974,7 +974,7 @@
         };
         
         contentArea.onclick = () => { if (projectData.config.isLocked && !hasShownLockToast) { showToast("已锁定编辑"); hasShownLockToast = true; } };
-        contentArea.onfocus = () => updateQuickNavVisibility(true);
+        contentArea.onfocus = () => { if (!projectData.config.isLocked) updateQuickNavVisibility(true); };
         contentArea.onblur = () => setTimeout(()=>updateQuickNavVisibility(false), 200);
 
         if (window.innerWidth <= 768) closePanelsOnMobile();
