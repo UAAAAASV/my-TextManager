@@ -160,7 +160,7 @@
         /* 系统模态框 */
         .modal-overlay {
             position: fixed; top:0; left:0; width:100%; height:100%;
-            background: rgba(0,0,0,0.5); z-index: 2000;
+            background: rgba(0,0,0,0.25); z-index: 2000;
             display: flex; align-items: center; justify-content: center;
         }
         .modal-card {
@@ -171,7 +171,7 @@
         /* 轻提示 Toast */
         .toast-msg {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(26, 28, 30, 0.85); color: #fff;
+            background: rgba(26, 28, 30, 0.425); color: #fff;
             padding: 12px 24px; border-radius: 8px; font-size: 14px; text-align: center;
             z-index: 5000; opacity: 0; visibility: hidden; pointer-events: none;
             transition: opacity 0.2s ease, transform 0.2s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
@@ -224,6 +224,8 @@
     <div style="width:1px; height:14px; background:var(--border-color); margin:0 12px;"></div>
     <button style="border:none; background:transparent; font-size:13px; font-weight:bold; color:var(--text-primary); cursor:pointer;" onclick="doRandom('global')">全局</button>
 </div>
+
+<div id="mobileQuickNewFloat" style="display:none; position:fixed; bottom: 85px; right: 20px; z-index:1100; font-size:36px; font-weight:300; color:var(--text-primary); cursor:pointer; touch-action: none; user-select: none;">+</div>
 
 <div class="app-layout" id="mainLayout">
     <!-- 左侧目录 -->
@@ -382,6 +384,10 @@
                 <input type="checkbox" id="quickRandomSwitch" onchange="saveConfig()" title="手机端可见的底部悬浮随机按钮">
             </div>
             <div class="stat-item">
+                <span>文本快捷新建</span>
+                <input type="checkbox" id="quickNewSwitch" onchange="saveConfig()" title="手机端可见的悬浮新建按钮">
+            </div>
+            <div class="stat-item">
                 <span>文本复制附加</span>
                 <button class="btn" style="height:24px; min-width:40px; padding:0 8px; font-size:12px;" onclick="openCopyAddonModal()">管理</button>
             </div>
@@ -526,6 +532,7 @@
             tempEdit: false,
             quickNav: false,
             quickRandom: false,
+            quickNew: false,
             autoGroup: false,
             groupSmall: 10,
             groupLarge: 50,
@@ -561,6 +568,7 @@
             if(!projectData.config.copyAddon) projectData.config.copyAddon = defaultData.config.copyAddon;
             if(projectData.config.quickNav === undefined) projectData.config.quickNav = false;
             if(projectData.config.quickRandom === undefined) projectData.config.quickRandom = false;
+            if(projectData.config.quickNew === undefined) projectData.config.quickNew = false;
         }
     } catch(e) {}
 
@@ -584,6 +592,7 @@
     document.getElementById('tempEditSwitch').checked = projectData.config.tempEdit;
     document.getElementById('quickNavSwitch').checked = projectData.config.quickNav;
     document.getElementById('quickRandomSwitch').checked = projectData.config.quickRandom;
+    document.getElementById('quickNewSwitch').checked = projectData.config.quickNew;
     document.getElementById('autoGroupSwitch').checked = projectData.config.autoGroup;
     document.getElementById('groupSmallInput').value = projectData.config.groupSmall;
     document.getElementById('groupLargeInput').value = projectData.config.groupLarge;
@@ -649,6 +658,7 @@
         projectData.config.tempEdit = document.getElementById('tempEditSwitch').checked;
         projectData.config.quickNav = document.getElementById('quickNavSwitch').checked;
         projectData.config.quickRandom = document.getElementById('quickRandomSwitch').checked;
+        projectData.config.quickNew = document.getElementById('quickNewSwitch').checked;
         saveData(); updateQuickNavVisibility();
     }
 
@@ -988,10 +998,16 @@
         } else { left.style.display = 'block'; right.style.display = 'block'; }
         
         const randFloat = document.getElementById('mobileRandomFloat');
+        const newFloat = document.getElementById('mobileQuickNewFloat');
         if (window.innerWidth <= 768 && projectData.config.quickRandom && !forceHide) {
             randFloat.style.display = 'flex';
         } else {
             randFloat.style.display = 'none';
+        }
+        if (window.innerWidth <= 768 && projectData.config.quickNew && !forceHide) {
+            newFloat.style.display = 'block';
+        } else {
+            newFloat.style.display = 'none';
         }
     }
     
@@ -1558,7 +1574,7 @@
         let listHtml = arr.map((item, i) => `
             <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
                 <input type="checkbox" style="margin:0;cursor:pointer;" ${item.active?'checked':''} onchange="toggleAddonItemSelection(${i}, this.checked)">
-                <input type="text" value="${escapeHTML(item.text)}" onchange="updateAddonItemText(${i}, this.value)" style="flex:1; border:1px solid var(--border-color); border-radius:4px; padding:6px 8px; font-size:13px; background:#f8fafc;">
+                <textarea onchange="updateAddonItemText(${i}, this.value)" style="flex:1; border:1px solid var(--border-color); border-radius:4px; padding:6px 8px; font-size:13px; background:#f8fafc; font-family:inherit; resize:vertical; min-height:30px;">${escapeHTML(item.text)}</textarea>
                 <button class="btn danger" style="height:28px; min-width:30px; padding:0 8px; font-size:12px;" onclick="removeAddonItem(${i})">删</button>
             </div>
         `).join('');
@@ -1569,7 +1585,7 @@
                 <label style="font-size:13px; display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" style="margin:0;" ${isEnabled?'checked':''} onchange="toggleAddonSwitch(this.checked)">开启</label>
             </div>
             <div style="display:flex; gap:6px; margin-bottom:12px;">
-                <input type="text" id="newAddonInput" style="flex:1; border:1px solid var(--border-color); border-radius:4px; padding:6px 10px; font-size:13px;" placeholder="输入新的${isPrefix?'前':'后'}缀...">
+                <textarea id="newAddonInput" style="flex:1; border:1px solid var(--border-color); border-radius:4px; padding:6px 10px; font-size:13px; font-family:inherit; resize:vertical; min-height:32px;" placeholder="输入新的${isPrefix?'前':'后'}缀..."></textarea>
                 <button class="btn primary" style="height:32px; padding:0 12px; font-size:13px;" onclick="addAddonItem()">添加</button>
             </div>
             <div style="max-height:200px; overflow-y:auto; padding-right:4px;">${listHtml || '<div style="text-align:center;color:#999;padding:20px;">暂无数据</div>'}</div>
@@ -1756,12 +1772,14 @@
                     if(!projectData.config.copyAddon) projectData.config.copyAddon = defaultData.config.copyAddon;
                     if(projectData.config.quickNav === undefined) projectData.config.quickNav = false;
                     if(projectData.config.quickRandom === undefined) projectData.config.quickRandom = false;
+                    if(projectData.config.quickNew === undefined) projectData.config.quickNew = false;
                     saveData(); renderTree(); renderShortcuts();
                     
                     document.getElementById('confirmSwitch').checked = projectData.config.deleteConfirmEnabled; document.getElementById('lockSwitch').checked = projectData.config.isLocked;
                     document.getElementById('globalFindSwitch').checked = !!projectData.config.globalFind; document.getElementById('globalReplaceSwitch').checked = !!projectData.config.globalReplace;
                     document.getElementById('tempEditSwitch').checked = !!projectData.config.tempEdit; document.getElementById('quickNavSwitch').checked = !!projectData.config.quickNav;
                     document.getElementById('quickRandomSwitch').checked = !!projectData.config.quickRandom;
+                    document.getElementById('quickNewSwitch').checked = !!projectData.config.quickNew;
                     document.getElementById('autoGroupSwitch').checked = !!projectData.config.autoGroup; document.getElementById('groupSmallInput').value = projectData.config.groupSmall || 0;
                     document.getElementById('groupLargeInput').value = projectData.config.groupLarge || 0; document.getElementById('groupSettingsUI').style.display = projectData.config.autoGroup ? 'flex' : 'none';
                     document.getElementById('frDisplay').value = projectData.config.displayOptions.fr; document.getElementById('scDisplay').value = projectData.config.displayOptions.sc;
@@ -1780,6 +1798,67 @@
     function closePanelsOnMobile() { if (window.innerWidth <= 768) { document.getElementById('sidebar').classList.remove('show'); document.getElementById('toolbox').classList.remove('show'); } }
 
     renderShortcuts(); renderTree(); updateQuickNavVisibility();
+	
+	// --- 手机端快捷新建按钮拖拽逻辑 ---
+    const quickNewBtn = document.getElementById('mobileQuickNewFloat');
+    let isDraggingNewBtn = false;
+    let hasMovedNewBtn = false;
+    let startX_newBtn, startY_newBtn, initLeft_newBtn, initTop_newBtn;
+
+    function startDragNewBtn(e) {
+        isDraggingNewBtn = true;
+        hasMovedNewBtn = false;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        startX_newBtn = clientX; startY_newBtn = clientY;
+        
+        // 转换为绝对坐标定位，方便拖拽计算
+        const rect = quickNewBtn.getBoundingClientRect();
+        quickNewBtn.style.left = rect.left + 'px';
+        quickNewBtn.style.top = rect.top + 'px';
+        quickNewBtn.style.right = 'auto';
+        quickNewBtn.style.bottom = 'auto';
+        initLeft_newBtn = rect.left; initTop_newBtn = rect.top;
+    }
+
+    function doDragNewBtn(e) {
+        if (!isDraggingNewBtn) return;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const dx = clientX - startX_newBtn; 
+        const dy = clientY - startY_newBtn;
+        
+        // 移动超过5个像素判定为拖拽
+        if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+            hasMovedNewBtn = true;
+            if(e.cancelable) e.preventDefault(); // 阻止页面滚动
+        }
+        
+        // 边界限制
+        let nx = initLeft_newBtn + dx; let ny = initTop_newBtn + dy;
+        nx = Math.max(0, Math.min(nx, window.innerWidth - quickNewBtn.offsetWidth));
+        ny = Math.max(0, Math.min(ny, window.innerHeight - quickNewBtn.offsetHeight));
+        quickNewBtn.style.left = nx + 'px'; quickNewBtn.style.top = ny + 'px';
+    }
+
+    function endDragNewBtn(e) {
+        if (!isDraggingNewBtn) return;
+        isDraggingNewBtn = false;
+        // 如果没有发生明显移动，则视为点击，执行新建操作
+        if (!hasMovedNewBtn) {
+            addNew('item');
+        }
+    }
+
+    quickNewBtn.addEventListener('touchstart', startDragNewBtn, { passive: false });
+    document.addEventListener('touchmove', doDragNewBtn, { passive: false });
+    document.addEventListener('touchend', endDragNewBtn);
+    
+    // 兼容桌面端鼠标操作(以防万一桌面端调试)
+    quickNewBtn.addEventListener('mousedown', startDragNewBtn);
+    document.addEventListener('mousemove', doDragNewBtn);
+    document.addEventListener('mouseup', endDragNewBtn);
+	
 </script>
 </body>
 </html>
