@@ -433,10 +433,11 @@
     <div class="modal-card" id="sysModalCard">
         <h3 id="sysModalTitle" style="margin-top:0;">提示</h3>
         
-        <div id="sysModalTabs" style="display:none; gap:8px; margin-top:12px; margin-bottom:12px;">
-            <button class="btn primary" id="tabImportBtn" style="flex:1; height:32px; font-size:13px; padding:0 8px;" onclick="switchBatchTab('import')">导入文本</button>
-            <button class="btn" id="tabExportBtn" style="flex:1; height:32px; font-size:13px; padding:0 8px;" onclick="switchBatchTab('export')">导出文本</button>
-            <button class="btn" id="tabSyncBtn" style="flex:1; height:32px; font-size:13px; padding:0 8px;" onclick="switchBatchTab('sync')">云端同步</button>
+        <div id="sysModalTabs" style="display:none; gap:6px; margin-top:12px; margin-bottom:12px;">
+            <button class="btn primary" id="tabImportBtn" style="flex:1; height:32px; font-size:12px; padding:0 2px;" onclick="switchBatchTab('import')">导入文本</button>
+            <button class="btn" id="tabExportBtn" style="flex:1; height:32px; font-size:12px; padding:0 2px;" onclick="switchBatchTab('export')">导出文本</button>
+            <button class="btn" id="tabSyncBtn" style="flex:1; height:32px; font-size:12px; padding:0 2px;" onclick="switchBatchTab('sync')">云端同步</button>
+            <button class="btn" id="tabStatsBtn" style="flex:1; height:32px; font-size:12px; padding:0 2px;" onclick="switchBatchTab('stats')">总数统计</button>
         </div>
 
         <p id="sysModalMsg" style="font-size:13px; color:var(--text-secondary); line-height:1.6; white-space:pre-wrap;"></p>
@@ -470,7 +471,7 @@
             <button class="btn danger" id="sysModalRevokeBtn" style="display:none;" onclick="handleGlobalRevoke()">撤销</button>
             <input type="text" id="sysModalSearch" class="search-box" style="display:none; margin:0; width:120px; flex:1;" placeholder="搜索..." oninput="renderSysModalSearch()">
             <button class="btn" id="sysModalClearBtn" onclick="document.getElementById('sysModalTextarea').value=''" style="display:none;">清空</button>
-            <button class="btn" id="sysModalCancelBtn" onclick="closeModal()">取消</button>
+            <button class="btn" id="sysModalCancelBtn" onclick="closeModal()">关闭</button>
             <button class="btn primary" id="sysModalConfirmBtn">确认</button>
         </div>
     </div>
@@ -708,7 +709,7 @@
         if (!projectData.config.isLocked) { projectData.config.isLocked = true; document.getElementById('lockSwitch').checked = true; }
         projectData.config.isSwapped = !projectData.config.isSwapped;
         saveData(); updateSwapStatusUI(); refreshEditorContent();
-        showToast(projectData.config.isSwapped ? `已切换\nFr=${projectData.config.displayOptions.sc}, Sc=${projectData.config.displayOptions.fr}` : `已切换\nFr=${projectData.config.displayOptions.fr}, Sc=${projectData.config.displayOptions.sc}`);
+        showToast(projectData.config.isSwapped ? `已切换\nFr=${projectData.config.displayOptions.sc} \nSc=${projectData.config.displayOptions.fr}` : `已切换\nFr=${projectData.config.displayOptions.fr} \nSc=${projectData.config.displayOptions.sc}`);
     }
     function updateSwapStatusUI() {
         const p = document.getElementById('swapStatusText');
@@ -1084,7 +1085,7 @@
     // --- 批量管理 ---
     function openBatchModal() {
         document.getElementById('sysModalTabs').style.display = 'flex';
-        document.getElementById('sysModalTitle').innerText = '批量管理与同步';
+        document.getElementById('sysModalTitle').innerText = '批量管理';
         document.getElementById('gistTokenInput').value = localStorage.getItem('TMP_GithubToken') || '';
         document.getElementById('gistIdInput').value = localStorage.getItem('TMP_GistId') || '';
 
@@ -1098,12 +1099,16 @@
     }
 
     function switchBatchTab(mode) {
-        const tImport = document.getElementById('tabImportBtn'); const tExport = document.getElementById('tabExportBtn'); const tSync = document.getElementById('tabSyncBtn');
+        const tImport = document.getElementById('tabImportBtn'); const tExport = document.getElementById('tabExportBtn'); 
+        const tSync = document.getElementById('tabSyncBtn'); const tStats = document.getElementById('tabStatsBtn');
         const msg = document.getElementById('sysModalMsg'); const ta = document.getElementById('sysModalTextarea');
-        const syncPanel = document.getElementById('sysModalSyncPanel'); const btn = document.getElementById('sysModalConfirmBtn'); const clearBtn = document.getElementById('sysModalClearBtn');
+        const syncPanel = document.getElementById('sysModalSyncPanel'); const btn = document.getElementById('sysModalConfirmBtn'); 
+        const clearBtn = document.getElementById('sysModalClearBtn'); const dynPanel = document.getElementById('sysModalDynamicPanel');
 
-        tImport.classList.remove('primary'); tExport.classList.remove('primary'); tSync.classList.remove('primary');
-        ta.style.display = 'none'; syncPanel.style.display = 'none'; btn.style.display = 'none'; clearBtn.style.display = 'none';
+        // 重置所有标签状态和面板显隐
+        tImport.classList.remove('primary'); tExport.classList.remove('primary'); tSync.classList.remove('primary'); tStats.classList.remove('primary');
+        ta.style.display = 'none'; syncPanel.style.display = 'none'; btn.style.display = 'none'; clearBtn.style.display = 'none'; dynPanel.style.display = 'none';
+        msg.style.display = 'block';
 
         if (mode === 'import') {
             tImport.classList.add('primary');
@@ -1125,7 +1130,67 @@
             msg.innerHTML = `GitHub Gist 云端数据同步：\n<div style="font-size:12px; color:#999; margin-bottom:15px; margin-top:8px; line-height:1.5;">👉 <a href="https://github.com/settings/tokens/new" target="_blank" style="color:var(--accent-color);">点击前往 GitHub 免费生成 Token (须勾选 gist 权限)</a></div>`;
             syncPanel.style.display = 'flex'; btn.style.display = 'none'; 
             modalCallback = null;
+        } else if (mode === 'stats') {
+            tStats.classList.add('primary');
+            msg.style.display = 'none';
+            dynPanel.style.display = 'flex';
+            btn.style.display = 'none'; 
+            modalCallback = null;
+            renderStatsPanel(dynPanel);
         }
+    }
+	
+	function renderStatsPanel(container) {
+        let folders = 0; let items = 0; let chars = 0; let emptyItems = [];
+        
+        // 递归计算数据
+        function traverse(list) {
+            for (let n of list) {
+                if (n.type === 'folder') {
+                    folders++;
+                    if (n.children) traverse(n.children);
+                } else if (n.type === 'item') {
+                    items++;
+                    let txt = n.text || '';
+                    chars += txt.length;
+                    if (!txt.trim()) emptyItems.push(n);
+                }
+            }
+        }
+        traverse(projectData.data);
+
+        // 生成空白文本列表 HTML
+        let emptyHtml = emptyItems.map(item => `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed #e2e8f0; font-size:12px;">
+                <span style="color:#ef4444; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:220px;">📄 ${escapeHTML(item.name)}</span>
+                <button class="btn" style="height:22px; min-width:40px; padding:0 6px; font-size:12px;" onclick="locateNode('${item.id}')">定位</button>
+            </div>
+        `).join('');
+
+        // 渲染统计面板
+        container.innerHTML = `
+            <div style="display:flex; flex-direction:column; gap:12px; margin-top:10px;">
+                <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--border-color); padding-bottom:8px;">
+                    <span style="color:var(--text-secondary); font-size:13px;">📁 文件夹</span>
+                    <strong style="font-size:14px;">${folders}</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--border-color); padding-bottom:8px;">
+                    <span style="color:var(--text-secondary); font-size:13px;">📄 文本数</span>
+                    <strong style="font-size:14px;">${items}</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--border-color); padding-bottom:8px;">
+                    <span style="color:var(--text-secondary); font-size:13px;">🔤 总字数</span>
+                    <strong style="font-size:14px;">${chars}</strong>
+                </div>
+                
+                <div style="margin-top:8px;">
+                    <div style="font-size:13px; color:var(--text-secondary); margin-bottom:8px;">🈳 空白文本查找 (${emptyItems.length})</div>
+                    <div style="max-height:160px; overflow-y:auto; background:var(--hover-bg); border-radius:4px; padding:0 8px;">
+                        ${emptyHtml || '<div style="padding:16px 0; text-align:center; color:#999; font-size:12px;">未发现空白文本</div>'}
+                    </div>
+                </div>
+            </div>
+        `;
     }
 
     function getBatchExportText(targetNode) {
@@ -1342,7 +1407,7 @@
     }
 
     function doGlobalCheckDuplicate() {
-        showToast("正在全库查重，请稍候...");
+        showToast("查重中，请稍候...");
         setTimeout(() => {
             let allExisting = getAllItems(projectData.data);
             let simT = parseInt(document.getElementById('simThreshold').value) || 80;
@@ -1846,6 +1911,10 @@
         isDraggingNewBtn = false;
         // 如果没有发生明显移动，则视为点击，执行新建操作
         if (!hasMovedNewBtn) {
+            const now = Date.now();
+            // 防连点、防双端事件重复触发（300毫秒内只允许触发一次）
+            if (now - (quickNewBtn._lastClick || 0) < 300) return; 
+            quickNewBtn._lastClick = now;
             addNew('item');
         }
     }
