@@ -30,7 +30,7 @@
 
         /* 折叠动画专用样式 */
         .foldable-area {
-            max-height: 300px; /* 足够容纳里面的按钮 */
+            max-height: 300px;
             opacity: 1;
             overflow: hidden;
             transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -215,7 +215,6 @@
 </head>
 <body>
 
-<!-- 手机端快捷悬浮元素 -->
 <div id="quickNavLeft" style="display:none; position:fixed; left:0; top:50%; transform:translateY(-50%); z-index:1100; font-size:30px; color:rgba(0,0,0,0.25); padding:20px 10px; cursor:pointer;" onclick="doQuickNav(-1)">&#10094;</div>
 <div id="quickNavRight" style="display:none; position:fixed; right:0; top:50%; transform:translateY(-50%); z-index:1100; font-size:30px; color:rgba(0,0,0,0.25); padding:20px 10px; cursor:pointer;" onclick="doQuickNav(1)">&#10095;</div>
 
@@ -228,12 +227,10 @@
 <div id="mobileQuickNewFloat" style="display:none; position:fixed; bottom: 85px; right: 20px; z-index:1100; font-size:36px; font-weight:300; color:var(--text-primary); cursor:pointer; touch-action: none; user-select: none;">+</div>
 
 <div class="app-layout" id="mainLayout">
-    <!-- 左侧目录 -->
     <div class="sidebar" id="sidebar">
         <div id="resizerLeft" style="position: absolute; right: 0; top: 0; bottom: 0; width: 5px; cursor: col-resize; z-index: 999; background: transparent;"></div>
 
         <div class="side-header">
-            <!-- 加上 class="foldable-area" -->
             <div id="topActions" class="foldable-area" style="display: flex; gap: 8px;">
                 <button class="btn" style="flex:1" onclick="exportJson()">导出</button>
                 <button class="btn" style="flex:1" onclick="importJson()">导入</button>
@@ -241,11 +238,9 @@
             
             <input type="text" class="search-box" id="searchTree" placeholder="搜索目录..." oninput="renderTree()">
             
-            <!-- 同样加上 class="foldable-area" -->
             <div id="sideHeaderActions" class="foldable-area">
                 <div style="margin-top: 12px; display: flex; gap: 8px;">
                     <button class="btn" style="flex:1" onclick="addNew('folder')">+ 文件夹</button>
-                    <!-- 下面的按钮代码保持原样... -->
                     <button class="btn" style="flex:1" onclick="addNew('item')">+ 文本</button>
                 </div>
                 <div style="margin-top: 8px; display: flex; gap: 8px;">
@@ -269,7 +264,6 @@
         <div id="tree" class="tree-view"></div>
     </div>
 
-    <!-- 主编辑区 -->
     <div class="editor-main" onclick="closePanelsOnMobile()">
         <div class="editor-header">
             <div class="breadcrumb" id="pathDisplay">请选择一个条目</div>
@@ -280,7 +274,6 @@
         </div>
     </div>
 
-    <!-- 右侧工具栏 -->
     <div class="toolbox" id="toolbox">
         <div id="resizerRight" style="position: absolute; left: 0; top: 0; bottom: 0; width: 5px; cursor: col-resize; z-index: 999; background: transparent;"></div>
 
@@ -462,7 +455,7 @@
                 <button class="btn primary" style="flex:1; padding:0 8px;" onclick="pullFromGist()">拉取(覆盖本地)</button>
                 <button class="btn primary" style="flex:1; padding:0 8px;" onclick="pushToGist()">推送(更新/新建)</button>
             </div>
-            <div style="font-size:12px; color:#ef4444; line-height:1.5;">提示：同步时将覆盖对应端数据，请谨慎操作。</div>
+            <div style="font-size:12px; color:#ef4444; line-height:1.5;">提示：同步时将覆盖对应端数据，请谨慎操作。大文本自动转换直链。</div>
         </div>
 
         <div id="sysModalDynamicPanel" style="display:none; flex-direction:column; margin-top:10px;"></div>
@@ -567,6 +560,13 @@
                 return p;
             });
             if(!projectData.config.copyAddon) projectData.config.copyAddon = defaultData.config.copyAddon;
+            
+            // 兼容旧数据的附加配置路径参数
+            if(projectData.config.copyAddon) {
+                projectData.config.copyAddon.prefixes.forEach(p => { if(p.path === undefined) p.path = ''; });
+                projectData.config.copyAddon.suffixes.forEach(s => { if(s.path === undefined) s.path = ''; });
+            }
+
             if(projectData.config.quickNav === undefined) projectData.config.quickNav = false;
             if(projectData.config.quickRandom === undefined) projectData.config.quickRandom = false;
             if(projectData.config.quickNew === undefined) projectData.config.quickNew = false;
@@ -642,12 +642,8 @@
         const topEl = document.getElementById('topActions');
         const bottomEl = document.getElementById('sideHeaderActions');
         const icon = document.getElementById('sideActionsFoldIcon');
-        
-        // 一键切换 is-folded 类，CSS动画会自动触发
         topEl.classList.toggle('is-folded');
         const isFolded = bottomEl.classList.toggle('is-folded');
-        
-        // 动态改变箭头方向
         icon.innerText = isFolded ? '▼' : '▲';
     }
 
@@ -685,7 +681,7 @@
     let toastTimer;
     function showToast(msg) {
         const toast = document.getElementById('toast'); toast.innerText = msg; toast.classList.add('show');
-        clearTimeout(toastTimer); toastTimer = setTimeout(() => { toast.classList.remove('show'); }, 2000);
+        clearTimeout(toastTimer); toastTimer = setTimeout(() => { toast.classList.remove('show'); }, 2500);
     }
 
     function toggleAutoGroup() {
@@ -1105,14 +1101,13 @@
         const syncPanel = document.getElementById('sysModalSyncPanel'); const btn = document.getElementById('sysModalConfirmBtn'); 
         const clearBtn = document.getElementById('sysModalClearBtn'); const dynPanel = document.getElementById('sysModalDynamicPanel');
 
-        // 重置所有标签状态和面板显隐
         tImport.classList.remove('primary'); tExport.classList.remove('primary'); tSync.classList.remove('primary'); tStats.classList.remove('primary');
         ta.style.display = 'none'; syncPanel.style.display = 'none'; btn.style.display = 'none'; clearBtn.style.display = 'none'; dynPanel.style.display = 'none';
         msg.style.display = 'block';
 
         if (mode === 'import') {
             tImport.classList.add('primary');
-            msg.innerText = `⭐导入时会自动触发查重检测\n\n说明：\n1. > 文件夹 - 子目录 表示路径 (无则在根目录)\n2. = 文本 作为标题\n3. 标题下的多行内容为文本内容`;
+            msg.innerText = `⭐导入时会自动触发查重检测\n\n说明：\n1. > 文件夹 > 子目录 表示路径 (无则在根目录)\n2. = 文本 作为标题\n3. 标题下的多行内容为文本内容`;
             ta.style.display = 'block'; ta.readOnly = false; ta.placeholder = "在此粘贴需要批量导入的文本...";
             if (ta._cacheExport !== undefined && ta.value === ta._cacheExport) ta.value = ''; 
             btn.style.display = 'inline-flex'; btn.innerText = '确认导入'; clearBtn.style.display = 'inline-flex';
@@ -1143,7 +1138,6 @@
 	function renderStatsPanel(container) {
         let folders = 0; let items = 0; let chars = 0; let emptyItems = [];
         
-        // 递归计算数据
         function traverse(list) {
             for (let n of list) {
                 if (n.type === 'folder') {
@@ -1159,7 +1153,6 @@
         }
         traverse(projectData.data);
 
-        // 生成空白文本列表 HTML
         let emptyHtml = emptyItems.map(item => `
             <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed #e2e8f0; font-size:12px;">
                 <span style="color:#ef4444; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:220px;">📄 ${escapeHTML(item.name)}</span>
@@ -1167,7 +1160,6 @@
             </div>
         `).join('');
 
-        // 渲染统计面板
         container.innerHTML = `
             <div style="display:flex; flex-direction:column; gap:12px; margin-top:10px;">
                 <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--border-color); padding-bottom:8px;">
@@ -1199,7 +1191,7 @@
             for (let n of list) {
                 if (n.type === 'folder') walk(n.children, [...basePath, n.name]);
                 else if (n.type === 'item') {
-                    let currentPathStr = basePath.join(" - ");
+                    let currentPathStr = basePath.join(" > ");
                     if (currentPathStr !== lastPathStr) { result += `> ${currentPathStr}\n`; lastPathStr = currentPathStr; }
                     result += `= ${n.name}\n${n.text || ''}\n\n`;
                 }
@@ -1208,7 +1200,7 @@
         if (!targetNode) walk(projectData.data, []);
         else if (targetNode.type === 'item') {
             let p = getPath(projectData.data, targetNode.id) || []; p.pop(); 
-            result += `> ${p.join(" - ")}\n`; result += `= ${targetNode.name}\n${targetNode.text || ''}\n\n`;
+            result += `> ${p.join(" > ")}\n`; result += `= ${targetNode.name}\n${targetNode.text || ''}\n\n`;
         } else if (targetNode.type === 'folder') { let p = getPath(projectData.data, targetNode.id) || []; walk(targetNode.children, p); }
         return result.trim() || '无可导出文本';
     }
@@ -1252,7 +1244,6 @@
         return res;
     }
 
-    // 细粒度高亮短语替换（滑动分句标色，彻底解决漏色）
     function getHighlightedHTML(t1, t2) {
         let e1 = escapeHTML(t1 || '');
         let e2 = escapeHTML(t2 || '');
@@ -1290,7 +1281,7 @@
             const line = lines[i];
             if (line.trim().startsWith('>')) {
                 let pathStr = line.replace(/^>\s*/, '').trim();
-                if (!pathStr) currentPath = []; else currentPath = pathStr.split(/[-/]/).map(s => s.trim()).filter(s => s);
+                if (!pathStr) currentPath = []; else currentPath = pathStr.split('>').map(s => s.trim()).filter(s => s);
                 currentItem = null; 
             } else if (line.trim().startsWith('=')) {
                 let title = line.replace(/^=+\s*/, '').trim(); if (!title) title = "未命名文本";
@@ -1602,11 +1593,29 @@
     window.toggleAddonSwitch = function(isChecked) {
         if(copyAddonTab === 'prefix') projectData.config.copyAddon.prefixEnabled = isChecked; else projectData.config.copyAddon.suffixEnabled = isChecked; saveData();
     }
-    window.addAddonItem = function() {
-        let input = document.getElementById('newAddonInput').value; if(!input.trim()) return;
+    
+    window.addAddonItem = function(customPath = '') {
+        let textInput = document.getElementById('newAddonInput').value; 
+        if(!textInput.trim()) return;
         let arr = copyAddonTab === 'prefix' ? projectData.config.copyAddon.prefixes : projectData.config.copyAddon.suffixes;
-        arr.push({ text: input, active: true }); saveData(); renderAddonTabContent();
+        arr.push({ text: textInput, path: customPath.trim(), active: true }); 
+        saveData(); renderAddonTabContent();
     }
+
+    window.addPathAddon = function() {
+        showModalClear('添加路径专属规则', '请输入此规则生效的文件夹路径：\n\n（如果不填，则直接按全局规则生效）', () => {
+            let p = document.getElementById('sysModalInput1').value;
+            addAddonItem(p);
+        });
+        
+        // 调用内置系统弹窗的输入框
+        document.getElementById('sysModalInputs').style.display = 'flex';
+        document.getElementById('sysModalInput1').style.display = 'block';
+        document.getElementById('sysModalInput2').style.display = 'none'; // 路径只需要一个输入框，隐藏第二个
+        document.getElementById('sysModalInput1').value = '';
+        document.getElementById('sysModalInput1').placeholder = '例如: 文件夹 > 子目录';
+    }
+
     window.removeAddonItem = function(idx) {
         confirmAction("确定要删除该附加项吗？", () => {
             let arr = copyAddonTab === 'prefix' ? projectData.config.copyAddon.prefixes : projectData.config.copyAddon.suffixes;
@@ -1636,25 +1645,35 @@
         let conf = projectData.config.copyAddon; let isPrefix = copyAddonTab === 'prefix';
         let arr = isPrefix ? conf.prefixes : conf.suffixes; let isEnabled = isPrefix ? conf.prefixEnabled : conf.suffixEnabled;
         
-        let listHtml = arr.map((item, i) => `
-            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-                <input type="checkbox" style="margin:0;cursor:pointer;" ${item.active?'checked':''} onchange="toggleAddonItemSelection(${i}, this.checked)">
-                <textarea onchange="updateAddonItemText(${i}, this.value)" style="flex:1; border:1px solid var(--border-color); border-radius:4px; padding:6px 8px; font-size:13px; background:#f8fafc; font-family:inherit; resize:vertical; min-height:30px;">${escapeHTML(item.text)}</textarea>
-                <button class="btn danger" style="height:28px; min-width:30px; padding:0 8px; font-size:12px;" onclick="removeAddonItem(${i})">删</button>
+        let listHtml = arr.map((item, i) => {
+            let pathHtml = item.path ? `<div style="font-size:11px; color:#2563eb; font-weight:bold; margin-bottom:4px;">📍 专属路径：${escapeHTML(item.path)}</div>` : '';
+            return `
+            <div style="display:flex; align-items:stretch; gap:8px; margin-bottom:12px; padding-bottom:12px; border-bottom:1px dashed var(--border-color);">
+                <div style="flex:1; display:flex; flex-direction:column;">
+                    ${pathHtml}
+                    <textarea onchange="updateAddonItemText(${i}, this.value)" style="flex:1; width:100%; border:1px solid var(--border-color); border-radius:4px; padding:6px 8px; font-size:13px; background:#f8fafc; font-family:inherit; resize:vertical; min-height:40px;">${escapeHTML(item.text)}</textarea>
+                </div>
+                <div style="display:flex; flex-direction:column; justify-content:space-between; align-items:center; width:32px;">
+                    <input type="checkbox" style="margin:0;cursor:pointer;width:16px;height:16px;" title="${item.path?'专属规则':'全局规则'}" ${item.active?'checked':''} onchange="toggleAddonItemSelection(${i}, this.checked)">
+                    <button class="btn danger" style="height:24px; min-width:32px; padding:0; font-size:12px;" onclick="removeAddonItem(${i})">删</button>
+                </div>
             </div>
-        `).join('');
+            `;
+        }).join('');
 
         c.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding:8px; background:var(--hover-bg); border-radius:4px;">
-                <span style="font-size:13px; font-weight:bold;">启用全局${isPrefix?'前':'后'}缀附加</span>
+                <span style="font-size:13px; font-weight:bold;">启用自动附加</span>
                 <label style="font-size:13px; display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" style="margin:0;" ${isEnabled?'checked':''} onchange="toggleAddonSwitch(this.checked)">开启</label>
             </div>
-            <div style="display:flex; gap:6px; margin-bottom:12px;">
-                <textarea id="newAddonInput" style="flex:1; border:1px solid var(--border-color); border-radius:4px; padding:6px 10px; font-size:13px; font-family:inherit; resize:vertical; min-height:32px;" placeholder="输入新的${isPrefix?'前':'后'}缀..."></textarea>
-                <button class="btn primary" style="height:32px; padding:0 12px; font-size:13px;" onclick="addAddonItem()">添加</button>
+            <div style="display:flex; gap:6px; margin-bottom:12px; align-items:stretch;">
+                <textarea id="newAddonInput" style="flex:1; border:1px solid var(--border-color); border-radius:4px; padding:6px 10px; font-size:13px; font-family:inherit; resize:vertical; min-height:40px;" placeholder="在此输入新的前/后缀..."></textarea>
+                <div style="display:flex; flex-direction:column; gap:6px; justify-content:center;">
+                    <button class="btn primary" style="height:24px; font-size:12px; padding:0 4px; min-width:42px;" onclick="addAddonItem('')">全局</button>
+                    <button class="btn" style="height:24px; font-size:12px; padding:0 4px; min-width:42px;" onclick="addPathAddon()">路径</button>
+                </div>
             </div>
-            <div style="max-height:200px; overflow-y:auto; padding-right:4px;">${listHtml || '<div style="text-align:center;color:#999;padding:20px;">暂无数据</div>'}</div>
-            <p style="font-size:12px; color:var(--text-secondary); margin-top:12px;">提示：支持多选，勾选项将依次拼接到文本上。</p>
+            <div style="max-height:240px; overflow-y:auto; padding-right:4px;">${listHtml || '<div style="text-align:center;color:#999;padding:20px;">暂无数据</div>'}</div>
         `;
     }
 
@@ -1663,10 +1682,30 @@
         if (currentNode.type !== 'item') { showToast('仅支持复制文本'); return; }
         
         const el = document.getElementById('editor-content'); let text = el.value || '';
+        
+        let pathArr = getPath(projectData.data, currentNode.id) || [];
+        pathArr.pop(); 
+        let currentPathStr = pathArr.join(' > ');
+        
         let prefixStr = ''; let suffixStr = '';
         
-        if (projectData.config.copyAddon?.prefixEnabled) { projectData.config.copyAddon.prefixes.filter(x => x.active).forEach(p => { if(p.text) prefixStr += p.text + '\n'; }); }
-        if (projectData.config.copyAddon?.suffixEnabled) { projectData.config.copyAddon.suffixes.filter(x => x.active).forEach(s => { if(s.text) suffixStr += '\n' + s.text; }); }
+        if (projectData.config.copyAddon?.prefixEnabled) { 
+            projectData.config.copyAddon.prefixes.filter(x => x.active).forEach(p => { 
+                let targetPath = (p.path || '').trim();
+                if(!targetPath || currentPathStr === targetPath || currentPathStr.startsWith(targetPath + ' >')) {
+                    if(p.text) prefixStr += p.text + '\n'; 
+                }
+            }); 
+        }
+        
+        if (projectData.config.copyAddon?.suffixEnabled) { 
+            projectData.config.copyAddon.suffixes.filter(x => x.active).forEach(s => { 
+                let targetPath = (s.path || '').trim();
+                if(!targetPath || currentPathStr === targetPath || currentPathStr.startsWith(targetPath + ' >')) {
+                    if(s.text) suffixStr += '\n' + s.text; 
+                }
+            }); 
+        }
 
         navigator.clipboard.writeText(prefixStr + text + suffixStr).then(() => { 
             if(prefixStr || suffixStr) showToast('已附加前/后缀并复制'); else showToast('已复制到剪贴板');
@@ -1694,7 +1733,10 @@
         });
         document.getElementById('sysModalSearch').style.display = 'none';
         document.getElementById('sysModalInputs').style.display = 'flex';
+        document.getElementById('sysModalInput1').style.display = 'block'; // 确保显示框1
+        document.getElementById('sysModalInput2').style.display = 'block'; // 确保显示框2
         document.getElementById('sysModalInput1').value = ''; document.getElementById('sysModalInput2').value = '';
+        document.getElementById('sysModalInput1').placeholder = '快捷名称';
     }
 
     function toggleDoubleReplace() {
@@ -1802,10 +1844,15 @@
                 method: currentGistId ? 'PATCH' : 'POST', headers: { 'Accept': 'application/vnd.github+json', 'Authorization': `Bearer ${token}`, 'X-GitHub-Api-Version': '2022-11-28' },
                 body: JSON.stringify({ description: "TextManagerPro Sync", public: false, files: { "textManagerData.json": { content: JSON.stringify(dataObj, null, 2) } } })
             });
-            if(!res.ok) throw new Error("API Error " + res.status);
+            if(!res.ok) {
+                let errMsg = '';
+                try { const errJson = await res.json(); errMsg = errJson.message; } catch(e) {}
+                throw new Error("API Error " + res.status + " " + errMsg);
+            }
             const resData = await res.json(); localStorage.setItem('TMP_GistId', resData.id); document.getElementById('gistIdInput').value = resData.id; showToast("云端同步推送成功");
         } catch(e) { showToast("推送失败: " + e.message); }
     }
+    
     async function pullFromGist() {
         const token = localStorage.getItem('TMP_GithubToken'); const currentGistId = localStorage.getItem('TMP_GistId');
         if(!currentGistId) return showToast("需要提供 Gist ID");
@@ -1813,7 +1860,17 @@
         try {
             const res = await fetch(`https://api.github.com/gists/${currentGistId}`, { headers: token ? { 'Authorization': `Bearer ${token}` } : {} });
             if(!res.ok) throw new Error("获取失败 " + res.status);
-            const parsed = JSON.parse((await res.json()).files["textManagerData.json"].content);
+            const data = await res.json();
+            const file = data.files["textManagerData.json"];
+            if(!file) throw new Error("找不到目标文件 textManagerData.json");
+            
+            let content = file.content;
+            if(file.truncated) {
+                const rawRes = await fetch(file.raw_url);
+                content = await rawRes.text();
+            }
+            
+            const parsed = JSON.parse(content);
             projectData.data = parsed.data || []; projectData.config = { ...defaultData.config, ...(parsed.config || {}) };
             saveData(); renderTree(); showToast("拉取覆盖成功");
         } catch(e) { showToast("拉取失败: " + e.message); }
@@ -1821,37 +1878,56 @@
 
     function exportJson() {
         const exportData = JSON.parse(JSON.stringify(projectData)); exportData.config.isLocked = false; exportData.config.isSwapped = false;
-        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(exportData, null, 2)], {type: 'application/json'}));
+        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(exportData, null, 2)], {type: 'application/json;charset=utf-8'}));
         a.download = `TextManager_${Date.now()}.json`; a.click(); showToast('导出完成');
     }
+    
+    function regenerateIds(node) {
+        node.id = 'd_' + Math.random().toString(36).substr(2, 9);
+        if(node.children) node.children.forEach(regenerateIds);
+    }
+    
+    function mergeJsonData(targetList, sourceList) {
+        let addedCount = 0;
+        sourceList.forEach(src => {
+            if(src.type === 'folder') {
+                let tFolder = targetList.find(t => t.type === 'folder' && t.name === src.name);
+                if(!tFolder) {
+                    let newFolder = JSON.parse(JSON.stringify(src));
+                    regenerateIds(newFolder);
+                    targetList.push(newFolder);
+                    addedCount++;
+                } else {
+                    addedCount += mergeJsonData(tFolder.children || (tFolder.children=[]), src.children || []);
+                }
+            } else {
+                let duplicate = targetList.find(t => t.type === 'item' && (t.text||'').trim() === (src.text||'').trim());
+                if(!duplicate) {
+                    let newItem = JSON.parse(JSON.stringify(src));
+                    newItem.id = 'd_' + Math.random().toString(36).substr(2, 9);
+                    targetList.push(newItem);
+                    addedCount++;
+                }
+            }
+        });
+        return addedCount;
+    }
+
     function importJson() {
-        const input = document.createElement('input'); input.type = 'file';
+        const input = document.createElement('input'); input.type = 'file'; input.accept = ".json";
         input.onchange = (e) => {
             const reader = new FileReader();
             reader.onload = (ev) => {
                 try {
-                    const parsed = JSON.parse(ev.target.result); projectData.data = parsed.data || []; projectData.config = { ...defaultData.config, ...(parsed.config || {}) };
-                    if(!projectData.config.dupSkipPairs) projectData.config.dupSkipPairs = [];
-                    if(!projectData.config.dupSkipPhrases) projectData.config.dupSkipPhrases = [];
-                    projectData.config.dupSkipPhrases = projectData.config.dupSkipPhrases.map(p => typeof p === 'string' ? { text: p, active: true } : p);
-                    if(!projectData.config.copyAddon) projectData.config.copyAddon = defaultData.config.copyAddon;
-                    if(projectData.config.quickNav === undefined) projectData.config.quickNav = false;
-                    if(projectData.config.quickRandom === undefined) projectData.config.quickRandom = false;
-                    if(projectData.config.quickNew === undefined) projectData.config.quickNew = false;
+                    const parsed = JSON.parse(ev.target.result); 
+                    let added = 0;
+                    if(parsed.data && Array.isArray(parsed.data)) {
+                        added = mergeJsonData(projectData.data, parsed.data);
+                    }
                     saveData(); renderTree(); renderShortcuts();
-                    
-                    document.getElementById('confirmSwitch').checked = projectData.config.deleteConfirmEnabled; document.getElementById('lockSwitch').checked = projectData.config.isLocked;
-                    document.getElementById('globalFindSwitch').checked = !!projectData.config.globalFind; document.getElementById('globalReplaceSwitch').checked = !!projectData.config.globalReplace;
-                    document.getElementById('tempEditSwitch').checked = !!projectData.config.tempEdit; document.getElementById('quickNavSwitch').checked = !!projectData.config.quickNav;
-                    document.getElementById('quickRandomSwitch').checked = !!projectData.config.quickRandom;
-                    document.getElementById('quickNewSwitch').checked = !!projectData.config.quickNew;
-                    document.getElementById('autoGroupSwitch').checked = !!projectData.config.autoGroup; document.getElementById('groupSmallInput').value = projectData.config.groupSmall || 0;
-                    document.getElementById('groupLargeInput').value = projectData.config.groupLarge || 0; document.getElementById('groupSettingsUI').style.display = projectData.config.autoGroup ? 'flex' : 'none';
-                    document.getElementById('frDisplay').value = projectData.config.displayOptions.fr; document.getElementById('scDisplay').value = projectData.config.displayOptions.sc;
-                    
-                    updateSwapStatusUI(); updateQuickNavVisibility(); showToast('导入成功');
-                } catch(err) { showToast('导入失败，格式错误'); }
-            }; reader.readAsText(e.target.files[0]);
+                    updateQuickNavVisibility(); showToast(`导入合并成功，共新增 ${added} 项`);
+                } catch(err) { showToast('导入失败: ' + err.message); }
+            }; reader.readAsText(e.target.files[0], "UTF-8");
         }; input.click();
     }
 
@@ -1877,7 +1953,6 @@
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
         startX_newBtn = clientX; startY_newBtn = clientY;
         
-        // 转换为绝对坐标定位，方便拖拽计算
         const rect = quickNewBtn.getBoundingClientRect();
         quickNewBtn.style.left = rect.left + 'px';
         quickNewBtn.style.top = rect.top + 'px';
@@ -1893,13 +1968,11 @@
         const dx = clientX - startX_newBtn; 
         const dy = clientY - startY_newBtn;
         
-        // 移动超过5个像素判定为拖拽
         if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
             hasMovedNewBtn = true;
-            if(e.cancelable) e.preventDefault(); // 阻止页面滚动
+            if(e.cancelable) e.preventDefault(); 
         }
         
-        // 边界限制
         let nx = initLeft_newBtn + dx; let ny = initTop_newBtn + dy;
         nx = Math.max(0, Math.min(nx, window.innerWidth - quickNewBtn.offsetWidth));
         ny = Math.max(0, Math.min(ny, window.innerHeight - quickNewBtn.offsetHeight));
@@ -1909,10 +1982,8 @@
     function endDragNewBtn(e) {
         if (!isDraggingNewBtn) return;
         isDraggingNewBtn = false;
-        // 如果没有发生明显移动，则视为点击，执行新建操作
         if (!hasMovedNewBtn) {
             const now = Date.now();
-            // 防连点、防双端事件重复触发（300毫秒内只允许触发一次）
             if (now - (quickNewBtn._lastClick || 0) < 300) return; 
             quickNewBtn._lastClick = now;
             addNew('item');
@@ -1923,7 +1994,6 @@
     document.addEventListener('touchmove', doDragNewBtn, { passive: false });
     document.addEventListener('touchend', endDragNewBtn);
     
-    // 兼容桌面端鼠标操作(以防万一桌面端调试)
     quickNewBtn.addEventListener('mousedown', startDragNewBtn);
     document.addEventListener('mousemove', doDragNewBtn);
     document.addEventListener('mouseup', endDragNewBtn);
