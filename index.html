@@ -500,6 +500,48 @@
 <div id="toast" class="toast-msg">操作成功</div>
 
 <script>
+    // --- IndexedDB 核心封装 ---
+    const DB_NAME = 'TextManagerDB';
+    const STORE_NAME = 'textManagerStore';
+    let dbInstance = null;
+
+    function initDB() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(DB_NAME, 1);
+            request.onupgradeneeded = (e) => {
+                let db = e.target.result;
+                if (!db.objectStoreNames.contains(STORE_NAME)) {
+                    db.createObjectStore(STORE_NAME);
+                }
+            };
+            request.onsuccess = (e) => {
+                dbInstance = e.target.result;
+                resolve(dbInstance);
+            };
+            request.onerror = (e) => reject(e.target.error);
+        });
+    }
+
+    function getDBData(key) {
+        return new Promise((resolve, reject) => {
+            const tx = dbInstance.transaction(STORE_NAME, 'readonly');
+            const store = tx.objectStore(STORE_NAME);
+            const req = store.get(key);
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+        });
+    }
+
+    function setDBData(key, value) {
+        return new Promise((resolve, reject) => {
+            const tx = dbInstance.transaction(STORE_NAME, 'readwrite');
+            const store = tx.objectStore(STORE_NAME);
+            const req = store.put(value, key);
+            req.onsuccess = () => resolve();
+            req.onerror = () => reject(req.error);
+        });
+    }
+
     function escapeHTML(str) {
         return String(str || '').replace(/&/g, '&amp;')
                                 .replace(/</g, '&lt;')
@@ -540,38 +582,6 @@
     };
 
     let projectData = JSON.parse(JSON.stringify(defaultData));
-    try {
-        const local = localStorage.getItem('textManagerPro');
-        if (local) {
-            const parsed = JSON.parse(local);
-            projectData.data = parsed.data || [];
-            projectData.config = { ...defaultData.config, ...(parsed.config || {}) };
-            
-            if(!projectData.config.shortcuts) projectData.config.shortcuts = JSON.parse(JSON.stringify(defaultData.config.shortcuts));
-            const hasU = projectData.config.shortcuts.some(s => s.display === 'U');
-            const hasC = projectData.config.shortcuts.some(s => s.display === 'C');
-            if (!hasU) projectData.config.shortcuts.push({ display: 'U', text: '{{user}}' });
-            if (!hasC) projectData.config.shortcuts.push({ display: 'C', text: '{{char}}' });
-
-            if(!projectData.config.dupSkipPairs) projectData.config.dupSkipPairs = [];
-            if(!projectData.config.dupSkipPhrases) projectData.config.dupSkipPhrases = [];
-            projectData.config.dupSkipPhrases = projectData.config.dupSkipPhrases.map(p => {
-                if (typeof p === 'string') return { text: p, active: true };
-                return p;
-            });
-            if(!projectData.config.copyAddon) projectData.config.copyAddon = defaultData.config.copyAddon;
-            
-            // 兼容旧数据的附加配置路径参数
-            if(projectData.config.copyAddon) {
-                projectData.config.copyAddon.prefixes.forEach(p => { if(p.path === undefined) p.path = ''; });
-                projectData.config.copyAddon.suffixes.forEach(s => { if(s.path === undefined) s.path = ''; });
-            }
-
-            if(projectData.config.quickNav === undefined) projectData.config.quickNav = false;
-            if(projectData.config.quickRandom === undefined) projectData.config.quickRandom = false;
-            if(projectData.config.quickNew === undefined) projectData.config.quickNew = false;
-        }
-    } catch(e) {}
 
     let currentNode = null;
     let draggedNodeId = null;
@@ -585,24 +595,6 @@
     let vgCollapseStates = {};
     let modalCallback = null;
     let isStarFilterMode = false;
-
-    document.getElementById('confirmSwitch').checked = projectData.config.deleteConfirmEnabled;
-    document.getElementById('lockSwitch').checked = projectData.config.isLocked;
-    document.getElementById('globalFindSwitch').checked = projectData.config.globalFind;
-    document.getElementById('globalReplaceSwitch').checked = projectData.config.globalReplace;
-    document.getElementById('tempEditSwitch').checked = projectData.config.tempEdit;
-    document.getElementById('quickNavSwitch').checked = projectData.config.quickNav;
-    document.getElementById('quickRandomSwitch').checked = projectData.config.quickRandom;
-    document.getElementById('quickNewSwitch').checked = projectData.config.quickNew;
-    document.getElementById('autoGroupSwitch').checked = projectData.config.autoGroup;
-    document.getElementById('groupSmallInput').value = projectData.config.groupSmall;
-    document.getElementById('groupLargeInput').value = projectData.config.groupLarge;
-    
-    document.getElementById('frDisplay').value = projectData.config.displayOptions.fr;
-    document.getElementById('scDisplay').value = projectData.config.displayOptions.sc;
-    
-    updateSwapStatusUI();
-    if (projectData.config.autoGroup) document.getElementById('groupSettingsUI').style.display = 'flex';
 
     document.addEventListener('focusin', (e) => { if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) lastFocusedElement = e.target; });
     document.addEventListener('click', () => { const toast = document.getElementById('toast'); if(toast.classList.contains('show')) toast.classList.remove('show'); }, true);
@@ -647,17 +639,22 @@
         icon.innerText = isFolded ? '▼' : '▲';
     }
 
-    function saveData() { 
+    let isSaving = false;
+    let pendingSave = false;
+
+    // 采用异步保存到 IndexedDB，突破 5MB 限制
+    async function saveData() {
+        if (isSaving) { pendingSave = true; return; }
+        isSaving = true;
         try {
-            localStorage.setItem('textManagerPro', JSON.stringify(projectData)); 
+            const dataToSave = JSON.parse(JSON.stringify(projectData));
+            await setDBData('textManagerPro', dataToSave);
         } catch (e) {
-            console.error("存储失败", e);
-            if(e.name === 'QuotaExceededError' || (e.message && e.message.includes('exceeded the quota'))) {
-                showToast("❌ 存储失败！浏览器5MB限制已满，请清理精简库内文本！");
-                throw e; 
-            } else {
-                showToast("存储发生未知错误");
-            }
+            console.error("数据存储失败:", e);
+            showToast("存储失败，请检查浏览器是否处于无痕模式或禁用本地存储");
+        } finally {
+            isSaving = false;
+            if (pendingSave) { pendingSave = false; saveData(); }
         }
     }
     
@@ -1682,12 +1679,12 @@
             let opacityStyle = item.active ? '1' : '0.4';
 
             return `
-            <div style="display:flex; align-items:flex-start; gap:8px; margin-bottom:12px; padding-bottom:12px; border-bottom:1px dashed var(--border-color); opacity:${opacityStyle}; transition: opacity 0.2s;">
+            <div style="display:flex; align-items:stretch; gap:8px; margin-bottom:12px; padding-bottom:12px; border-bottom:1px dashed var(--border-color); opacity:${opacityStyle}; transition: opacity 0.2s;">
                 <div style="flex:1; display:flex; flex-direction:column;">
                     ${pathHtml}
                     <textarea onchange="updateAddonItemText(${i}, this.value)" style="flex:1; width:100%; border:1px solid var(--border-color); border-radius:4px; padding:6px 8px; font-size:13px; background:#f8fafc; font-family:inherit; resize:vertical; min-height:40px;">${escapeHTML(item.text)}</textarea>
                 </div>
-                <div style="display:flex; flex-direction:column; gap:12px; align-items:center; width:32px; padding-top:4px;">
+                <div style="display:flex; flex-direction:column; justify-content:space-between; align-items:center; width:32px;">
                     <input type="checkbox" style="margin:0;cursor:pointer;width:16px;height:16px;" title="${item.path?'专属规则':'全局规则'}" ${item.active?'checked':''} onchange="toggleAddonItemSelection(${i}, this.checked)">
                     <button class="btn danger" style="height:24px; min-width:32px; padding:0; font-size:12px;" onclick="removeAddonItem(${i})">删</button>
                 </div>
@@ -1701,9 +1698,8 @@
                 <label style="font-size:13px; display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" style="margin:0;" ${isEnabled?'checked':''} onchange="toggleAddonSwitch(this.checked)">开启</label>
             </div>
 
-            <!-- 内置添加区域，无需弹窗 -->
             <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:12px; padding:8px; background:#f1f5f9; border-radius:4px; border:1px solid #cbd5e1;">
-                <input type="text" id="newAddonPathInput" style="display:none; border:1px solid var(--border-color); border-radius:4px; padding:6px 10px; font-size:12px;" placeholder="输入专属路径 (例如: 设定 > 角色)">
+                <input type="text" id="newAddonPathInput" style="display:none; border:1px solid var(--border-color); border-radius:4px; padding:6px 10px; font-size:12px;" placeholder="输入专属路径 (例如: 设定 > 主角)">
                 
                 <div style="display:flex; gap:6px; align-items:stretch;">
                     <textarea id="newAddonInput" style="flex:1; border:1px solid var(--border-color); border-radius:4px; padding:6px 10px; font-size:13px; font-family:inherit; resize:vertical; min-height:40px;" placeholder="在此输入新的前/后缀..."></textarea>
@@ -1911,23 +1907,13 @@
                 content = await rawRes.text();
             }
             
-            // 备份旧数据，防超限崩溃
-            const backupData = JSON.stringify(projectData);
             const parsed = JSON.parse(content);
             projectData.data = parsed.data || []; 
             projectData.config = { ...defaultData.config, ...(parsed.config || {}) };
             
-            try {
-                saveData(); 
-                renderTree(); 
-                showToast("拉取覆盖成功");
-            } catch(saveErr) {
-                // 如果存入 localStorage 爆满，立刻恢复内存中的数据并报警
-                projectData = JSON.parse(backupData);
-                renderTree();
-                setTimeout(() => alert("云端数据过大！\n浏览器的本地存储（5MB）已无法装下云端的数据量。\n\n为防丢失，本地数据已被还原。请清理精简本地和云端文本！"), 500);
-            }
-            
+            await saveData();
+            renderTree(); 
+            showToast("拉取覆盖成功");
         } catch(e) { showToast("拉取失败: " + e.message); }
     }
 
@@ -1972,28 +1958,20 @@
         const input = document.createElement('input'); input.type = 'file'; input.accept = ".json";
         input.onchange = (e) => {
             const reader = new FileReader();
-            reader.onload = (ev) => {
+            reader.onload = async (ev) => {
                 try {
                     const parsed = JSON.parse(ev.target.result); 
                     let added = 0;
                     
-                    const backupData = JSON.stringify(projectData);
                     if(parsed.data && Array.isArray(parsed.data)) {
                         added = mergeJsonData(projectData.data, parsed.data);
                     }
                     
-                    try {
-                        saveData(); 
-                        renderTree(); 
-                        renderShortcuts();
-                        updateQuickNavVisibility(); 
-                        showToast(`导入合并成功，共新增 ${added} 项`);
-                    } catch(saveErr) {
-                        projectData = JSON.parse(backupData);
-                        renderTree();
-                        setTimeout(() => alert("导入失败：合并后的数据超出了浏览器 5MB 的存储极限！请删减部分文本后再试。"), 500);
-                    }
-                    
+                    await saveData(); 
+                    renderTree(); 
+                    renderShortcuts();
+                    updateQuickNavVisibility(); 
+                    showToast(`导入合并成功，共新增 ${added} 项`);
                 } catch(err) { showToast('导入失败: 格式损坏'); }
             }; reader.readAsText(e.target.files[0], "UTF-8");
         }; input.click();
@@ -2006,7 +1984,79 @@
     }
     function closePanelsOnMobile() { if (window.innerWidth <= 768) { document.getElementById('sidebar').classList.remove('show'); document.getElementById('toolbox').classList.remove('show'); } }
 
-    renderShortcuts(); renderTree(); updateQuickNavVisibility();
+    // --- 启动并加载数据 ---
+    async function startApp() {
+        try {
+            await initDB();
+            let savedData = await getDBData('textManagerPro');
+
+            // 自动迁移旧的 localStorage 数据
+            if (!savedData) {
+                const local = localStorage.getItem('textManagerPro');
+                if (local) {
+                    savedData = JSON.parse(local);
+                    // 将其存入 IndexedDB
+                    await setDBData('textManagerPro', savedData);
+                    // 清除旧存占用
+                    localStorage.removeItem('textManagerPro');
+                }
+            }
+
+            if (savedData) {
+                projectData.data = savedData.data || [];
+                projectData.config = { ...defaultData.config, ...(savedData.config || {}) };
+                
+                if(!projectData.config.shortcuts) projectData.config.shortcuts = JSON.parse(JSON.stringify(defaultData.config.shortcuts));
+                const hasU = projectData.config.shortcuts.some(s => s.display === 'U');
+                const hasC = projectData.config.shortcuts.some(s => s.display === 'C');
+                if (!hasU) projectData.config.shortcuts.push({ display: 'U', text: '{{user}}' });
+                if (!hasC) projectData.config.shortcuts.push({ display: 'C', text: '{{char}}' });
+
+                if(!projectData.config.dupSkipPairs) projectData.config.dupSkipPairs = [];
+                if(!projectData.config.dupSkipPhrases) projectData.config.dupSkipPhrases = [];
+                projectData.config.dupSkipPhrases = projectData.config.dupSkipPhrases.map(p => {
+                    if (typeof p === 'string') return { text: p, active: true };
+                    return p;
+                });
+                
+                if(!projectData.config.copyAddon) projectData.config.copyAddon = defaultData.config.copyAddon;
+                if(projectData.config.copyAddon) {
+                    projectData.config.copyAddon.prefixes.forEach(p => { if(p.path === undefined) p.path = ''; });
+                    projectData.config.copyAddon.suffixes.forEach(s => { if(s.path === undefined) s.path = ''; });
+                }
+
+                if(projectData.config.quickNav === undefined) projectData.config.quickNav = false;
+                if(projectData.config.quickRandom === undefined) projectData.config.quickRandom = false;
+                if(projectData.config.quickNew === undefined) projectData.config.quickNew = false;
+            }
+        } catch (e) {
+            console.error("加载数据异常", e);
+        }
+
+        // 初始化界面状态
+        document.getElementById('confirmSwitch').checked = projectData.config.deleteConfirmEnabled;
+        document.getElementById('lockSwitch').checked = projectData.config.isLocked;
+        document.getElementById('globalFindSwitch').checked = projectData.config.globalFind;
+        document.getElementById('globalReplaceSwitch').checked = projectData.config.globalReplace;
+        document.getElementById('tempEditSwitch').checked = projectData.config.tempEdit;
+        document.getElementById('quickNavSwitch').checked = projectData.config.quickNav;
+        document.getElementById('quickRandomSwitch').checked = projectData.config.quickRandom;
+        document.getElementById('quickNewSwitch').checked = projectData.config.quickNew;
+        document.getElementById('autoGroupSwitch').checked = projectData.config.autoGroup;
+        document.getElementById('groupSmallInput').value = projectData.config.groupSmall;
+        document.getElementById('groupLargeInput').value = projectData.config.groupLarge;
+        document.getElementById('frDisplay').value = projectData.config.displayOptions.fr;
+        document.getElementById('scDisplay').value = projectData.config.displayOptions.sc;
+        
+        updateSwapStatusUI();
+        if (projectData.config.autoGroup) document.getElementById('groupSettingsUI').style.display = 'flex';
+
+        renderShortcuts();
+        renderTree();
+        updateQuickNavVisibility();
+    }
+
+    startApp();
 	
 	// --- 手机端快捷新建按钮拖拽逻辑 ---
     const quickNewBtn = document.getElementById('mobileQuickNewFloat');
