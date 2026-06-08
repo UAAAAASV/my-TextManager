@@ -68,10 +68,12 @@
         }
 
         .side-header {
-            padding: 20px 20px 8px 20px;
+            /* 将第三个值(底部边距)改为 0px，依靠阴影本身的 10px 作为间距，箭头就贴近底线了 */
+            padding: 20px 20px 0px 20px; 
             position: relative; 
             z-index: 50; 
             background: var(--bg-side);
+            /* 这里投射一个10px纯色挡板 + 1px边框，封死所有穿透可能 */
             box-shadow: 0 10px 0 var(--bg-side), 0 11px 0 var(--border-color);
         }
 
@@ -84,6 +86,10 @@
 
         .tree-view {
             flex: 1; overflow: auto; padding: 0 10px 10px 10px; width: 100%; position: relative;
+        }
+        .tree-view::before {
+            /* 将原来的 height: 10px 改为 height: 24px。抵消掉上面被遮挡的10px后，还能留出14px的舒适空隙 */
+            content: ''; display: block; height: 24px; flex-shrink: 0;
         }
 
         .tree-item { margin-bottom: 0; min-width: max-content; }
