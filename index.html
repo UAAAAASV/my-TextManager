@@ -166,7 +166,8 @@
         .tool-section h4 { margin: 0 0 12px 0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center; }
 
         .shortcuts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .stat-item { display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 8px; }
+        .stat-item { display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 8px; transition: opacity 0.2s; }
+        .stat-item:has(input[type="checkbox"]:not(:checked)) { opacity: 0.5; }
 
         .find-panel { background: var(--bg-side); padding: 12px; border-radius: var(--radius); margin-top: 10px; }
         .input-group { display: flex; flex-direction: column; gap: 8px; }
@@ -287,9 +288,9 @@
         <!-- 空数据欢迎面板 -->
         <div id="emptyState" style="display:none; flex:1; flex-direction:column; align-items:center; justify-content:center; gap:20px; height:100%;">
             <div style="font-size:30px; color:var(--border-color); margin-bottom:5px;">🍽️</div>
-            <div style="display:flex; gap:3px;">
-                <button class="btn primary" style="height:44px; padding:0 24px; font-size:16px; border-radius:22px;" onclick="addNew('item')">➕ 新建文本 ➕</button>
-                <button class="btn" style="height:44px; padding:0 24px; font-size:16px; border-radius:22px;" onclick="addNew('folder')">➕ 新建文件夹 ➕</button>
+            <div style="display:flex; gap:12px;">
+                <button class="btn" style="height:44px; padding:0 24px; font-size:16px; border-radius:22px; background:#ffffff; color:#000000; border:1px solid var(--border-color);" onclick="addNew('item')">➕ 新建文本 ➕</button>
+                <button class="btn" style="height:44px; padding:0 24px; font-size:16px; border-radius:22px; background:#ffffff; color:#000000; border:1px solid var(--border-color);" onclick="addNew('folder')">➕ 新建文件夹 ➕</button>
             </div>
             <button class="btn" style="border:none; background:transparent; color:var(--text-secondary); margin-top:10px;" onclick="importJson()">📄 导入json数据 📄</button>
         </div>
@@ -384,6 +385,10 @@
             <div class="stat-item">
                 <span>文本编辑锁定</span>
                 <input type="checkbox" id="lockSwitch" onchange="toggleLock()">
+            </div>
+			<div class="stat-item">
+                <span>文本拖拽排序</span>
+                <input type="checkbox" id="dragSortSwitch" onchange="saveConfig(); renderTree();" title="开启后允许拖拽排序，关闭可防止手机端滑动冲突">
             </div>
             <div class="stat-item">
                 <span>文本全局查找</span>
@@ -623,6 +628,7 @@
             isLocked: false,
             isSwapped: false,
             displayOptions: { fr: "{{user}}", sc: "{{char}}" },
+            dragSortEnabled: true,
             globalFind: false,
             globalReplace: false,
             tempEdit: false,
@@ -731,6 +737,7 @@
         projectData.config.autoCloseToolbox = document.getElementById('autoCloseToolboxSwitch').checked;
         projectData.config.globalFind = document.getElementById('globalFindSwitch').checked;
         projectData.config.globalReplace = document.getElementById('globalReplaceSwitch').checked;
+        projectData.config.dragSortEnabled = document.getElementById('dragSortSwitch').checked;
         projectData.config.tempEdit = document.getElementById('tempEditSwitch').checked;
         projectData.config.autoScrollTop = document.getElementById('autoScrollTopSwitch').checked;
         projectData.config.quickNav = document.getElementById('quickNavSwitch').checked;
@@ -745,6 +752,7 @@
         document.getElementById('confirmSwitch').checked = projectData.config.deleteConfirmEnabled;
         document.getElementById('autoCloseToolboxSwitch').checked = projectData.config.autoCloseToolbox || false;
         document.getElementById('lockSwitch').checked = projectData.config.isLocked;
+        document.getElementById('dragSortSwitch').checked = projectData.config.dragSortEnabled !== false;
         document.getElementById('globalFindSwitch').checked = projectData.config.globalFind;
         document.getElementById('globalReplaceSwitch').checked = projectData.config.globalReplace;
         document.getElementById('tempEditSwitch').checked = projectData.config.tempEdit;
@@ -759,7 +767,7 @@
             toggleBtn.innerText = isQuickNew ? '启用' : '禁用';
         }
         if (subOptions) {
-            subOptions.style.opacity = isQuickNew ? '1' : '0.4';
+            subOptions.style.opacity = isQuickNew ? '1' : '0.5';
             subOptions.style.pointerEvents = isQuickNew ? 'auto' : 'none';
         }
         
@@ -1033,7 +1041,9 @@
                 content.style.top = (11 + depth * 38) + 'px';
                 content.style.zIndex = 40 - depth;
             }
-            content.draggable = true;
+            
+            const dragSortEnabled = projectData.config.dragSortEnabled !== false;
+            content.draggable = dragSortEnabled;
             
             const foldIcon = node.type === 'folder' ? `<span class="fold-icon" onclick="toggleFold(event, '${node.id}')">${node._collapsed ? '▶' : '▼'}</span>` : `<span class="fold-icon"></span>`;
             const typeIcon = node.type === 'folder' ? '📁' : '📄';
@@ -1047,22 +1057,25 @@
             <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-left:4px;">${escapeHTML(node.name || '未命名')}${starIcon}</span>`;
             
             content.onclick = (e) => { if(e.target.tagName !== 'INPUT') selectNode(node); };
-            content.ondragstart = (e) => { draggedNodeId = node.id; e.stopPropagation(); };
-            content.ondragover = (e) => {
-                e.preventDefault(); e.stopPropagation();
-                const rect = content.getBoundingClientRect(); const y = e.clientY - rect.top;
-                content.style.borderTop = ''; content.style.borderBottom = ''; content.style.background = '';
-                if (node.type === 'folder') {
-                    if (y < rect.height * 0.25) { dragPos = 'before'; content.style.borderTop = '2px solid var(--accent-color)'; }
-                    else if (y > rect.height * 0.75) { dragPos = 'after'; content.style.borderBottom = '2px solid var(--accent-color)'; }
-                    else { dragPos = 'in'; content.style.background = '#e2e8f0'; }
-                } else {
-                    if (y < rect.height / 2) { dragPos = 'before'; content.style.borderTop = '2px solid var(--accent-color)'; }
-                    else { dragPos = 'after'; content.style.borderBottom = '2px solid var(--accent-color)'; }
-                }
-            };
-            content.ondragleave = () => { content.style.borderTop=''; content.style.borderBottom=''; content.style.background=''; };
-            content.ondrop = (e) => { e.preventDefault(); e.stopPropagation(); content.style.borderTop=''; content.style.borderBottom=''; content.style.background=''; handleMove(draggedNodeId, node.id, dragPos); };
+            
+            if (dragSortEnabled) {
+                content.ondragstart = (e) => { draggedNodeId = node.id; e.stopPropagation(); };
+                content.ondragover = (e) => {
+                    e.preventDefault(); e.stopPropagation();
+                    const rect = content.getBoundingClientRect(); const y = e.clientY - rect.top;
+                    content.style.borderTop = ''; content.style.borderBottom = ''; content.style.background = '';
+                    if (node.type === 'folder') {
+                        if (y < rect.height * 0.25) { dragPos = 'before'; content.style.borderTop = '2px solid var(--accent-color)'; }
+                        else if (y > rect.height * 0.75) { dragPos = 'after'; content.style.borderBottom = '2px solid var(--accent-color)'; }
+                        else { dragPos = 'in'; content.style.background = '#e2e8f0'; }
+                    } else {
+                        if (y < rect.height / 2) { dragPos = 'before'; content.style.borderTop = '2px solid var(--accent-color)'; }
+                        else { dragPos = 'after'; content.style.borderBottom = '2px solid var(--accent-color)'; }
+                    }
+                };
+                content.ondragleave = () => { content.style.borderTop=''; content.style.borderBottom=''; content.style.background=''; };
+                content.ondrop = (e) => { e.preventDefault(); e.stopPropagation(); content.style.borderTop=''; content.style.borderBottom=''; content.style.background=''; handleMove(draggedNodeId, node.id, dragPos); };
+            }
 
             row.appendChild(content);
             if (node.type === 'folder' && node.children && !node._collapsed) {
@@ -2457,6 +2470,7 @@
                 if(projectData.config.quickRandom === undefined) projectData.config.quickRandom = false;
                 if(projectData.config.quickNew === undefined) projectData.config.quickNew = false;
                 if(projectData.config.quickNewMode === undefined) projectData.config.quickNewMode = 'after';
+                if(projectData.config.dragSortEnabled === undefined) projectData.config.dragSortEnabled = true;
                 if(projectData.config.randomMode === undefined) projectData.config.randomMode = 'none';
                 if(projectData.config.autoDupCheckOnImport === undefined) projectData.config.autoDupCheckOnImport = true;
                 if(projectData.config.autoScrollTop === undefined) projectData.config.autoScrollTop = false;
