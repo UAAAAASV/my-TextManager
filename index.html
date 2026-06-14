@@ -416,7 +416,7 @@
 
             <!-- 文本快捷新建折叠组 -->
             <div style="margin-top:16px; padding-top:16px; border-top:1px dashed var(--border-color); display:flex; flex-direction:column; gap:8px;">
-                <div id="quickNewSubOptions" style="display:none; flex-direction:column; gap:8px;">
+                <div id="quickNewSubOptions" style="display:flex; flex-direction:column; gap:8px; transition: opacity 0.3s;">
                     <div class="stat-item" style="margin-bottom:0;">
                         <span>所选后尾新建</span>
                         <input type="checkbox" id="quickNewAfterSwitch" onchange="toggleQuickNewMode('after')">
@@ -428,7 +428,7 @@
                 </div>
                 <div class="stat-item" style="margin-bottom:0;">
                     <span>文本快捷新建</span>
-                    <input type="checkbox" id="quickNewSwitch" onchange="toggleQuickNewMaster()" title="手机端可见的悬浮新建按钮">
+                    <button id="quickNewToggleBtn" class="btn" style="height:24px; min-width:40px; padding:0 8px; font-size:12px;" onclick="toggleQuickNewMaster()">禁用</button>
                 </div>
             </div>
 
@@ -736,8 +736,8 @@
         projectData.config.quickNav = document.getElementById('quickNavSwitch').checked;
         projectData.config.quickRandom = document.getElementById('quickRandomSwitch').checked;
         
-        projectData.config.quickNew = document.getElementById('quickNewSwitch').checked;
         projectData.config.quickNewMode = document.getElementById('quickNewAfterSwitch').checked ? 'after' : 'bottom';
+        
         saveData(); updateQuickNavVisibility();
     }
 
@@ -752,8 +752,16 @@
         document.getElementById('quickNavSwitch').checked = projectData.config.quickNav;
         document.getElementById('quickRandomSwitch').checked = projectData.config.quickRandom;
         
-        document.getElementById('quickNewSwitch').checked = projectData.config.quickNew || false;
-        document.getElementById('quickNewSubOptions').style.display = projectData.config.quickNew ? 'flex' : 'none';
+        const isQuickNew = projectData.config.quickNew || false;
+        const toggleBtn = document.getElementById('quickNewToggleBtn');
+        const subOptions = document.getElementById('quickNewSubOptions');
+        if (toggleBtn) {
+            toggleBtn.innerText = isQuickNew ? '启用' : '禁用';
+        }
+        if (subOptions) {
+            subOptions.style.opacity = isQuickNew ? '1' : '0.4';
+            subOptions.style.pointerEvents = isQuickNew ? 'auto' : 'none';
+        }
         
         let qMode = projectData.config.quickNewMode || 'after';
         document.getElementById('quickNewAfterSwitch').checked = (qMode === 'after');
@@ -766,7 +774,7 @@
         const rMode = projectData.config.randomMode || 'none';
         document.getElementById('randomOnlyCheckedSwitch').checked = (rMode === 'only');
         document.getElementById('randomIgnoreCheckedSwitch').checked = (rMode === 'ignore');
-
+        
         document.getElementById('frDisplay').value = projectData.config.displayOptions.fr;
         document.getElementById('scDisplay').value = projectData.config.displayOptions.sc;
         updateSwapStatusUI();
@@ -1082,10 +1090,9 @@
     }
 
     function toggleQuickNewMaster() {
-        const isChecked = document.getElementById('quickNewSwitch').checked;
-        document.getElementById('quickNewSubOptions').style.display = isChecked ? 'flex' : 'none';
-        projectData.config.quickNew = isChecked;
+        projectData.config.quickNew = !projectData.config.quickNew;
         saveConfig();
+        syncUIToConfig();
     }
 
     function toggleQuickNewMode(clickedMode) {
@@ -1117,24 +1124,27 @@
         if (mode === 'none') { ui.style.display = 'none'; return; }
         
         let checkedFolders = [];
-        const findChecked = (list) => {
+        const findChecked = (list, depth = 0) => {
             for (let n of list) {
-                if (selectedIds.has(n.id) && n.type === 'folder') checkedFolders.push(n.name);
-                if (n.children) findChecked(n.children);
+                if (selectedIds.has(n.id) && n.type === 'folder') {
+                    let indent = depth > 0 ? '&nbsp;&nbsp;'.repeat(depth * 2) + '└─ ' : '';
+                    checkedFolders.push(indent + escapeHTML(n.name));
+                }
+                if (n.children) findChecked(n.children, depth + 1);
             }
         };
-        findChecked(projectData.data);
+        findChecked(projectData.data, 0);
         
         let htmlContent = '';
         if (checkedFolders.length > 0) {
             htmlContent += `<div style="margin-bottom:6px;"><strong>已勾选文件夹：</strong></div>`;
-            htmlContent += `<div style="padding-left:4px;">${checkedFolders.map(x => '<div style="margin-bottom:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">- ' + escapeHTML(x) + '</div>').join('')}</div>`;
+            htmlContent += `<div style="padding-left:4px;">${checkedFolders.map(x => '<div style="margin-bottom:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + x + '</div>').join('')}</div>`;
         } else {
             htmlContent += `<div style="color:#999; text-align:center;">暂未勾选文件夹</div>`;
         }
         
         htmlContent += `<div style="margin-top:6px; padding-top:6px; border-top:1px solid #cbd5e1; font-size:11px; color:#94a3b8;">
-            注：【全局】随机不受 [仅限勾选] 限制，但受 [忽略勾选] 影响。
+            注：【全局】只受 [忽略勾选] 影响。
         </div>`;
         
         ui.style.display = 'flex';
@@ -1151,7 +1161,7 @@
     function selectNode(node, isSilent = false) {
         currentNode = node; lastFindIndex = 0; 
         document.getElementById('emptyState').style.display = 'none';
-        document.getElementById('editorContainer').style.display = 'flex';
+        document.getElementById('editorContainer').style.visibility = 'visible'; // 修复Bug：使用visibility控制可视状态
         document.getElementById('editor-title').value = node.name;
         
         const contentArea = document.getElementById('editor-content');
@@ -1195,14 +1205,15 @@
         if (window.innerWidth <= 768 && !isSilent) closePanelsOnMobile();
         renderTree(); updateQuickNavVisibility();
 
-        // 视觉定位效果 (随机或定位时触发)
+        // 视觉定位效果 (优化：平滑的背景高亮淡出动画)
         setTimeout(() => {
             const row = document.querySelector(`input[onclick*="${node.id}"]`)?.parentElement;
             if (row) {
                 row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                const oldBg = row.style.background;
-                row.style.background = '#fef08a'; // 黄色闪烁高亮
-                setTimeout(() => { row.style.background = oldBg; }, 800);
+                row.animate([
+                    { backgroundColor: '#fef08a' },
+                    { backgroundColor: 'rgba(254, 240, 138, 0)' }
+                ], { duration: 1200, easing: 'ease-out' });
             }
         }, 100);
     }
@@ -1893,6 +1904,11 @@
     window.switchAddonTab = function(tabName) { copyAddonTab = tabName; renderCopyAddonMain(document.getElementById('sysModalDynamicPanel')); }
     window.toggleAddonSwitch = function(isChecked) {
         if(copyAddonTab === 'prefix') projectData.config.copyAddon.prefixEnabled = isChecked; else projectData.config.copyAddon.suffixEnabled = isChecked; saveData();
+        const sub = document.getElementById('copyAddonSubContainer');
+        if (sub) {
+            sub.style.opacity = isChecked ? '1' : '0.4';
+            sub.style.pointerEvents = isChecked ? 'auto' : 'none';
+        }
     }
     
     window.switchAddonMode = function(mode) {
@@ -1991,26 +2007,28 @@
         c.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding:8px; background:var(--hover-bg); border-radius:4px;">
                 <span style="font-size:13px; font-weight:bold;">启用自动附加</span>
-                <label style="font-size:13px; display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" style="margin:0;" ${isEnabled?'checked':''} onchange="toggleAddonSwitch(this.checked)">开启</label>
+                <label style="font-size:13px; display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" style="margin:0;" ${isEnabled?'checked':''} onchange="toggleAddonSwitch(this.checked)"></label>
             </div>
 
-            <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:12px; padding:8px; background:#f1f5f9; border-radius:4px; border:1px solid #cbd5e1;">
-                <div style="display:flex; gap:8px; margin-bottom:4px;">
-                    <button class="btn ${currentAddonMode === 'global' ? 'primary' : ''}" id="addonModeGlobalBtn" style="flex:1; height:28px; font-size:12px; padding:0;" onclick="switchAddonMode('global')">全局</button>
-                    <button class="btn ${currentAddonMode === 'path' ? 'primary' : ''}" id="addonModePathBtn" style="flex:1; height:28px; font-size:12px; padding:0;" onclick="switchAddonMode('path')">路径</button>
-                </div>
+            <div id="copyAddonSubContainer" style="opacity: ${isEnabled ? '1' : '0.4'}; pointer-events: ${isEnabled ? 'auto' : 'none'}; transition: opacity 0.3s; display: flex; flex-direction: column; gap: 12px;">
+                <div style="display:flex; flex-direction:column; gap:6px; padding:8px; background:#f1f5f9; border-radius:4px; border:1px solid #cbd5e1;">
+                    <div style="display:flex; gap:8px; margin-bottom:4px;">
+                        <button class="btn ${currentAddonMode === 'global' ? 'primary' : ''}" id="addonModeGlobalBtn" style="flex:1; height:28px; font-size:12px; padding:0;" onclick="switchAddonMode('global')">全局</button>
+                        <button class="btn ${currentAddonMode === 'path' ? 'primary' : ''}" id="addonModePathBtn" style="flex:1; height:28px; font-size:12px; padding:0;" onclick="switchAddonMode('path')">路径</button>
+                    </div>
 
-                <input type="text" id="newAddonPathInput" style="display:${currentAddonMode === 'path' ? 'block' : 'none'}; border:1px solid var(--border-color); border-radius:4px; padding:6px 10px; font-size:12px;" placeholder="输入专属路径 (例如: 设定 > 主角)">
-                
-                <div style="display:flex; gap:6px; align-items:stretch;">
-                    <textarea id="newAddonInput" style="flex:1; border:1px solid var(--border-color); border-radius:4px; padding:6px 10px; font-size:13px; font-family:inherit; resize:vertical; min-height:40px;" placeholder="在此输入新的前/后缀..."></textarea>
-                    <div style="display:flex; flex-direction:column; justify-content:center; width:48px; flex-shrink:0;">
-                        <button class="btn primary" style="width:100%; min-width:48px; height:100%; font-size:12px; padding:0;" onclick="doAddAddon()">添加</button>
+                    <input type="text" id="newAddonPathInput" style="display:${currentAddonMode === 'path' ? 'block' : 'none'}; border:1px solid var(--border-color); border-radius:4px; padding:6px 10px; font-size:12px;" placeholder="输入专属路径 (例如: 设定 > 主角)">
+                    
+                    <div style="display:flex; gap:6px; align-items:stretch;">
+                        <textarea id="newAddonInput" style="flex:1; border:1px solid var(--border-color); border-radius:4px; padding:6px 10px; font-size:13px; font-family:inherit; resize:vertical; min-height:40px;" placeholder="在此输入新的前/后缀..."></textarea>
+                        <div style="display:flex; flex-direction:column; justify-content:center; width:48px; flex-shrink:0;">
+                            <button class="btn primary" style="width:100%; min-width:48px; height:100%; font-size:12px; padding:0;" onclick="doAddAddon()">添加</button>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div style="max-height:240px; overflow-y:auto; padding-right:4px;">${listHtml || '<div style="text-align:center;color:#999;padding:20px;">暂无数据</div>'}</div>
+                <div style="max-height:240px; overflow-y:auto; padding-right:4px;">${listHtml || '<div style="text-align:center;color:#999;padding:20px;">暂无数据</div>'}</div>
+            </div>
         `;
     }
 
@@ -2454,7 +2472,7 @@
 
         // 空数据判断与启动自动随机体验
         if (projectData.data.length === 0) {
-            document.getElementById('editorContainer').style.display = 'none';
+            document.getElementById('editorContainer').style.visibility = 'hidden';
             document.getElementById('emptyState').style.display = 'flex';
             document.getElementById('pathDisplay').innerText = '欢迎使用';
         } else {
@@ -2474,7 +2492,7 @@
                 selectNode(rItem, true); // true 表示不触发关闭侧边栏
             } else {
                 // 有文件夹但没文本
-                document.getElementById('editorContainer').style.display = 'none';
+                document.getElementById('editorContainer').style.visibility = 'hidden';
                 document.getElementById('emptyState').style.display = 'flex';
             }
         }
