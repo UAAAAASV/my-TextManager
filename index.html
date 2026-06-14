@@ -68,12 +68,10 @@
         }
 
         .side-header {
-            /* 将第三个值(底部边距)改为 0px，依靠阴影本身的 10px 作为间距，箭头就贴近底线了 */
             padding: 20px 20px 0px 20px; 
             position: relative; 
             z-index: 50; 
             background: var(--bg-side);
-            /* 这里投射一个10px纯色挡板 + 1px边框，封死所有穿透可能 */
             box-shadow: 0 10px 0 var(--bg-side), 0 11px 0 var(--border-color);
         }
 
@@ -88,7 +86,6 @@
             flex: 1; overflow: auto; padding: 0 10px 10px 10px; width: 100%; position: relative;
         }
         .tree-view::before {
-            /* 将原来的 height: 10px 改为 height: 24px。抵消掉上面被遮挡的10px后，还能留出14px的舒适空隙 */
             content: ''; display: block; height: 24px; flex-shrink: 0;
         }
 
@@ -229,6 +226,8 @@
             .mobile-tabbar button:last-child { border-right: none; }
         }
     </style>
+    <!-- 引入拖拽兼容 Polyfill，解决手机端无法拖拽和长按卡死问题 -->
+    <script src="https://cdn.jsdelivr.net/npm/drag-drop-touch@1.3.1/DragDropTouch.min.js"></script>
 </head>
 <body>
 
@@ -253,7 +252,7 @@
                 <button class="btn" style="flex:1" onclick="importJson()">导入</button>
             </div>
             
-            <input type="text" class="search-box" id="searchTree" placeholder="搜索目录..." oninput="renderTree()">
+            <input type="text" class="search-box" id="searchTree" placeholder="...搜索目录..." oninput="clearTimeout(searchDebounceTimer); searchDebounceTimer=setTimeout(renderTree, 300)">
             
             <div id="sideHeaderActions" class="foldable-area">
                 <div style="margin-top: 12px; display: flex; gap: 8px;">
@@ -284,6 +283,15 @@
     <div class="editor-main" onclick="closePanelsOnMobile()">
         <div class="editor-header">
             <div class="breadcrumb" id="pathDisplay">请选择一个条目</div>
+        </div>
+        <!-- 空数据欢迎面板 -->
+        <div id="emptyState" style="display:none; flex:1; flex-direction:column; align-items:center; justify-content:center; gap:20px; height:100%;">
+            <div style="font-size:30px; color:var(--border-color); margin-bottom:5px;">🍽️</div>
+            <div style="display:flex; gap:3px;">
+                <button class="btn primary" style="height:44px; padding:0 24px; font-size:16px; border-radius:22px;" onclick="addNew('item')">➕ 新建文本 ➕</button>
+                <button class="btn" style="height:44px; padding:0 24px; font-size:16px; border-radius:22px;" onclick="addNew('folder')">➕ 新建文件夹 ➕</button>
+            </div>
+            <button class="btn" style="border:none; background:transparent; color:var(--text-secondary); margin-top:10px;" onclick="importJson()">📄 导入json数据 📄</button>
         </div>
         <div class="editor-body" id="editorContainer" style="visibility: hidden;">
             <input type="text" id="editor-title" placeholder="输入标题...">
@@ -370,6 +378,10 @@
                 <input type="checkbox" id="confirmSwitch" onchange="saveConfig()">
             </div>
             <div class="stat-item">
+                <span>工具自动缩回</span>
+                <input type="checkbox" id="autoCloseToolboxSwitch" onchange="saveConfig()" title="手机端快捷插入后工具栏自动缩回">
+            </div>
+            <div class="stat-item">
                 <span>文本编辑锁定</span>
                 <input type="checkbox" id="lockSwitch" onchange="toggleLock()">
             </div>
@@ -398,18 +410,46 @@
                 <input type="checkbox" id="quickRandomSwitch" onchange="saveConfig()" title="手机端可见的底部悬浮随机按钮">
             </div>
             <div class="stat-item">
-                <span>文本快捷新建</span>
-                <input type="checkbox" id="quickNewSwitch" onchange="saveConfig()" title="手机端可见的悬浮新建按钮">
-            </div>
-            <div class="stat-item">
                 <span>文本复制附加</span>
                 <button class="btn" style="height:24px; min-width:40px; padding:0 8px; font-size:12px;" onclick="openCopyAddonModal()">管理</button>
             </div>
-            <div class="stat-item">
-                <span>文本随机抽取</span>
-                <div style="display:flex; gap:4px;">
-                    <button class="btn" style="height:24px; min-width:40px; padding:0 8px; font-size:12px;" onclick="doRandom('local')">当前</button>
-                    <button class="btn" style="height:24px; min-width:40px; padding:0 8px; font-size:12px;" onclick="doRandom('global')">全局</button>
+
+            <!-- 文本快捷新建折叠组 -->
+            <div style="margin-top:16px; padding-top:16px; border-top:1px dashed var(--border-color); display:flex; flex-direction:column; gap:8px;">
+                <div id="quickNewSubOptions" style="display:none; flex-direction:column; gap:8px;">
+                    <div class="stat-item" style="margin-bottom:0;">
+                        <span>所选后尾新建</span>
+                        <input type="checkbox" id="quickNewAfterSwitch" onchange="toggleQuickNewMode('after')">
+                    </div>
+                    <div class="stat-item" style="margin-bottom:0;">
+                        <span>所属末尾新建</span>
+                        <input type="checkbox" id="quickNewBottomSwitch" onchange="toggleQuickNewMode('bottom')">
+                    </div>
+                </div>
+                <div class="stat-item" style="margin-bottom:0;">
+                    <span>文本快捷新建</span>
+                    <input type="checkbox" id="quickNewSwitch" onchange="toggleQuickNewMaster()" title="手机端可见的悬浮新建按钮">
+                </div>
+            </div>
+
+            <!-- 文本随机抽取折叠组 -->
+            <div style="margin-top:16px; padding-top:16px; border-top:1px dashed var(--border-color); display:flex; flex-direction:column; gap:8px;">
+                <div class="stat-item" style="margin-bottom:0;">
+                    <span>仅限勾选文件</span>
+                    <input type="checkbox" id="randomOnlyCheckedSwitch" onchange="toggleRandomMode('only')">
+                </div>
+                <div class="stat-item" style="margin-bottom:0;">
+                    <span>忽略勾选文件</span>
+                    <input type="checkbox" id="randomIgnoreCheckedSwitch" onchange="toggleRandomMode('ignore')">
+                </div>
+                <div class="stat-item" style="margin-bottom:0;">
+                    <span>文本随机抽取</span>
+                    <div style="display:flex; gap:4px;">
+                        <button class="btn" style="height:24px; min-width:40px; padding:0 8px; font-size:12px;" onclick="doRandom('local')">当前</button>
+                        <button class="btn" style="height:24px; min-width:40px; padding:0 8px; font-size:12px;" onclick="doRandom('global')">全局</button>
+                    </div>
+                </div>
+                <div id="randomSelectedFoldersUI" style="display:none; flex-direction:column; background:var(--hover-bg); padding:8px; border-radius:4px; max-height:150px; overflow-y:auto; font-size:12px; color:var(--text-secondary); line-height: 1.5;">
                 </div>
             </div>
 
@@ -579,6 +619,7 @@
                 { display: "C", text: "{{char}}" }
             ], 
             deleteConfirmEnabled: true,
+            autoCloseToolbox: false,
             isLocked: false,
             isSwapped: false,
             displayOptions: { fr: "{{user}}", sc: "{{char}}" },
@@ -589,6 +630,8 @@
             quickNav: false,
             quickRandom: false,
             quickNew: false,
+            quickNewMode: 'after',
+            randomMode: 'none',
             autoGroup: false,
             autoDupCheckOnImport: true,
             groupSmall: 10,
@@ -616,6 +659,11 @@
     let vgCollapseStates = {};
     let modalCallback = null;
     let isStarFilterMode = false;
+
+    // 核心新增全局变量
+    let saveDebounceTimer = null;
+    let searchDebounceTimer = null;
+    let textHistoryStack = [];
 
     document.addEventListener('focusin', (e) => { if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) lastFocusedElement = e.target; });
     document.addEventListener('click', () => { const toast = document.getElementById('toast'); if(toast.classList.contains('show')) toast.classList.remove('show'); }, true);
@@ -680,18 +728,22 @@
     
     function saveConfig() {
         projectData.config.deleteConfirmEnabled = document.getElementById('confirmSwitch').checked;
+        projectData.config.autoCloseToolbox = document.getElementById('autoCloseToolboxSwitch').checked;
         projectData.config.globalFind = document.getElementById('globalFindSwitch').checked;
         projectData.config.globalReplace = document.getElementById('globalReplaceSwitch').checked;
         projectData.config.tempEdit = document.getElementById('tempEditSwitch').checked;
         projectData.config.autoScrollTop = document.getElementById('autoScrollTopSwitch').checked;
         projectData.config.quickNav = document.getElementById('quickNavSwitch').checked;
         projectData.config.quickRandom = document.getElementById('quickRandomSwitch').checked;
+        
         projectData.config.quickNew = document.getElementById('quickNewSwitch').checked;
+        projectData.config.quickNewMode = document.getElementById('quickNewAfterSwitch').checked ? 'after' : 'bottom';
         saveData(); updateQuickNavVisibility();
     }
 
     window.syncUIToConfig = function() {
         document.getElementById('confirmSwitch').checked = projectData.config.deleteConfirmEnabled;
+        document.getElementById('autoCloseToolboxSwitch').checked = projectData.config.autoCloseToolbox || false;
         document.getElementById('lockSwitch').checked = projectData.config.isLocked;
         document.getElementById('globalFindSwitch').checked = projectData.config.globalFind;
         document.getElementById('globalReplaceSwitch').checked = projectData.config.globalReplace;
@@ -699,10 +751,22 @@
         document.getElementById('autoScrollTopSwitch').checked = projectData.config.autoScrollTop;
         document.getElementById('quickNavSwitch').checked = projectData.config.quickNav;
         document.getElementById('quickRandomSwitch').checked = projectData.config.quickRandom;
-        document.getElementById('quickNewSwitch').checked = projectData.config.quickNew;
+        
+        document.getElementById('quickNewSwitch').checked = projectData.config.quickNew || false;
+        document.getElementById('quickNewSubOptions').style.display = projectData.config.quickNew ? 'flex' : 'none';
+        
+        let qMode = projectData.config.quickNewMode || 'after';
+        document.getElementById('quickNewAfterSwitch').checked = (qMode === 'after');
+        document.getElementById('quickNewBottomSwitch').checked = (qMode === 'bottom');
+
         document.getElementById('autoGroupSwitch').checked = projectData.config.autoGroup;
         document.getElementById('groupSmallInput').value = projectData.config.groupSmall;
         document.getElementById('groupLargeInput').value = projectData.config.groupLarge;
+        
+        const rMode = projectData.config.randomMode || 'none';
+        document.getElementById('randomOnlyCheckedSwitch').checked = (rMode === 'only');
+        document.getElementById('randomIgnoreCheckedSwitch').checked = (rMode === 'ignore');
+
         document.getElementById('frDisplay').value = projectData.config.displayOptions.fr;
         document.getElementById('scDisplay').value = projectData.config.displayOptions.sc;
         updateSwapStatusUI();
@@ -831,6 +895,7 @@
         const treeContainer = document.getElementById('tree'); const filter = document.getElementById('searchTree').value.toLowerCase();
         treeContainer.innerHTML = ''; currentVisibleIds = []; 
         renderLevel(projectData.data, treeContainer, filter, 1, 0);
+        if(typeof updateRandomFoldersUI === 'function') updateRandomFoldersUI();
     }
     window.toggleVirtualGroup = function(e, vId) { e.stopPropagation(); vgCollapseStates[vId] = !vgCollapseStates[vId]; renderTree(); }
 
@@ -1010,10 +1075,70 @@
     function doRangeSelect() {
         if (checkHistory.length < 2) { showToast("请先单独勾选两个项作为首尾"); return; }
         const idx1 = currentVisibleIds.indexOf(checkHistory[0]); const idx2 = currentVisibleIds.indexOf(checkHistory[1]);
-        if (idx1 === -1 || idx2 === -1) { showToast("选中的项被折叠隐藏，请展开"); return; }
+        if (idx1 === -1 || idx2 === -1) { showToast("选中的项被折叠隐藏，请先展开"); return; }
         const start = Math.min(idx1, idx2); const end = Math.max(idx1, idx2);
         for (let i = start; i <= end; i++) selectedIds.add(currentVisibleIds[i]);
         renderTree(); showToast(`连选 ${end - start + 1} 项`);
+    }
+
+    function toggleQuickNewMaster() {
+        const isChecked = document.getElementById('quickNewSwitch').checked;
+        document.getElementById('quickNewSubOptions').style.display = isChecked ? 'flex' : 'none';
+        projectData.config.quickNew = isChecked;
+        saveConfig();
+    }
+
+    function toggleQuickNewMode(clickedMode) {
+        const afterSwitch = document.getElementById('quickNewAfterSwitch');
+        const bottomSwitch = document.getElementById('quickNewBottomSwitch');
+        
+        if (clickedMode === 'after' && afterSwitch.checked) bottomSwitch.checked = false;
+        else if (clickedMode === 'bottom' && bottomSwitch.checked) afterSwitch.checked = false;
+        
+        if (!afterSwitch.checked && !bottomSwitch.checked) {
+            afterSwitch.checked = true; 
+        }
+        projectData.config.quickNewMode = afterSwitch.checked ? 'after' : 'bottom';
+        saveConfig();
+    }
+
+    function toggleRandomMode(clickedMode) {
+        const onlyCheckbox = document.getElementById('randomOnlyCheckedSwitch');
+        const ignoreCheckbox = document.getElementById('randomIgnoreCheckedSwitch');
+        if (clickedMode === 'only' && onlyCheckbox.checked) ignoreCheckbox.checked = false;
+        else if (clickedMode === 'ignore' && ignoreCheckbox.checked) onlyCheckbox.checked = false;
+        projectData.config.randomMode = onlyCheckbox.checked ? 'only' : (ignoreCheckbox.checked ? 'ignore' : 'none');
+        saveConfig(); updateRandomFoldersUI();
+    }
+
+    function updateRandomFoldersUI() {
+        const ui = document.getElementById('randomSelectedFoldersUI');
+        const mode = projectData.config.randomMode || 'none';
+        if (mode === 'none') { ui.style.display = 'none'; return; }
+        
+        let checkedFolders = [];
+        const findChecked = (list) => {
+            for (let n of list) {
+                if (selectedIds.has(n.id) && n.type === 'folder') checkedFolders.push(n.name);
+                if (n.children) findChecked(n.children);
+            }
+        };
+        findChecked(projectData.data);
+        
+        let htmlContent = '';
+        if (checkedFolders.length > 0) {
+            htmlContent += `<div style="margin-bottom:6px;"><strong>已勾选文件夹：</strong></div>`;
+            htmlContent += `<div style="padding-left:4px;">${checkedFolders.map(x => '<div style="margin-bottom:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">- ' + escapeHTML(x) + '</div>').join('')}</div>`;
+        } else {
+            htmlContent += `<div style="color:#999; text-align:center;">暂未勾选文件夹</div>`;
+        }
+        
+        htmlContent += `<div style="margin-top:6px; padding-top:6px; border-top:1px solid #cbd5e1; font-size:11px; color:#94a3b8;">
+            注：【全局】随机不受 [仅限勾选] 限制，但受 [忽略勾选] 影响。
+        </div>`;
+        
+        ui.style.display = 'flex';
+        ui.innerHTML = htmlContent;
     }
 
     function toggleFold(e, id) {
@@ -1023,13 +1148,17 @@
     }
 
     let tempEditToastTimer = null;
-    function selectNode(node) {
+    function selectNode(node, isSilent = false) {
         currentNode = node; lastFindIndex = 0; 
-        document.getElementById('editorContainer').style.visibility = 'visible';
+        document.getElementById('emptyState').style.display = 'none';
+        document.getElementById('editorContainer').style.display = 'flex';
         document.getElementById('editor-title').value = node.name;
         
         const contentArea = document.getElementById('editor-content');
         if (node.type === 'item') { contentArea.style.display = 'block'; refreshEditorContent(); } else { contentArea.style.display = 'none'; }
+
+        // 重置自定义撤销栈
+        textHistoryStack = [contentArea.value || ''];
 
         const pathArr = getPath(projectData.data, node.id);
         document.getElementById('pathDisplay').innerText = pathArr ? pathArr.join(' > ') : node.name;
@@ -1041,7 +1170,18 @@
                 if (!tempEditToastTimer) { showToast("当前为临时修改，不保存内容"); tempEditToastTimer = setTimeout(() => { tempEditToastTimer = null; }, 3000); }
                 return; 
             }
-            node.text = e.target.value; saveData(); 
+            
+            // 压入撤销栈
+            if (textHistoryStack[textHistoryStack.length - 1] !== e.target.value) {
+                textHistoryStack.push(e.target.value);
+                if (textHistoryStack.length > 50) textHistoryStack.shift();
+            }
+
+            // 防抖保存，解决打字卡顿
+            clearTimeout(saveDebounceTimer);
+            saveDebounceTimer = setTimeout(() => {
+                node.text = e.target.value; saveData();
+            }, 800); 
         };
         
         contentArea.onclick = () => { if (projectData.config.isLocked && !hasShownLockToast) { showToast("已锁定编辑"); hasShownLockToast = true; } };
@@ -1052,8 +1192,19 @@
             contentArea.scrollTop = 0;
         }
 
-        if (window.innerWidth <= 768) closePanelsOnMobile();
+        if (window.innerWidth <= 768 && !isSilent) closePanelsOnMobile();
         renderTree(); updateQuickNavVisibility();
+
+        // 视觉定位效果 (随机或定位时触发)
+        setTimeout(() => {
+            const row = document.querySelector(`input[onclick*="${node.id}"]`)?.parentElement;
+            if (row) {
+                row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                const oldBg = row.style.background;
+                row.style.background = '#fef08a'; // 黄色闪烁高亮
+                setTimeout(() => { row.style.background = oldBg; }, 800);
+            }
+        }, 100);
     }
 
     function updateQuickNavVisibility(forceHide = false) {
@@ -1105,17 +1256,32 @@
             type: type, _collapsed: false, text: type === 'item' ? '' : undefined, children: type === 'folder' ? [] : undefined, isStarred: false
         };
         
+        let mode = projectData.config.quickNewMode || 'after';
+
         if (currentNode) {
             if (currentNode.type === 'folder') {
                 currentNode._collapsed = false; currentNode.children.push(newNode);
             } else if (currentNode.type === 'item') {
-                const insertAfter = (list, targetId) => {
-                    for (let i = 0; i < list.length; i++) {
-                        if (list[i].id === targetId) { list.splice(i + 1, 0, newNode); return true; }
-                        if (list[i].children && insertAfter(list[i].children, targetId)) return true;
-                    } return false;
-                };
-                insertAfter(projectData.data, currentNode.id);
+                if (mode === 'bottom') {
+                    // 所属末尾新建
+                    let parentList = null;
+                    const findParent = (arr) => {
+                        if(arr.some(n=>n.id === currentNode.id)) { parentList = arr; return true;}
+                        for(let n of arr) { if(n.children && findParent(n.children)) return true; }
+                        return false;
+                    }
+                    findParent(projectData.data);
+                    if(parentList) parentList.push(newNode); else projectData.data.push(newNode);
+                } else {
+                    // 所选后尾新建 (默认 after)
+                    const insertAfter = (list, targetId) => {
+                        for (let i = 0; i < list.length; i++) {
+                            if (list[i].id === targetId) { list.splice(i + 1, 0, newNode); return true; }
+                            if (list[i].children && insertAfter(list[i].children, targetId)) return true;
+                        } return false;
+                    };
+                    insertAfter(projectData.data, currentNode.id);
+                }
             }
         } else { projectData.data.push(newNode); }
         
@@ -1643,7 +1809,7 @@
                 currentActivePairIdx = -1; revokeBtn.style.display = 'none';
                 c.innerHTML = '<div style="text-align:center;color:#999;padding:30px;">暂无对应记录</div>'; return; 
             }
-            if (dupPairPage < 1) dupPairPage = 1; if (dupPairPage > pairs.length) dupPairPage = pairs.length;
+            if (dupPairPage < 1) dupPairPage = 1; if (dupPairPage > pairs.length) dupPairPage = phrases.length;
             
             let p = pairs[dupPairPage - 1];
             currentActivePairIdx = p._idx;
@@ -1892,6 +2058,7 @@
                 const el = lastFocusedElement || document.getElementById('editor-content');
                 if (el && typeof el.selectionStart === 'number' && !el.readOnly) {
                     const start = el.selectionStart; el.setRangeText(sc.text, start, el.selectionEnd, 'end'); el.focus(); el.dispatchEvent(new Event('input')); 
+                    if (window.innerWidth <= 768 && projectData.config.autoCloseToolbox) togglePanel('toolbox');
                 }
             }; grid.appendChild(btn);
         });
@@ -1961,26 +2128,111 @@
     }
 
     function doRandom(scope) {
-        let pool = [];
-        if (scope === 'global') { 
-            pool = getAllItems(projectData.data); 
-        } else {
-            if (!currentNode) { showToast("请先选择文件夹或文本"); return; }
-            let targetList = null;
-            if (currentNode.type === 'folder') {
-                targetList = currentNode.children || [];
-            } else {
-                const findParentList = (list) => { 
-                    if (list.some(x => x.id === currentNode.id)) return list; 
-                    for (let n of list) { if (n.children) { let r = findParentList(n.children); if (r) return r; } } 
-                    return null; 
-                };
-                targetList = findParentList(projectData.data);
-            }
-            if (targetList) pool = targetList.filter(x => x.type === 'item');
+        let mode = projectData.config.randomMode || 'none';
+        
+        // 全局随机不受【仅限勾选文件】限制
+        let effectiveMode = mode;
+        if (scope === 'global' && mode === 'only') {
+            effectiveMode = 'none';
         }
+
+        if (scope === 'local' && !currentNode) {
+            showToast("请先选择文件或文本"); return;
+        }
+
+        let targetParentId = null;
+        if (scope === 'local') {
+            if (currentNode.type === 'folder') targetParentId = currentNode.id;
+            else {
+                const findParent = (list, parentNode) => {
+                    if (list.some(x => x.id === currentNode.id)) return parentNode ? parentNode.id : 'root';
+                    for (let n of list) {
+                        if (n.children) { let r = findParent(n.children, n); if (r) return r; }
+                    }
+                    return null;
+                };
+                targetParentId = findParent(projectData.data, null);
+            }
+        }
+
+        let pool = [];
+        
+        const traverse = (list, parentId, isIgnored, isOnlyChecked, inLocalTree) => {
+            for (let n of list) {
+                let curIgnored = isIgnored || (effectiveMode === 'ignore' && selectedIds.has(n.id));
+                let curOnlyChecked = isOnlyChecked || (effectiveMode === 'only' && selectedIds.has(n.id));
+                let curInLocalTree = inLocalTree || (n.id === targetParentId);
+                
+                if (n.type === 'item') {
+                    let valid = true;
+                    // 忽略过滤
+                    if (effectiveMode === 'ignore' && curIgnored) valid = false;
+                    
+                    if (valid) {
+                        if (scope === 'global') {
+                            // 全局直接收集
+                            pool.push(n);
+                        } else {
+                            // 局部随机
+                            if (effectiveMode === 'only') {
+                                // 只要在当前 target 树下，且位于被勾选的分支中（嵌套小文件夹也能玩）
+                                if (curInLocalTree && curOnlyChecked) pool.push(n);
+                            } else {
+                                // ignore 或 none：只在当前层级（不向深层小文件夹递归）
+                                if (parentId === targetParentId && !curIgnored) pool.push(n);
+                            }
+                        }
+                    }
+                } else if (n.children) {
+                    if (!curIgnored) {
+                        traverse(n.children, n.id, curIgnored, curOnlyChecked, curInLocalTree);
+                    }
+                }
+            }
+        };
+
+        traverse(projectData.data, 'root', false, false, targetParentId === 'root');
+
+        if (pool.length === 0) {
+            if (scope === 'local' && mode === 'only') {
+                // 判断 local 树内是否有任何勾选项，如果没有则回退并提示
+                let hasAnyCheckedInLocal = false;
+                const checkLocal = (list, inTree) => {
+                    for (let n of list) {
+                        let curInTree = inTree || n.id === targetParentId;
+                        if (curInTree && selectedIds.has(n.id)) { hasAnyCheckedInLocal = true; return; }
+                        if (n.children) checkLocal(n.children, curInTree);
+                    }
+                };
+                checkLocal(projectData.data, targetParentId === 'root');
+
+                if (!hasAnyCheckedInLocal) {
+                    if (!window._hasShownNoCheckPrompt) { showToast("未勾选文件，将在所处文件夹内随机文本"); window._hasShownNoCheckPrompt = true; }
+                    const fallbackTraverse = (list, parentId) => {
+                        for (let n of list) {
+                            if (n.type === 'item' && parentId === targetParentId) pool.push(n);
+                            else if (n.children) fallbackTraverse(n.children, n.id);
+                        }
+                    };
+                    fallbackTraverse(projectData.data, 'root');
+                }
+            } else if (scope === 'local' && mode === 'ignore') {
+                if (!window._hasShownIgnoreAllPrompt) { showToast("已忽略全部文本"); window._hasShownIgnoreAllPrompt = true; }
+            }
+        }
+
         if (pool.length === 0) { showToast("目标层级内无可抽取的文本"); return; }
-        selectNode(pool[Math.floor(Math.random() * pool.length)]); showToast(`🎲\n${currentNode.name}`);
+        
+        let selectedItem = pool[Math.floor(Math.random() * pool.length)];
+        const expandP = (list, tid) => { 
+            for(let node of list) { 
+                if (node.id === tid) return true; 
+                if (node.children && expandP(node.children, tid)) { node._collapsed = false; return true; } 
+            } return false; 
+        };
+        expandP(projectData.data, selectedItem.id);
+        selectNode(selectedItem); 
+        showToast(`🎲\n${selectedItem.name}`);
     }
 
     function showModalClear(title, msg, onConfirm = null) {
@@ -2132,15 +2384,6 @@
     }
     function closePanelsOnMobile() { if (window.innerWidth <= 768) { document.getElementById('sidebar').classList.remove('show'); document.getElementById('toolbox').classList.remove('show'); } }
 
-    function handleMobileUndo() {
-        const btn = document.getElementById('mobileUndoBtn');
-        if (btn.innerText.includes('回顶')) {
-            document.getElementById('editor-content').scrollTop = 0;
-        } else {
-            document.execCommand('undo');
-        }
-    }
-
     document.getElementById('editor-content').addEventListener('scroll', function() {
         if (window.innerWidth > 768) return;
         const btn = document.getElementById('mobileUndoBtn');
@@ -2195,6 +2438,8 @@
                 if(projectData.config.quickNav === undefined) projectData.config.quickNav = false;
                 if(projectData.config.quickRandom === undefined) projectData.config.quickRandom = false;
                 if(projectData.config.quickNew === undefined) projectData.config.quickNew = false;
+                if(projectData.config.quickNewMode === undefined) projectData.config.quickNewMode = 'after';
+                if(projectData.config.randomMode === undefined) projectData.config.randomMode = 'none';
                 if(projectData.config.autoDupCheckOnImport === undefined) projectData.config.autoDupCheckOnImport = true;
                 if(projectData.config.autoScrollTop === undefined) projectData.config.autoScrollTop = false;
             }
@@ -2206,6 +2451,33 @@
         renderShortcuts();
         renderTree();
         updateQuickNavVisibility();
+
+        // 空数据判断与启动自动随机体验
+        if (projectData.data.length === 0) {
+            document.getElementById('editorContainer').style.display = 'none';
+            document.getElementById('emptyState').style.display = 'flex';
+            document.getElementById('pathDisplay').innerText = '欢迎使用';
+        } else {
+            // 如果有数据，静默触发一次全局随机并定位
+            let allItems = getAllItems(projectData.data);
+            if (allItems.length > 0) {
+                let rItem = allItems[Math.floor(Math.random() * allItems.length)];
+                
+                const expandP = (list, tid) => { 
+                    for(let node of list) { 
+                        if (node.id === tid) return true; 
+                        if (node.children && expandP(node.children, tid)) { node._collapsed = false; return true; } 
+                    } return false; 
+                };
+                expandP(projectData.data, rItem.id);
+                
+                selectNode(rItem, true); // true 表示不触发关闭侧边栏
+            } else {
+                // 有文件夹但没文本
+                document.getElementById('editorContainer').style.display = 'none';
+                document.getElementById('emptyState').style.display = 'flex';
+            }
+        }
     }
 
     startApp();
@@ -2270,4 +2542,3 @@
 </script>
 </body>
 </html>
-
