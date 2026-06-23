@@ -2410,16 +2410,43 @@
 
     function togglePanel(id) {
         const panel = document.getElementById(id);
-        if (panel.classList.contains('show')) { panel.classList.remove('show'); } 
-        else { document.getElementById('sidebar').classList.remove('show'); document.getElementById('toolbox').classList.remove('show'); panel.classList.add('show'); }
+        if (panel.classList.contains('show')) { 
+            panel.classList.remove('show'); 
+            updateQuickNavVisibility(false);
+        } else { 
+            document.getElementById('sidebar').classList.remove('show'); 
+            document.getElementById('toolbox').classList.remove('show'); 
+            panel.classList.add('show'); 
+            updateQuickNavVisibility(true);
+        }
     }
-    function closePanelsOnMobile() { if (window.innerWidth <= 768) { document.getElementById('sidebar').classList.remove('show'); document.getElementById('toolbox').classList.remove('show'); } }
+    
+    function closePanelsOnMobile() { 
+        if (window.innerWidth <= 768) { 
+            document.getElementById('sidebar').classList.remove('show'); 
+            document.getElementById('toolbox').classList.remove('show'); 
+            updateQuickNavVisibility(false);
+        } 
+    }
 
-    document.getElementById('editor-content').addEventListener('scroll', function() {
+    function handleMobileUndo() {
+        const btn = document.getElementById('mobileUndoBtn');
+        if (btn.innerText.includes('回顶')) {
+            // 同时重置文本框与外层容器的scrollTop，解决移动端(尤其iOS)只滚动容器导致回顶失效的内核问题
+            document.getElementById('editor-content').scrollTop = 0;
+            document.getElementById('editorContainer').scrollTop = 0;
+        } else {
+            document.execCommand('undo');
+        }
+    }
+
+    function checkMobileScrollToTop(el) {
         if (window.innerWidth > 768) return;
         const btn = document.getElementById('mobileUndoBtn');
-        if (projectData.config.isLocked || this.readOnly) {
-            if (this.scrollTop > 0 && this.scrollTop + this.clientHeight >= this.scrollHeight - 10) {
+        const contentArea = document.getElementById('editor-content');
+        if (projectData.config.isLocked || contentArea.readOnly) {
+            // 将判定容差从10px放宽到30px，防止部分手机刘海屏或底部Padding导致永远差几像素无法触发
+            if (el.scrollTop > 0 && el.scrollTop + el.clientHeight >= el.scrollHeight - 30) {
                 btn.innerText = '⬆ 回顶';
             } else {
                 btn.innerText = '↩ 撤销';
@@ -2427,7 +2454,11 @@
         } else {
             btn.innerText = '↩ 撤销';
         }
-    });
+    }
+
+    // 同时监听文本框和父容器，彻底解决手机端非编辑状态下textarea自适应高度转为父容器滚动而漏判事件的问题
+    document.getElementById('editor-content').addEventListener('scroll', function() { checkMobileScrollToTop(this); });
+    document.getElementById('editorContainer').addEventListener('scroll', function() { checkMobileScrollToTop(this); });
 
     async function startApp() {
         try {
