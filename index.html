@@ -615,10 +615,11 @@
     }
 
     const defaultData = { 
-        data: [], 
-        config: { 
-            shortcuts: [
-                { display: "Fr", text: "<Q7Fr>" },
+    data: [], 
+    config: { 
+        selectedIds: [], // 新增：保存勾选节点 ID 的数组
+        shortcuts: [
+            { display: "Fr", text: "<Q7Fr>" },
                 { display: "Sc", text: "<Q7Sc>" },
                 { display: "U", text: "{{user}}" },
                 { display: "C", text: "{{char}}" }
@@ -1089,18 +1090,31 @@
     }
 
     function toggleCheck(e, id) {
-        e.stopPropagation();
-        if (e.target.checked) { selectedIds.add(id); checkHistory.push(id); if (checkHistory.length > 2) checkHistory.shift(); } 
-        else { selectedIds.delete(id); checkHistory = checkHistory.filter(x => x !== id); }
+    e.stopPropagation();
+    if (e.target.checked) { 
+        selectedIds.add(id); 
+        checkHistory.push(id); 
+        if (checkHistory.length > 2) checkHistory.shift(); 
+    } else { 
+        selectedIds.delete(id); 
+        checkHistory = checkHistory.filter(x => x !== id); 
     }
+    // 将勾选数据更新到配置并写入缓存
+    projectData.config.selectedIds = Array.from(selectedIds);
+    saveData();
+    if(typeof updateRandomFoldersUI === 'function') updateRandomFoldersUI();
+}
     function doRangeSelect() {
-        if (checkHistory.length < 2) { showToast("请先单独勾选两个项作为首尾"); return; }
-        const idx1 = currentVisibleIds.indexOf(checkHistory[0]); const idx2 = currentVisibleIds.indexOf(checkHistory[1]);
-        if (idx1 === -1 || idx2 === -1) { showToast("选中的项被折叠隐藏，请先展开"); return; }
-        const start = Math.min(idx1, idx2); const end = Math.max(idx1, idx2);
-        for (let i = start; i <= end; i++) selectedIds.add(currentVisibleIds[i]);
-        renderTree(); showToast(`连选 ${end - start + 1} 项`);
-    }
+    if (checkHistory.length < 2) { showToast("请先单独勾选两个项作为首尾"); return; }
+    const idx1 = currentVisibleIds.indexOf(checkHistory[0]); const idx2 = currentVisibleIds.indexOf(checkHistory[1]);
+    if (idx1 === -1 || idx2 === -1) { showToast("选中的项被折叠隐藏，请先展开"); return; }
+    const start = Math.min(idx1, idx2); const end = Math.max(idx1, idx2);
+    for (let i = start; i <= end; i++) selectedIds.add(currentVisibleIds[i]);
+    // 连选后更新配置并保存
+    projectData.config.selectedIds = Array.from(selectedIds);
+    saveData();
+    renderTree(); showToast(`连选 ${end - start + 1} 项`);
+}
 
     function toggleQuickNewMaster() {
         projectData.config.quickNew = !projectData.config.quickNew;
@@ -1321,6 +1335,8 @@
                 if(removeNodeById(projectData.data, id)) count++;
             });
             selectedIds.clear(); checkHistory = [];
+            // 删除后清空并保存选定缓存
+            projectData.config.selectedIds = [];
             
             if (currentNode && document.getElementById('editorContainer').style.visibility === 'visible') {
                 const stillExists = (list, id) => {
@@ -2349,10 +2365,18 @@
     }
 
     function exportJson() {
-        const exportData = JSON.parse(JSON.stringify(projectData)); exportData.config.isLocked = false; exportData.config.isSwapped = false;
-        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(exportData, null, 2)], {type: 'application/json;charset=utf-8'}));
-        a.download = `TextManager_${Date.now()}.json`; a.click(); showToast('导出完成');
-    }
+    const exportData = JSON.parse(JSON.stringify(projectData)); exportData.config.isLocked = false; exportData.config.isSwapped = false;
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(exportData, null, 2)], {type: 'application/json;charset=utf-8'}));
+    
+    // 生成标准的 YYYYMMDD 年月日格式
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const dateStr = `${yyyy}${mm}${dd}`;
+    
+    a.download = `TextManager_${dateStr}.json`; a.click(); showToast('导出完成');
+}
     
     function regenerateIds(node) {
         node.id = 'd_' + Math.random().toString(36).substr(2, 9);
@@ -2441,24 +2465,32 @@
     }
 
     function checkMobileScrollToTop(el) {
-        if (window.innerWidth > 768) return;
-        const btn = document.getElementById('mobileUndoBtn');
-        const contentArea = document.getElementById('editor-content');
-        if (projectData.config.isLocked || contentArea.readOnly) {
-            // 将判定容差从10px放宽到30px，防止部分手机刘海屏或底部Padding导致永远差几像素无法触发
-            if (el.scrollTop > 0 && el.scrollTop + el.clientHeight >= el.scrollHeight - 30) {
-                btn.innerText = '⬆ 回顶';
-            } else {
-                btn.innerText = '↩ 撤销';
-            }
+    if (window.innerWidth > 768) return;
+    const btn = document.getElementById('mobileUndoBtn');
+    const contentArea = document.getElementById('editor-content');
+    
+    // 输入法未弹起（即未获得焦点）、或者文本框处于锁定/只读状态，均判定为非编辑状态
+    const isNonEditing = projectData.config.isLocked || contentArea.readOnly || (document.activeElement !== contentArea);
+    
+    if (isNonEditing) {
+        // 非编辑状态下，只要向上滚动超过 30 像素，即显示回顶按钮
+        if (el.scrollTop > 30) {
+            btn.innerText = '⬆ 回顶';
         } else {
             btn.innerText = '↩ 撤销';
         }
+    } else {
+        btn.innerText = '↩ 撤销';
     }
+}
 
-    // 同时监听文本框和父容器，彻底解决手机端非编辑状态下textarea自适应高度转为父容器滚动而漏判事件的问题
-    document.getElementById('editor-content').addEventListener('scroll', function() { checkMobileScrollToTop(this); });
-    document.getElementById('editorContainer').addEventListener('scroll', function() { checkMobileScrollToTop(this); });
+// 监听滚动事件
+document.getElementById('editor-content').addEventListener('scroll', function() { checkMobileScrollToTop(this); });
+document.getElementById('editorContainer').addEventListener('scroll', function() { checkMobileScrollToTop(this); });
+
+// 新增焦点变化监听，确保键盘收起或弹起时能即时响应按钮状态切换
+document.getElementById('editor-content').addEventListener('focus', function() { checkMobileScrollToTop(this); });
+document.getElementById('editor-content').addEventListener('blur', function() { checkMobileScrollToTop(this); });
 
     async function startApp() {
         try {
@@ -2476,9 +2508,24 @@
 
             if (savedData) {
                 projectData.data = savedData.data || [];
-                projectData.config = { ...defaultData.config, ...(savedData.config || {}) };
                 
-                if(!projectData.config.shortcuts) projectData.config.shortcuts = JSON.parse(JSON.stringify(defaultData.config.shortcuts));
+                // 新增：定义并运行递归折叠函数，重进时默认将所有文件夹设为折叠状态
+                const collapseAllFolders = (list) => {
+                    for (let n of list) {
+                        if (n.type === 'folder') {
+                            n._collapsed = true;
+                            if (n.children) collapseAllFolders(n.children);
+                        }
+                    }
+                };
+                collapseAllFolders(projectData.data);
+
+                projectData.config = { ...defaultData.config, ...(savedData.config || {}) };
+            
+            // 从配置中恢复已被勾选的节点 ID
+            selectedIds = new Set(projectData.config.selectedIds || []);
+            
+            if(!projectData.config.shortcuts) projectData.config.shortcuts = JSON.parse(JSON.stringify(defaultData.config.shortcuts));
                 const hasU = projectData.config.shortcuts.some(s => s.display === 'U');
                 const hasC = projectData.config.shortcuts.some(s => s.display === 'C');
                 if (!hasU) projectData.config.shortcuts.push({ display: 'U', text: '{{user}}' });
