@@ -1,5 +1,5 @@
 // ==========================================
-// 番外文本管理器 - 酒馆加载器 (顶层通信打通版)
+// 番外文本管理器 - 酒馆加载器 (安全防崩溃版)
 // ==========================================
 (function() {
     'use strict';
@@ -12,7 +12,7 @@
     const STORAGE_SETTINGS_KEY = 'extra_text_mgr_settings_v3';
     const STORAGE_POS_KEY = 'extra_text_mgr_btn_pos_v3';
 
-    // 1. 注入顶级样式，强行剥离酒馆黑白字体遮罩，恢复真彩 Emoji
+    // 注入彩色 Emoji 渲染规则
     function injectEmojiStyle() {
         if (!topDoc.getElementById('extra-emoji-fix-style')) {
             const style = topDoc.createElement('style');
@@ -55,7 +55,7 @@
         return `<span class="extra-color-emoji">${iconStr}</span>`;
     }
 
-    // 2. 弹窗 (点击空白封闭)
+    // 1. 精致居中卡片弹窗 (点击空白封闭)
     function createMainModal() {
         let $overlay = $('#extra-text-mgr-overlay', topDoc);
         if ($overlay.length === 0) {
@@ -87,7 +87,7 @@
         }
     }
 
-    // 3. 悬浮按钮 (越界回归 + 拖拽)
+    // 2. 悬浮按钮
     function renderFloatButton() {
         const settings = getSettings();
         let $btn = $('#extra-text-mgr-float-btn', topDoc);
@@ -174,27 +174,24 @@
         $button.on(`mousedown.extraMgr touchstart.extraMgr`, dragStart);
     }
 
-    // 4. 注册按钮事件
+    // 3. 安全注册酒馆助手【番外】按钮 (防未定义图标引发报错中断)
     function registerTavernHelperButtons() {
-        const settings = getSettings();
-        const btnLabel = settings.icon || '📖';
+        const safeBind = (winObj) => {
+            if (typeof winObj.getButtonEvent === 'function' && typeof winObj.eventOn === 'function') {
+                try {
+                    const evt = winObj.getButtonEvent("番外");
+                    if (evt) {
+                        winObj.eventOn(evt, toggleModal);
+                    }
+                } catch(e) {}
+            }
+        };
 
-        if (typeof getButtonEvent === 'function' && typeof eventOn === 'function') {
-            try {
-                eventOn(getButtonEvent("番外"), toggleModal);
-                eventOn(getButtonEvent(btnLabel), toggleModal);
-            } catch(e){}
-        }
-
-        if (typeof topWin.getButtonEvent === 'function' && typeof topWin.eventOn === 'function') {
-            try {
-                topWin.eventOn(topWin.getButtonEvent("番外"), toggleModal);
-                topWin.eventOn(topWin.getButtonEvent(btnLabel), toggleModal);
-            } catch(e){}
-        }
+        safeBind(window);
+        safeBind(topWin);
     }
 
-    // 5. 侧边栏菜单
+    // 4. 侧边栏菜单
     function renderSidebarButton() {
         const settings = getSettings();
         const $menu = $('#extensionsMenu, #extensions_menu', topDoc);
@@ -221,7 +218,7 @@
         }
     }
 
-    // 6. 核心投递：直接驱动输入框填入并推送
+    // 5. 跨窗口文本发送
     function sendToTavernChat(text) {
         if (!text) return;
 
@@ -249,14 +246,13 @@
         }
     }
 
-    // 关键突破：必须强行监听顶层 topWin 的信令通道！
     topWin.addEventListener('message', (event) => {
         if (event.data?.type === 'SEND_TO_ST_CHAT') {
             sendToTavernChat(event.data.text);
         } else if (event.data?.type === 'UPDATE_ST_SETTINGS') {
             saveSettings(event.data.settings);
             
-            // 销毁旧节点重新渲染最新彩色图标
+            // 强行清理旧节点并重新绘制最新按钮
             $('#extra-text-mgr-float-btn', topDoc).remove();
             $('#extra-mgr-sidebar-btn', topDoc).remove();
             
