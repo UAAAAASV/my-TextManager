@@ -1,5 +1,5 @@
 // ==========================================
-// 番外文本管理器 - 酒馆加载器 (无叉版 + 强力投递 + 即时图标)
+// 番外文本管理器 - 酒馆加载器 (顶层通信打通版)
 // ==========================================
 (function() {
     'use strict';
@@ -12,7 +12,7 @@
     const STORAGE_SETTINGS_KEY = 'extra_text_mgr_settings_v3';
     const STORAGE_POS_KEY = 'extra_text_mgr_btn_pos_v3';
 
-    // 注入彩色 Emoji 渲染规则
+    // 1. 注入顶级样式，强行剥离酒馆黑白字体遮罩，恢复真彩 Emoji
     function injectEmojiStyle() {
         if (!topDoc.getElementById('extra-emoji-fix-style')) {
             const style = topDoc.createElement('style');
@@ -55,7 +55,7 @@
         return `<span class="extra-color-emoji">${iconStr}</span>`;
     }
 
-    // 1. 精致居中卡片弹窗 (去掉了红框小叉叉，点击空白直接关闭)
+    // 2. 弹窗 (点击空白封闭)
     function createMainModal() {
         let $overlay = $('#extra-text-mgr-overlay', topDoc);
         if ($overlay.length === 0) {
@@ -69,7 +69,6 @@
             $('body', topDoc).append(overlayHtml);
             $overlay = $('#extra-text-mgr-overlay', topDoc);
 
-            // 点击黑色背景空白处关闭
             $overlay.on('click', function(e) {
                 if (e.target === this) {
                     $(this).hide();
@@ -88,7 +87,7 @@
         }
     }
 
-    // 2. 悬浮按钮 (支持拖拽 + 即时图标更新)
+    // 3. 悬浮按钮 (越界回归 + 拖拽)
     function renderFloatButton() {
         const settings = getSettings();
         let $btn = $('#extra-text-mgr-float-btn', topDoc);
@@ -175,7 +174,7 @@
         $button.on(`mousedown.extraMgr touchstart.extraMgr`, dragStart);
     }
 
-    // 3. 注册绑定入口
+    // 4. 注册按钮事件
     function registerTavernHelperButtons() {
         const settings = getSettings();
         const btnLabel = settings.icon || '📖';
@@ -195,7 +194,7 @@
         }
     }
 
-    // 4. 侧边栏菜单入口
+    // 5. 侧边栏菜单
     function renderSidebarButton() {
         const settings = getSettings();
         const $menu = $('#extensionsMenu, #extensions_menu', topDoc);
@@ -222,7 +221,7 @@
         }
     }
 
-    // 5. 跨窗口发送逻辑：优先驱动输入框并点击发送按钮
+    // 6. 核心投递：直接驱动输入框填入并推送
     function sendToTavernChat(text) {
         if (!text) return;
 
@@ -230,39 +229,34 @@
         const sendBtn = topDoc.getElementById('send_but');
 
         if (textarea) {
-            // 直接设值
             textarea.value = text;
-            
-            // 触发原生输入与改变事件
             textarea.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
             textarea.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
 
-            // 触发 jQuery 事件
             if ($) {
                 $(textarea).trigger('input').trigger('change');
             }
 
-            // 点击发送按钮
             setTimeout(() => {
                 if (sendBtn) {
                     sendBtn.click();
                 } else if (typeof topWin.triggerSlash === 'function') {
                     topWin.triggerSlash(`/send ${text}`);
                 }
-            }, 120);
+            }, 100);
         } else if (typeof topWin.triggerSlash === 'function') {
             topWin.triggerSlash(`/send ${text}`);
         }
     }
 
-    // 信令接收
-    window.addEventListener('message', (event) => {
+    // 关键突破：必须强行监听顶层 topWin 的信令通道！
+    topWin.addEventListener('message', (event) => {
         if (event.data?.type === 'SEND_TO_ST_CHAT') {
             sendToTavernChat(event.data.text);
         } else if (event.data?.type === 'UPDATE_ST_SETTINGS') {
             saveSettings(event.data.settings);
             
-            // 销毁旧节点，强行使用新图标重新绘制
+            // 销毁旧节点重新渲染最新彩色图标
             $('#extra-text-mgr-float-btn', topDoc).remove();
             $('#extra-mgr-sidebar-btn', topDoc).remove();
             
