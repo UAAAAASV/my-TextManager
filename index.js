@@ -1,35 +1,23 @@
 // ==========================================
-// 番外文本管理器 v3.0 - 双端极简无边框版
+// 番外文本管理器 - 酒馆加载器
 // ==========================================
 const topDoc = (window.top && window.top.document) ? window.top.document : document;
-const topWin = window.top || window;
 
 const MY_WEB_URL = 'https://uaaaaasv.github.io/my-TextManager/';
 const STORAGE_SETTINGS_KEY = 'extra_text_mgr_settings_v3';
 const STORAGE_POS_KEY = 'extra_text_mgr_btn_pos_v3';
 
-// 默认配置
 function getSettings() {
-    const def = {
-        icon: 'fa-solid fa-book-journal-whills',
-        showFloat: true,
-        showSidebar: true,
-        showQR: true
-    };
+    const def = { icon: 'fa-solid fa-book-journal-whills', showFloat: true, showSidebar: true, showQR: true };
     try {
         return { ...def, ...JSON.parse(localStorage.getItem(STORAGE_SETTINGS_KEY) || '{}') };
     } catch (e) { return def; }
 }
 
-function saveSettings(settings) {
-    localStorage.setItem(STORAGE_SETTINGS_KEY, JSON.stringify(settings));
-}
-
-// 1. 无边框、无黑条、手机/PC自适应弹窗（点击空白关闭）
+// 1. 无边框无黑条弹窗（点击空白遮罩直接关闭）
 function createMainModal() {
     let overlay = topDoc.getElementById('extra-text-mgr-overlay');
     if (!overlay) {
-        // 全屏背景遮罩
         overlay = topDoc.createElement('div');
         overlay.id = 'extra-text-mgr-overlay';
         overlay.style.cssText = `
@@ -40,7 +28,6 @@ function createMainModal() {
             display: none; align-items: center; justify-content: center;
         `;
 
-        // 弹窗主体（无黑条、无丑边框）
         const modal = topDoc.createElement('div');
         modal.id = 'extra-text-mgr-modal';
         modal.style.cssText = `
@@ -54,7 +41,6 @@ function createMainModal() {
         overlay.appendChild(modal);
         topDoc.body.appendChild(overlay);
 
-        // 点击空白背景直接关闭
         overlay.onclick = (e) => {
             if (e.target === overlay) overlay.style.display = 'none';
         };
@@ -67,7 +53,7 @@ function toggleModal() {
     overlay.style.display = (overlay.style.display === 'none' || !overlay.style.display) ? 'flex' : 'none';
 }
 
-// 2. 极简透明悬浮图标（支持鼠标与手机触摸拖动）
+// 2. 悬浮图标（支持鼠标与手机触摸拖动）
 function renderFloatButton() {
     const settings = getSettings();
     let btn = topDoc.getElementById('extra-text-mgr-float-btn');
@@ -102,7 +88,6 @@ function renderFloatButton() {
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         `;
 
-        // 拖动逻辑（兼容 PC 鼠标与手机 Touch）
         let isDragging = false, startX, startY, initialLeft, initialTop;
 
         const onStart = (e) => {
@@ -140,10 +125,7 @@ function renderFloatButton() {
         btn.addEventListener('mousedown', onStart);
         btn.addEventListener('touchstart', onStart, { passive: false });
 
-        btn.addEventListener('click', (e) => {
-            if (!isDragging) toggleModal();
-        });
-
+        btn.addEventListener('click', () => { if (!isDragging) toggleModal(); });
         topDoc.body.appendChild(btn);
     }
 
@@ -202,92 +184,18 @@ function renderQRButton() {
     }
 }
 
-// 5. 酒馆内部设置界面 (含至少保留一个入口的限制)
-function openSettingsDialog() {
-    let dialog = topDoc.getElementById('extra-text-mgr-settings-dialog');
-    const settings = getSettings();
-
-    if (!dialog) {
-        dialog = topDoc.createElement('div');
-        dialog.id = 'extra-text-mgr-settings-dialog';
-        dialog.style.cssText = `
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: #1e1e2e; color: white; padding: 20px; border-radius: 12px;
-            z-index: 1000001; border: 1px solid rgba(255,255,255,0.15);
-            box-shadow: 0 15px 35px rgba(0,0,0,0.6); width: 310px; font-family: sans-serif;
-        `;
-        topDoc.body.appendChild(dialog);
-    }
-
-    dialog.innerHTML = `
-        <h3 style="margin:0 0 15px 0; font-size:16px;">酒馆内部设置 - 番外文本管理</h3>
-        <div style="margin-bottom:12px;">
-            <label style="font-size:12px; display:block; margin-bottom:4px; color:#ccc;">图标 FontAwesome 类名：</label>
-            <input id="set-icon-input" type="text" value="${settings.icon}" style="width:100%; padding:6px; background:#11111b; color:white; border:1px solid #444; border-radius:6px; box-sizing:border-box;" />
-        </div>
-        <div style="margin-bottom:12px; font-size:13px; display:flex; flex-direction:column; gap:8px;">
-            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-                <input id="chk-float" type="checkbox" ${settings.showFloat ? 'checked' : ''} /> 开启悬浮图标按钮
-            </label>
-            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-                <input id="chk-sidebar" type="checkbox" ${settings.showSidebar ? 'checked' : ''} /> 开启侧边栏(魔杖)入口
-            </label>
-            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-                <input id="chk-qr" type="checkbox" ${settings.showQR ? 'checked' : ''} /> 开启快捷回复栏入口
-            </label>
-        </div>
-        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:15px;">
-            <button id="set-cancel-btn" style="background:#444; color:white; border:none; padding:6px 12px; border-radius:6px; cursor:pointer;">取消</button>
-            <button id="set-save-btn" style="background:#6366f1; color:white; border:none; padding:6px 12px; border-radius:6px; cursor:pointer;">保存</button>
-        </div>
-    `;
-
-    dialog.style.display = 'block';
-
-    topDoc.getElementById('set-cancel-btn').onclick = () => dialog.style.display = 'none';
-    topDoc.getElementById('set-save-btn').onclick = () => {
-        const icon = topDoc.getElementById('set-icon-input').value.trim() || 'fa-solid fa-book';
-        const showFloat = topDoc.getElementById('chk-float').checked;
-        const showSidebar = topDoc.getElementById('chk-sidebar').checked;
-        const showQR = topDoc.getElementById('chk-qr').checked;
-
-        // 必须保留至少一个入口
-        if (!showFloat && !showSidebar && !showQR) {
-            alert("⚠️至少必须保留一个入口");
-            return;
-        }
-
-        saveSettings({ icon, showFloat, showSidebar, showQR });
-        dialog.style.display = 'none';
-        refreshUI();
-    };
-}
-
-// 6. 注入【酒馆内部设置】选项到侧边栏
-function injectSettingsEntry() {
-    const menu = topDoc.getElementById('extensionsMenu') || topDoc.getElementById('extensions_menu');
-    if (menu && !topDoc.getElementById('extra-mgr-settings-entry')) {
-        const btn = topDoc.createElement('div');
-        btn.id = 'extra-mgr-settings-entry';
-        btn.className = 'list-group-item flex-container flexGap5 interactable';
-        btn.innerHTML = `<i class="fa-solid fa-gear" style="width:20px; text-align:center;"></i><span>【设置】番外文本管理器</span>`;
-        btn.onclick = () => { openSettingsDialog(); menu.style.display = 'none'; };
-        menu.appendChild(btn);
-    }
-}
-
-// 7. 接收文本直接发送到酒馆
+// 5. 跨跨通信：接收发送到酒馆的文本 + 网页端保存配置通知
 window.addEventListener('message', (event) => {
-    if (event.data && event.data.type === 'SEND_TO_ST_CHAT') {
-        const text = event.data.text;
+    if (event.data?.type === 'SEND_TO_ST_CHAT') {
         const textarea = topDoc.getElementById('send_textarea');
         const sendBtn = topDoc.getElementById('send_but');
-
         if (textarea && sendBtn) {
-            textarea.value = text;
+            textarea.value = event.data.text;
             textarea.dispatchEvent(new Event('input', { bubbles: true }));
             setTimeout(() => { sendBtn.click(); }, 100);
         }
+    } else if (event.data?.type === 'UPDATE_ST_SETTINGS') {
+        refreshUI(); // 当在网页内部修改配置保存时，即时刷新入口按钮
     }
 });
 
@@ -296,7 +204,6 @@ function refreshUI() {
     renderFloatButton();
     renderSidebarButton();
     renderQRButton();
-    injectSettingsEntry();
 }
 
 setTimeout(refreshUI, 1200);
