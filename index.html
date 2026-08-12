@@ -2100,7 +2100,8 @@
         const isInSillyTavern = window.self !== window.top;
 
         if (isInSillyTavern) {
-            (window.top || window.self).postMessage({
+            // 向最顶层主窗口发送信令
+            window.top.postMessage({
                 type: 'SEND_TO_ST_CHAT',
                 text: finalText
             }, '*');
@@ -2681,16 +2682,12 @@ document.getElementById('editor-content').addEventListener('blur', function() { 
             const showQR = document.getElementById('st-set-qr') ? document.getElementById('st-set-qr').checked : true;
 
             const newSettings = { icon, showFloat, showSidebar, showQR };
-            
-            // 写入本地存储
             localStorage.setItem(ST_KEY, JSON.stringify(newSettings));
 
-            // 向外部主界面推送信令，强行刷新旧图标
-            if (window.top || window.self) {
-                (window.top || window.self).postMessage({ type: 'UPDATE_ST_SETTINGS', settings: newSettings }, '*');
-            }
+            // 向最顶层主窗口发送设置更新信令
+            window.top.postMessage({ type: 'UPDATE_ST_SETTINGS', settings: newSettings }, '*');
             
-            showToast("设置保存成功！");
+            showToast("酒馆设置已保存！");
             closeModal();
         };
     }
