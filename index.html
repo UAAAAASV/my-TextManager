@@ -374,6 +374,11 @@
 
         <div class="tool-section" id="statsPanel">
             <h4>设置与操作</h4>
+			<!-- 1. 新增：酒馆内部设置（放在删除二次确认的正上方） -->
+            <div class="stat-item" id="stInternalSettingsRow" style="display:none;">
+                <span>【酒馆内部设置】</span>
+                <button class="btn" style="height:24px; min-width:40px; padding:0 8px; font-size:12px;" onclick="openStSettingsModal()">管理</button>
+            </div>
             <div class="stat-item">
                 <span>删除二次确认</span>
                 <input type="checkbox" id="confirmSwitch" onchange="saveConfig()">
@@ -2091,9 +2096,25 @@
             }); 
         }
 
-        navigator.clipboard.writeText(prefixStr + text + suffixStr).then(() => { 
-            if(prefixStr || suffixStr) showToast('已附加前/后缀并复制'); else showToast('已复制到剪贴板');
-        });
+        // ==========================================
+        // 核心修改：智能判定【酒馆发送】还是【网页复制】
+        // ==========================================
+        const finalText = prefixStr + text + suffixStr;
+        const isInSillyTavern = window.self !== window.top; // 自动判断是否被嵌入酒馆
+
+        if (isInSillyTavern) {
+            // 在酒馆里：直接发送文本到酒馆聊天框
+            window.parent.postMessage({
+                type: 'SEND_TO_ST_CHAT',
+                text: finalText
+            }, '*');
+            showToast('🚀已发送');
+        } else {
+            // 普通网页：保持原来的复制到剪贴板逻辑
+            navigator.clipboard.writeText(finalText).then(() => { 
+                if(prefixStr || suffixStr) showToast('已附加前/后缀并复制'); else showToast('已复制到剪贴板');
+            });
+        }
     }
 
     function renderShortcuts() {
@@ -2591,6 +2612,79 @@ document.getElementById('editor-content').addEventListener('blur', function() { 
     }
 
     startApp();
+	
+	// ==========================================
+    // 自动检测：如果在酒馆里，把底栏所有“复制”字样改成“发送”
+    // ==========================================
+    if (window.self !== window.top) {
+        document.querySelectorAll('button').forEach(btn => {
+            if (btn.innerText.includes('复制')) {
+                btn.innerText = btn.innerText.replace('复制', '发送').replace('📋', '🚀');
+            }
+        });
+    }
+	// 检测如果是在酒馆内打开，显示【酒馆内部设置】项
+    if (window.self !== window.top) {
+        const row = document.getElementById('stInternalSettingsRow');
+        if (row) row.style.display = 'flex';
+    }
+
+    // 打开酒馆内部设置弹窗
+    function openStSettingsModal() {
+        const ST_KEY = 'extra_text_mgr_settings_v3';
+        let settings = { icon: 'fa-solid fa-book-journal-whills', showFloat: true, showSidebar: true, showQR: true };
+        try {
+            settings = { ...settings, ...JSON.parse(localStorage.getItem(ST_KEY) || '{}') };
+        } catch(e){}
+
+        showModalClear("【酒馆内部设置】", "");
+        const panel = document.getElementById('sysModalDynamicPanel');
+        panel.style.display = 'flex';
+        panel.innerHTML = `
+            <div style="display:flex; flex-direction:column; gap:12px; font-size:13px; margin-top:5px; text-align:left;">
+                <div>
+                    <label style="display:block; margin-bottom:4px; font-weight:bold; color:var(--text-secondary);">图标 FontAwesome 类名：</label>
+                    <input type="text" id="st-set-icon" value="${escapeHTML(settings.icon)}" class="search-box" style="margin:0; width:100%; text-align:left;">
+                </div>
+                <div style="display:flex; flex-direction:column; gap:8px; margin-top:5px;">
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                        <input type="checkbox" id="st-set-float" ${settings.showFloat ? 'checked' : ''}> 开启悬浮图标按钮
+                    </label>
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                        <input type="checkbox" id="st-set-sidebar" ${settings.showSidebar ? 'checked' : ''}> 开启侧边栏(魔杖)入口
+                    </label>
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                        <input type="checkbox" id="st-set-qr" ${settings.showQR ? 'checked' : ''}> 开启快捷回复栏入口
+                    </label>
+                </div>
+            </div>
+        `;
+
+        const btn = document.getElementById('sysModalConfirmBtn');
+        btn.style.display = 'inline-flex';
+        btn.innerText = '保存';
+        modalCallback = () => {
+            const icon = document.getElementById('st-set-icon').value.trim() || 'fa-solid fa-book';
+            const showFloat = document.getElementById('st-set-float').checked;
+            const showSidebar = document.getElementById('st-set-sidebar').checked;
+            const showQR = document.getElementById('st-set-qr').checked;
+
+            if (!showFloat && !showSidebar && !showQR) {
+                showToast("⚠️ 至少必须保留一个入口！");
+                return;
+            }
+
+            const newSettings = { icon, showFloat, showSidebar, showQR };
+            localStorage.setItem(ST_KEY, JSON.stringify(newSettings));
+
+            // 通知酒馆页面刷新入口按钮
+            if (window.parent) {
+                window.parent.postMessage({ type: 'UPDATE_ST_SETTINGS', settings: newSettings }, '*');
+            }
+            showToast("酒馆设置已保存！");
+            closeModal();
+        };
+    }
 	
     const quickNewBtn = document.getElementById('mobileQuickNewFloat');
     let isDraggingNewBtn = false;
