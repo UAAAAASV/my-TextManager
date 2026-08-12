@@ -2783,17 +2783,17 @@ document.getElementById('editor-content').addEventListener('blur', function() { 
 	if (window.self !== window.top) {
         const stModalFixStyle = document.createElement('style');
         stModalFixStyle.innerHTML = `
-            /* 1. 强行覆盖按钮行内 flex:1 样式，让 4 个按钮保持正常字宽，允许向右滑出 */
-            #sysModalTabs > button {
-                flex: 0 0 auto !important;
-                width: auto !important;
-                min-width: 72px !important;
-                padding: 0 10px !important;
+            /* 1. 限制卡片外框不溢出 */
+            .modal-card {
+                width: 95% !important;
+                max-width: 380px !important;
+                padding: 16px 12px !important;
+                box-sizing: border-box !important;
+                overflow-x: hidden !important;
             }
 
-            /* 2. 只允许这 4 个按钮所在的容器进行横向左右滑动 */
-            #sysModalTabs {
-                display: flex !important;
+            /* 2. 严禁使用 display: flex !important 破坏隐藏机制！仅在未被隐藏时生效 */
+            #sysModalTabs:not([style*="display: none"]) {
                 overflow-x: auto !important;
                 overflow-y: hidden !important;
                 flex-wrap: nowrap !important;
@@ -2802,12 +2802,17 @@ document.getElementById('editor-content').addEventListener('blur', function() { 
                 -webkit-overflow-scrolling: touch !important;
             }
 
-            /* 3. 卡片与下面内容保持正常，禁止卡片本身左右晃动 */
-            .modal-card {
-                width: 92% !important;
-                max-width: 380px !important;
-                box-sizing: border-box !important;
-                overflow-x: hidden !important;
+            /* 隐藏横向滚动条 */
+            #sysModalTabs::-webkit-scrollbar {
+                display: none !important;
+            }
+
+            /* 3. 覆盖按钮内联 flex:1，允许横向向右滑出 */
+            #sysModalTabs > button {
+                flex: 0 0 auto !important;
+                width: auto !important;
+                min-width: 72px !important;
+                padding: 0 10px !important;
             }
         `;
         document.head.appendChild(stModalFixStyle);
