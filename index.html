@@ -2780,6 +2780,19 @@ document.getElementById('editor-content').addEventListener('blur', function() { 
     document.addEventListener('mousemove', doDragNewBtn);
     document.addEventListener('mouseup', endDragNewBtn);
 	
+	if (window.self !== window.top) {
+        const stModalFixStyle = document.createElement('style');
+        stModalFixStyle.innerHTML = `
+            .modal-card {
+                width: 92% !important;
+                max-width: 380px !important;
+                padding: 16px !important;
+                box-sizing: border-box !important;
+            }
+        `;
+        document.head.appendChild(stModalFixStyle);
+    }
+	
 </script>
 </body>
 </html>
