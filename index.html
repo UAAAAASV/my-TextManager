@@ -2678,20 +2678,19 @@ document.getElementById('editor-content').addEventListener('blur', function() { 
             const icon = document.getElementById('st-set-icon').value.trim() || '📖';
             const showFloat = document.getElementById('st-set-float').checked;
             const showSidebar = document.getElementById('st-set-sidebar').checked;
-            const showQR = document.getElementById('st-set-qr').checked;
-
-            if (!showFloat && !showSidebar && !showQR) {
-                showToast("⚠️ 至少必须保留一个入口！");
-                return;
-            }
+            const showQR = document.getElementById('st-set-qr') ? document.getElementById('st-set-qr').checked : true;
 
             const newSettings = { icon, showFloat, showSidebar, showQR };
+            
+            // 写入本地存储
             localStorage.setItem(ST_KEY, JSON.stringify(newSettings));
 
+            // 向外部主界面推送信令，强行刷新旧图标
             if (window.top || window.self) {
                 (window.top || window.self).postMessage({ type: 'UPDATE_ST_SETTINGS', settings: newSettings }, '*');
             }
-            showToast("酒馆设置已保存！");
+            
+            showToast("设置保存成功！");
             closeModal();
         };
     }
