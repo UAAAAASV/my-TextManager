@@ -2783,11 +2783,32 @@ document.getElementById('editor-content').addEventListener('blur', function() { 
 	if (window.self !== window.top) {
         const stModalFixStyle = document.createElement('style');
         stModalFixStyle.innerHTML = `
+            /* 1. 限制卡片外框不溢出，减小内边距 */
             .modal-card {
-                width: 92% !important;
+                width: 95% !important;
                 max-width: 380px !important;
-                padding: 16px !important;
+                padding: 16px 12px !important;
                 box-sizing: border-box !important;
+                overflow-x: hidden !important; /* 强制禁止外层卡片左右晃动 */
+            }
+
+            /* 2. 顶部 4 个按钮改为横向可左右顺畅滑动，防止撑爆卡片 */
+            #sysModalTabs {
+                overflow-x: auto !important;
+                flex-wrap: nowrap !important;
+                white-space: nowrap !important;
+                padding-bottom: 6px !important;
+                -webkit-overflow-scrolling: touch !important;
+                scrollbar-width: none !important; /* 隐藏滚动条 */
+            }
+            #sysModalTabs::-webkit-scrollbar {
+                display: none !important;
+            }
+
+            /* 3. 按钮不缩团，保持精致宽度 */
+            #sysModalTabs button {
+                flex: 0 0 auto !important;
+                padding: 0 10px !important;
             }
         `;
         document.head.appendChild(stModalFixStyle);
