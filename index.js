@@ -1,5 +1,5 @@
 // ==========================================
-// 番外文本管理器 - 酒馆加载器 (纯黑极简关叉版)
+// 番外文本管理器 - 酒馆加载器 
 // ==========================================
 (function() {
     'use strict';
@@ -56,17 +56,16 @@
         return `<span class="extra-color-emoji">${iconStr}</span>`;
     }
 
-    // 1. 居中卡片弹窗 (右上角纯黑 ✕ 关闭按钮，无底色无圈)
+    // 1. 居中卡片弹窗 (右上角纯黑 ✕ 关闭按钮)
     function createMainModal() {
         let $overlay = $('#extra-text-mgr-overlay', topDoc);
         if ($overlay.length === 0) {
             const isMobile = (topWin.innerWidth || 800) <= 768;
             
             const modalStyle = isMobile 
-                ? 'width: 98vw; height: 96vh; border-radius: 8px;' 
-                : 'width: 92vw; height: 90vh; max-width: 1400px; max-height: 900px; border-radius: 10px;';
+                ? 'width: 92vw; height: 94vh; border-radius: 8px;' 
+                : 'width: 88vw; height: 85vh; max-width: 1400px; max-height: 900px; border-radius: 10px;';
 
-            // 纯黑色 ✕ 关闭按钮，无底色无圈
             const closeBtnHtml = `
                 <button id="extra-modal-close-btn" title="关闭" style="
                     position: absolute; top: 8px; right: 12px; z-index: 1000001;
@@ -282,9 +281,17 @@
         }
     }
 
+    // 6. 核心通信信令处理
     topWin.addEventListener('message', (event) => {
         if (event.data?.type === 'SEND_TO_ST_CHAT') {
+            // A. 发送文本到酒馆输入框
             sendToTavernChat(event.data.text);
+
+            // B. 核心：发送完成后自动收起/关闭管理弹窗
+            const $overlay = $('#extra-text-mgr-overlay', topDoc);
+            if ($overlay.length) {
+                $overlay.hide();
+            }
         } else if (event.data?.type === 'UPDATE_ST_SETTINGS') {
             saveSettings(event.data.settings);
             
