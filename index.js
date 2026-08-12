@@ -1,5 +1,5 @@
 // ==========================================
-// 番外文本管理器 - 酒馆加载器 (对标文本净化 Flex 居中架构)
+// 番外文本管理器 - 酒馆加载器 (Emoji + 双端防遮挡版)
 // ==========================================
 const topDoc = (window.top && window.top.document) ? window.top.document : document;
 
@@ -8,7 +8,7 @@ const STORAGE_SETTINGS_KEY = 'extra_text_mgr_settings_v3';
 const STORAGE_POS_KEY = 'extra_text_mgr_btn_pos_v3';
 
 function getSettings() {
-    const def = { icon: 'fa-solid fa-book-journal-whills', showFloat: true, showSidebar: true, showQR: true };
+    const def = { icon: '📖', showFloat: true, showSidebar: true, showQR: true };
     try {
         return { ...def, ...JSON.parse(localStorage.getItem(STORAGE_SETTINGS_KEY) || '{}') };
     } catch (e) { return def; }
@@ -18,21 +18,28 @@ function saveSettings(s) {
     localStorage.setItem(STORAGE_SETTINGS_KEY, JSON.stringify(s));
 }
 
-// 1. 完全对标《文本净化》的 Flexbox 绝对居中架构 (100% 解决起飞问题)
+// 渲染图标（智能识别 Emoji 表情 / 文本 / FontAwesome 类名）
+function renderIconHtml(iconStr) {
+    if (!iconStr) iconStr = '📖';
+    if (iconStr.includes('fa-') || iconStr.startsWith('fa ')) {
+        return `<i class="${iconStr}"></i>`;
+    }
+    return `<span style="font-style:normal; font-size:18px; line-height:1; user-select:none;">${iconStr}</span>`;
+}
+
+// 1. Flex 居中无边框弹窗
 function createMainModal() {
     let overlay = topDoc.getElementById('extra-text-mgr-overlay');
     if (!overlay) {
-        // 外层遮罩：Flex 绝对居中布局
         overlay = topDoc.createElement('div');
         overlay.id = 'extra-text-mgr-overlay';
         overlay.style.cssText = `
-            display: none; position: fixed; z-index: 100000; left: 0; top: 0;
-            width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.6);
+            display: none; position: fixed; z-index: 1000000; left: 0; top: 0;
+            width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.65);
             backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
             justify-content: center; align-items: center;
         `;
 
-        // 内部弹窗主体：天然居中，无 top/left 偏移，永不起飞
         const modal = topDoc.createElement('div');
         modal.id = 'extra-text-mgr-modal';
         modal.style.cssText = `
@@ -47,7 +54,6 @@ function createMainModal() {
         overlay.appendChild(modal);
         topDoc.body.appendChild(overlay);
 
-        // 点击空白背景直接关闭
         overlay.onclick = (e) => {
             if (e.target === overlay) overlay.style.display = 'none';
         };
@@ -60,7 +66,7 @@ function toggleModal() {
     overlay.style.display = (overlay.style.display === 'none' || !overlay.style.display) ? 'flex' : 'none';
 }
 
-// 2. 悬浮按钮 (支持鼠标与手机触摸拖动)
+// 2. 悬浮按钮 (最高层级防遮挡 + 触摸拖动)
 function renderFloatButton() {
     const settings = getSettings();
     let btn = topDoc.getElementById('extra-text-mgr-float-btn');
@@ -75,24 +81,24 @@ function renderFloatButton() {
         btn.id = 'extra-text-mgr-float-btn';
 
         const savedPos = JSON.parse(localStorage.getItem(STORAGE_POS_KEY) || 'null');
-        const defaultTop = window.innerHeight - 90;
+        const defaultTop = window.innerHeight - 100;
         const defaultLeft = window.innerWidth - 70;
 
         btn.style.cssText = `
-            position: fixed;
+            position: fixed !important;
             top: ${savedPos ? savedPos.top : defaultTop}px;
             left: ${savedPos ? savedPos.left : defaultLeft}px;
             width: 44px; height: 44px;
-            background: rgba(0, 0, 0, 0.35);
+            background: rgba(0, 0, 0, 0.45) !important;
             backdrop-filter: blur(6px);
-            color: rgba(255,255,255,0.9);
-            border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 50%;
-            display: flex; justify-content: center; align-items: center;
-            cursor: move; z-index: 99999;
+            color: rgba(255,255,255,0.95) !important;
+            border: 1px solid rgba(255,255,255,0.2) !important;
+            border-radius: 50% !important;
+            display: flex !important; justify-content: center; align-items: center;
+            cursor: move; z-index: 999999 !important;
             user-select: none; -webkit-user-select: none;
             touch-action: none;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
         `;
 
         let isDragging = false, startX, startY, initialLeft, initialTop;
@@ -136,8 +142,8 @@ function renderFloatButton() {
         topDoc.body.appendChild(btn);
     }
 
-    btn.style.display = 'flex';
-    btn.innerHTML = `<i class="${settings.icon}" style="font-size: 19px;"></i>`;
+    btn.style.display = 'flex !important';
+    btn.innerHTML = renderIconHtml(settings.icon);
 }
 
 // 3. 侧边栏魔杖菜单入口
@@ -157,18 +163,17 @@ function renderSidebarButton() {
             btn.id = 'extra-mgr-sidebar-btn';
             btn.className = 'list-group-item flex-container flexGap5 interactable';
             btn.title = '番外文本管理器';
-            btn.innerHTML = `<i class="fa-solid fa-book-bookmark" style="width:20px; text-align:center;"></i><span>番外文本管理器</span>`;
             btn.onclick = () => { toggleModal(); menu.style.display = 'none'; };
             menu.prepend(btn);
         }
         btn.style.display = 'flex';
+        btn.innerHTML = `${renderIconHtml(settings.icon)}<span style="margin-left:6px;">番外文本管理器</span>`;
     }
 }
 
-// 4. 快捷回复栏入口
+// 4. 快捷回复栏入口 (增强型多选择器匹配)
 function renderQRButton() {
     const settings = getSettings();
-    const qrBar = topDoc.getElementById('quick-reply-bar') || topDoc.getElementById('send_controls');
     let btn = topDoc.getElementById('extra-mgr-qr-btn');
 
     if (!settings.showQR) {
@@ -176,22 +181,29 @@ function renderQRButton() {
         return;
     }
 
+    // 适配各类酒馆版本/主题的底栏容器选择器
+    const qrBar = topDoc.getElementById('quick-reply-bar') || 
+                  topDoc.querySelector('.quick_reply_bar') || 
+                  topDoc.getElementById('send_controls') || 
+                  topDoc.getElementById('send_form') || 
+                  topDoc.querySelector('.write_form');
+
     if (qrBar) {
         if (!btn) {
             btn = topDoc.createElement('div');
             btn.id = 'extra-mgr-qr-btn';
-            btn.className = 'menu_button';
+            btn.className = 'menu_button interactable';
             btn.title = '番外文本管理器';
-            btn.style.cssText = 'padding: 4px 8px; cursor: pointer; display: inline-flex; align-items: center;';
-            btn.innerHTML = `<i class="fa-solid fa-book-bookmark"></i>`;
+            btn.style.cssText = 'padding: 4px 8px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; margin: 2px;';
             btn.onclick = toggleModal;
             qrBar.appendChild(btn);
         }
         btn.style.display = 'inline-flex';
+        btn.innerHTML = renderIconHtml(settings.icon);
     }
 }
 
-// 5. 跨跨通信监听 (文本发送 + 网页端修改配置即时保存刷新)
+// 5. 跨跨通信监听
 window.addEventListener('message', (event) => {
     if (event.data?.type === 'SEND_TO_ST_CHAT') {
         const textarea = topDoc.getElementById('send_textarea');
