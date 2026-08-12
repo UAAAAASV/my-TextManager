@@ -1,5 +1,5 @@
 // ==========================================
-// 番外文本管理器 - 酒馆加载器 (防秒关 + 6px极简圆角版)
+// 番外文本管理器 - 酒馆加载器 (大视野空间自适应版)
 // ==========================================
 (function() {
     'use strict';
@@ -12,7 +12,7 @@
     const STORAGE_SETTINGS_KEY = 'extra_text_mgr_settings_v3';
     const STORAGE_POS_KEY = 'extra_text_mgr_btn_pos_v3';
 
-    let lastToggleTime = 0; // 防秒关锁
+    let lastToggleTime = 0; // 防触控秒关锁
 
     // 注入彩色 Emoji 渲染规则
     function injectEmojiStyle() {
@@ -56,15 +56,16 @@
         return `<span class="extra-color-emoji">${iconStr}</span>`;
     }
 
-    // 1. 双端自适应弹窗 (6px 极简圆角，解决手机端憋屈感)
+    // 1. 宽敞自适应弹窗 (极大化利用屏幕空间，不再偏小憋屈)
     function createMainModal() {
         let $overlay = $('#extra-text-mgr-overlay', topDoc);
         if ($overlay.length === 0) {
             const isMobile = (topWin.innerWidth || 800) <= 768;
             
+            // 极大化渲染空间：手机端 98vw/96vh，电脑端 92vw/90vh
             const modalStyle = isMobile 
-                ? 'width: 96vw; height: 94vh; border-radius: 6px;' 
-                : 'width: 85vw; height: 82vh; max-width: 1000px; max-height: 750px; border-radius: 6px;';
+                ? 'width: 98vw; height: 96vh; border-radius: 8px;' 
+                : 'width: 92vw; height: 90vh; max-width: 1400px; max-height: 900px; border-radius: 10px;';
 
             const overlayHtml = `
                 <div id="extra-text-mgr-overlay" style="display: none; position: fixed; z-index: 1000000; left: 0; top: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.65); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); justify-content: center; align-items: center;">
@@ -88,7 +89,7 @@
     // 防触控秒关核心逻辑
     function toggleModal() {
         const now = Date.now();
-        if (now - lastToggleTime < 400) return; // 400ms 内禁止重复触发
+        if (now - lastToggleTime < 400) return;
         lastToggleTime = now;
 
         const $overlay = createMainModal();
@@ -99,7 +100,7 @@
         }
     }
 
-    // 2. 悬浮按钮 (手机端坐标防护)
+    // 2. 悬浮按钮 (越界回归)
     function renderFloatButton() {
         const settings = getSettings();
         let $btn = $('#extra-text-mgr-float-btn', topDoc);
@@ -186,7 +187,7 @@
         $button.on(`mousedown.extraMgr touchstart.extraMgr`, dragStart);
     }
 
-    // 3. 注册酒馆助手按钮
+    // 3. 注册酒馆助手事件绑定
     function registerTavernHelperButtons() {
         const safeBind = (winObj) => {
             if (typeof winObj.getButtonEvent === 'function' && typeof winObj.eventOn === 'function') {
@@ -203,7 +204,7 @@
         safeBind(topWin);
     }
 
-    // 4. 侧边栏菜单
+    // 4. 侧边栏菜单 (100% 对齐原生)
     function renderSidebarButton() {
         const settings = getSettings();
         const $menu = $('#extensionsMenu, #extensions_menu', topDoc);
