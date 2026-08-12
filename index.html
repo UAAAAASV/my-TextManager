@@ -392,6 +392,14 @@
                 <input type="checkbox" id="lockSwitch" onchange="toggleLock()">
             </div>
 			<div class="stat-item">
+                <span>文本新建解锁</span>
+                <input type="checkbox" id="autoUnlockOnNewSwitch" onchange="saveConfig()">
+            </div>
+            <div class="stat-item">
+                <span>文本交替解锁</span>
+                <input type="checkbox" id="autoUnlockOnSwapSwitch" onchange="saveConfig()">
+            </div>
+			<div class="stat-item">
                 <span>文本拖拽排序</span>
                 <input type="checkbox" id="dragSortSwitch" onchange="saveConfig(); renderTree();" title="开启后允许拖拽排序，关闭可防止手机端滑动冲突">
             </div>
@@ -487,7 +495,7 @@
 <div class="mobile-tabbar">
     <button onclick="togglePanel('sidebar')">☰ 目录</button>
     <button onclick="copyCurrentText()">📋 复制</button>
-    <button onclick="toggleRoleSwap()">➰ 替换</button>
+    <button onclick="toggleRoleSwap()">➰ 交替</button>
     <button onclick="togglePanel('toolbox')">🛠 工具</button>
     <button id="mobileUndoBtn" onclick="handleMobileUndo()">↩ 撤销</button>
 </div>
@@ -622,6 +630,8 @@
     const defaultData = { 
     data: [], 
     config: { 
+	    autoUnlockOnNew: false, // 新增
+        autoUnlockOnSwap: false, // 新增
         selectedIds: [], // 新增：保存勾选节点 ID 的数组
         shortcuts: [
             { display: "Fr", text: "<Q7Fr>" },
@@ -750,6 +760,9 @@
         projectData.config.quickRandom = document.getElementById('quickRandomSwitch').checked;
         
         projectData.config.quickNewMode = document.getElementById('quickNewAfterSwitch').checked ? 'after' : 'bottom';
+		
+		projectData.config.autoUnlockOnNew = document.getElementById('autoUnlockOnNewSwitch').checked;
+        projectData.config.autoUnlockOnSwap = document.getElementById('autoUnlockOnSwapSwitch').checked;
         
         saveData(); updateQuickNavVisibility();
     }
@@ -765,6 +778,9 @@
         document.getElementById('autoScrollTopSwitch').checked = projectData.config.autoScrollTop;
         document.getElementById('quickNavSwitch').checked = projectData.config.quickNav;
         document.getElementById('quickRandomSwitch').checked = projectData.config.quickRandom;
+		
+		document.getElementById('autoUnlockOnNewSwitch').checked = !!projectData.config.autoUnlockOnNew;
+        document.getElementById('autoUnlockOnSwapSwitch').checked = !!projectData.config.autoUnlockOnSwap;
         
         const isQuickNew = projectData.config.quickNew || false;
         const toggleBtn = document.getElementById('quickNewToggleBtn');
@@ -838,10 +854,21 @@
     }
     function toggleLock() { projectData.config.isLocked = document.getElementById('lockSwitch').checked; hasShownLockToast = false; saveData(); refreshEditorContent(); }
     function toggleRoleSwap() {
-        if (!projectData.config.isLocked) { projectData.config.isLocked = true; document.getElementById('lockSwitch').checked = true; }
+        if (projectData.config.autoUnlockOnSwap) {
+            if (projectData.config.isLocked) {
+                projectData.config.isLocked = false;
+                document.getElementById('lockSwitch').checked = false;
+            }
+        } else {
+            if (!projectData.config.isLocked) {
+                projectData.config.isLocked = true;
+                document.getElementById('lockSwitch').checked = true;
+            }
+        }
+
         projectData.config.isSwapped = !projectData.config.isSwapped;
         saveData(); updateSwapStatusUI(); refreshEditorContent();
-        showToast(projectData.config.isSwapped ? `已切换\nFr=${projectData.config.displayOptions.sc} \nSc=${projectData.config.displayOptions.fr}` : `已切换\nFr=${projectData.config.displayOptions.fr} \nSc=${projectData.config.displayOptions.sc}`);
+        showToast(projectData.config.isSwapped ? `已交替\nFr=${projectData.config.displayOptions.sc} \nSc=${projectData.config.displayOptions.fr}` : `已交替\nFr=${projectData.config.displayOptions.fr} \nSc=${projectData.config.displayOptions.sc}`);
     }
     function updateSwapStatusUI() {
         const p = document.getElementById('swapStatusText');
@@ -1293,6 +1320,10 @@
     }
 
     function addNew(type) {
+        if (type === 'item' && projectData.config.autoUnlockOnNew && projectData.config.isLocked) {
+            projectData.config.isLocked = false;
+            document.getElementById('lockSwitch').checked = false;
+        }
         const newNode = {
             id: 'd_' + Math.random().toString(36).substr(2, 9),
             name: type === 'folder' ? '新建文件夹' : '新建文本',
