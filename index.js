@@ -1,39 +1,16 @@
 // ==========================================
-// 番外文本管理器 - 酒馆加载器 (彩色 Emoji 破解 + 双端精准分流版)
+// 番外文本管理器 - 酒馆加载器 (官方声明文件标准版)
 // ==========================================
 (function() {
     'use strict';
 
-    const topWin = window.top || window;
+    const topWin = window.top || window.self;
     const topDoc = topWin.document || document;
     const $ = topWin.jQuery || window.jQuery || $;
 
     const MY_WEB_URL = 'https://uaaaaasv.github.io/my-TextManager/';
     const STORAGE_SETTINGS_KEY = 'extra_text_mgr_settings_v3';
     const STORAGE_POS_KEY = 'extra_text_mgr_btn_pos_v3';
-
-    // 1. 注入 CSS 破解酒馆的黑白图标剥离规则，强制恢复彩色 Emoji
-    function injectEmojiStyle() {
-        if (!topDoc.getElementById('extra-emoji-fix-style')) {
-            const style = topDoc.createElement('style');
-            style.id = 'extra-emoji-fix-style';
-            style.innerHTML = `
-                .extra-color-emoji {
-                    font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', sans-serif !important;
-                    font-style: normal !important;
-                    font-weight: normal !important;
-                    font-size: 20px !important;
-                    line-height: 1 !important;
-                    color: initial !important;
-                    -webkit-text-fill-color: initial !important;
-                    display: inline-block !important;
-                    vertical-align: middle !important;
-                }
-            `;
-            topDoc.head.appendChild(style);
-        }
-    }
-    injectEmojiStyle();
 
     function getSettings() {
         const def = { icon: '📖', showFloat: true, showSidebar: true, showQR: true };
@@ -52,29 +29,27 @@
         if (iconStr.includes('fa-') || iconStr.startsWith('fa ')) {
             return `<i class="${iconStr}"></i>`;
         }
-        return `<span class="extra-color-emoji">${iconStr}</span>`;
+        return `<span style="
+            font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', sans-serif !important;
+            font-style: normal !important;
+            font-weight: normal !important;
+            font-size: 19px !important;
+            line-height: 1 !important;
+            color: initial !important;
+            -webkit-text-fill-color: initial !important;
+            display: inline-block;
+            user-select: none;
+        ">${iconStr}</span>`;
     }
 
-    // 2. 双端自适应弹窗 (PC端留出四周空白点击关闭；手机端全屏加关闭按钮)
+    // 1. 精致居中卡片弹窗 (80vw / 80vh，拒绝全屏占满，四周留空白)
     function createMainModal() {
         let $overlay = $('#extra-text-mgr-overlay', topDoc);
         if ($overlay.length === 0) {
-            const isMobile = (topWin.innerWidth || 800) <= 768;
-            
-            // PC 端留出背景空白，手机端全屏
-            const modalStyle = isMobile 
-                ? 'width: 100vw; height: 100vh; border-radius: 0px;' 
-                : 'width: 88vw; height: 84vh; max-width: 1300px; max-height: 850px; border-radius: 12px;';
-
-            // 手机端全屏时提供右上角红框关闭按钮
-            const mobileCloseBtnHtml = isMobile 
-                ? `<button id="extra-mobile-close-btn" style="position: absolute; top: 10px; right: 10px; z-index: 1000001; background: #ef4444; color: white; border: none; border-radius: 50%; width: 32px; height: 32px; font-weight: bold; font-size: 16px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.4);">✕</button>`
-                : '';
-
             const overlayHtml = `
                 <div id="extra-text-mgr-overlay" style="display: none; position: fixed; z-index: 1000000; left: 0; top: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.65); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); justify-content: center; align-items: center;">
-                    <div id="extra-text-mgr-modal" style="background: #11111b; border: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6); display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box; position: relative; ${modalStyle}">
-                        ${mobileCloseBtnHtml}
+                    <div id="extra-text-mgr-modal" style="background: #11111b; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 14px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7); width: 80vw; height: 80vh; max-width: 900px; max-height: 700px; display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box; position: relative;">
+                        <button id="extra-modal-close-btn" style="position: absolute; top: 8px; right: 10px; z-index: 1000001; background: #ef4444; color: white; border: none; border-radius: 50%; width: 28px; height: 28px; font-weight: bold; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.4);">✕</button>
                         <iframe src="${MY_WEB_URL}" style="width:100%; height:100%; border:none; background:white;"></iframe>
                     </div>
                 </div>
@@ -82,18 +57,17 @@
             $('body', topDoc).append(overlayHtml);
             $overlay = $('#extra-text-mgr-overlay', topDoc);
 
-            // 点击黑色背景遮罩关闭
+            // 点击外部背景空白处关闭
             $overlay.on('click', function(e) {
                 if (e.target === this) {
                     $(this).hide();
                 }
             });
 
-            if (isMobile) {
-                $('#extra-mobile-close-btn', topDoc).on('click', function() {
-                    $overlay.hide();
-                });
-            }
+            // 右上角按钮关闭
+            $('#extra-modal-close-btn', topDoc).on('click', function() {
+                $overlay.hide();
+            });
         }
         return $overlay;
     }
@@ -107,7 +81,7 @@
         }
     }
 
-    // 3. 悬浮按钮 (越界回归 + 拖拽)
+    // 2. 悬浮按钮 (支持越界回归与拖拽)
     function renderFloatButton() {
         const settings = getSettings();
         let $btn = $('#extra-text-mgr-float-btn', topDoc);
@@ -139,7 +113,7 @@
             }
 
             const btnHtml = `
-                <div id="extra-text-mgr-float-btn" title="打开番外文本管理器" style="position: fixed; z-index: 100050; cursor: grab; width: 46px; height: 44px; background: rgba(0, 0, 0, 0.45); backdrop-filter: blur(6px); border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.3); user-select: none; -webkit-user-select: none; touch-action: none; top: ${defaultTop}px; left: ${defaultLeft}px;">
+                <div id="extra-text-mgr-float-btn" title="打开番外文本管理器" style="position: fixed; z-index: 100050; cursor: grab; width: 44px; height: 44px; background: rgba(0, 0, 0, 0.45); backdrop-filter: blur(6px); border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.3); user-select: none; touch-action: none; top: ${defaultTop}px; left: ${defaultLeft}px;">
                     ${renderIconHtml(settings.icon)}
                 </div>
             `;
@@ -194,27 +168,35 @@
         $button.on(`mousedown.extraMgr touchstart.extraMgr`, dragStart);
     }
 
-    // 4. 酒馆助手编辑界面手动添加的【番外】按钮
+    // 3. 严格遵循酒馆助手 .d.ts 声明文件的标准绑定机制
     function registerTavernHelperButtons() {
         const settings = getSettings();
         const btnLabel = settings.icon || '📖';
 
-        if (typeof getButtonEvent === 'function') {
-            getButtonEvent("番外", toggleModal);
-        } else if (typeof topWin.getButtonEvent === 'function') {
-            topWin.getButtonEvent("番外", toggleModal);
+        // 官方标准用法：getButtonEvent('按钮名') 获取事件名，再用 eventOn 监听
+        if (typeof getButtonEvent === 'function' && typeof eventOn === 'function') {
+            try {
+                const eventNameFanWai = getButtonEvent("番外");
+                eventOn(eventNameFanWai, toggleModal);
+
+                const eventNameIcon = getButtonEvent(btnLabel);
+                eventOn(eventNameIcon, toggleModal);
+            } catch(e){}
         }
 
-        if (typeof eventOnButton === 'function') {
-            eventOnButton("番外", toggleModal);
-            eventOnButton(btnLabel, toggleModal);
-        } else if (typeof topWin.eventOnButton === 'function') {
-            topWin.eventOnButton("番外", toggleModal);
-            topWin.eventOnButton(btnLabel, toggleModal);
+        // 兼容 topWin 上的接口
+        if (typeof topWin.getButtonEvent === 'function' && typeof topWin.eventOn === 'function') {
+            try {
+                const eventNameFanWai = topWin.getButtonEvent("番外");
+                topWin.eventOn(eventNameFanWai, toggleModal);
+
+                const eventNameIcon = topWin.getButtonEvent(btnLabel);
+                topWin.eventOn(eventNameIcon, toggleModal);
+            } catch(e){}
         }
     }
 
-    // 5. 侧边栏菜单入口
+    // 4. 侧边栏菜单入口
     function renderSidebarButton() {
         const settings = getSettings();
         const $menu = $('#extensionsMenu, #extensions_menu', topDoc);
@@ -241,10 +223,21 @@
         }
     }
 
-    // 6. 接收文本直接发送到酒馆消息框
+    // 5. 跨窗口文本发送通信 (结合 .d.ts 声明文件的 createChatMessages 接口)
     function sendToTavernChat(text) {
         if (!text) return;
 
+        // 优先使用声明文件中的 createChatMessages 接口
+        if (typeof topWin.createChatMessages === 'function') {
+            topWin.createChatMessages([{ role: 'user', message: text }]);
+            return;
+        }
+        if (topWin.TavernHelper && typeof topWin.TavernHelper.createChatMessages === 'function') {
+            topWin.TavernHelper.createChatMessages([{ role: 'user', message: text }]);
+            return;
+        }
+
+        // 备用：SillyTavern 上下文发送
         if (topWin.SillyTavern && typeof topWin.SillyTavern.getContext === 'function') {
             try {
                 const ctx = topWin.SillyTavern.getContext();
@@ -255,6 +248,7 @@
             } catch (e) {}
         }
 
+        // 备用：DOM 强行发送
         const $textarea = $('#send_textarea', topDoc);
         if ($textarea.length) {
             const nativeEl = $textarea[0];
