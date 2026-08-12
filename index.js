@@ -1,5 +1,5 @@
 // ==========================================
-// 番外文本管理器 - 酒馆加载器 (大视野空间自适应版)
+// 番外文本管理器 - 酒馆加载器 (纯黑极简关叉版)
 // ==========================================
 (function() {
     'use strict';
@@ -12,7 +12,7 @@
     const STORAGE_SETTINGS_KEY = 'extra_text_mgr_settings_v3';
     const STORAGE_POS_KEY = 'extra_text_mgr_btn_pos_v3';
 
-    let lastToggleTime = 0; // 防触控秒关锁
+    let lastToggleTime = 0;
 
     // 注入彩色 Emoji 渲染规则
     function injectEmojiStyle() {
@@ -56,20 +56,32 @@
         return `<span class="extra-color-emoji">${iconStr}</span>`;
     }
 
-    // 1. 宽敞自适应弹窗 (极大化利用屏幕空间，不再偏小憋屈)
+    // 1. 居中卡片弹窗 (右上角纯黑 ✕ 关闭按钮，无底色无圈)
     function createMainModal() {
         let $overlay = $('#extra-text-mgr-overlay', topDoc);
         if ($overlay.length === 0) {
             const isMobile = (topWin.innerWidth || 800) <= 768;
             
-            // 极大化渲染空间：手机端 98vw/96vh，电脑端 92vw/90vh
             const modalStyle = isMobile 
-                ? 'width: 90vw; height: 92vh; border-radius: 8px;' 
-                : 'width: 88vw; height: 85vh; max-width: 1400px; max-height: 900px; border-radius: 10px;';
+                ? 'width: 98vw; height: 96vh; border-radius: 8px;' 
+                : 'width: 92vw; height: 90vh; max-width: 1400px; max-height: 900px; border-radius: 10px;';
+
+            // 纯黑色 ✕ 关闭按钮，无底色无圈
+            const closeBtnHtml = `
+                <button id="extra-modal-close-btn" title="关闭" style="
+                    position: absolute; top: 8px; right: 12px; z-index: 1000001;
+                    background: transparent !important; border: none !important;
+                    color: #000000 !important; font-size: 22px !important;
+                    font-weight: bold !important; cursor: pointer !important;
+                    padding: 0 !important; line-height: 1 !important;
+                    opacity: 0.7; transition: opacity 0.2s;
+                ">✕</button>
+            `;
 
             const overlayHtml = `
                 <div id="extra-text-mgr-overlay" style="display: none; position: fixed; z-index: 1000000; left: 0; top: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.65); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); justify-content: center; align-items: center;">
                     <div id="extra-text-mgr-modal" style="background: #11111b; border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7); display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box; position: relative; ${modalStyle}">
+                        ${closeBtnHtml}
                         <iframe src="${MY_WEB_URL}" style="width:100%; height:100%; border:none; background:white;"></iframe>
                     </div>
                 </div>
@@ -77,16 +89,21 @@
             $('body', topDoc).append(overlayHtml);
             $overlay = $('#extra-text-mgr-overlay', topDoc);
 
+            // 点击外部背景空白处关闭
             $overlay.on('click', function(e) {
                 if (e.target === this) {
                     $(this).hide();
                 }
             });
+
+            // 点击纯黑 ✕ 关闭
+            $('#extra-modal-close-btn', topDoc).on('click', function() {
+                $overlay.hide();
+            });
         }
         return $overlay;
     }
 
-    // 防触控秒关核心逻辑
     function toggleModal() {
         const now = Date.now();
         if (now - lastToggleTime < 400) return;
@@ -100,7 +117,7 @@
         }
     }
 
-    // 2. 悬浮按钮 (越界回归)
+    // 2. 悬浮按钮
     function renderFloatButton() {
         const settings = getSettings();
         let $btn = $('#extra-text-mgr-float-btn', topDoc);
@@ -187,7 +204,7 @@
         $button.on(`mousedown.extraMgr touchstart.extraMgr`, dragStart);
     }
 
-    // 3. 注册酒馆助手事件绑定
+    // 3. 注册酒馆助手事件
     function registerTavernHelperButtons() {
         const safeBind = (winObj) => {
             if (typeof winObj.getButtonEvent === 'function' && typeof winObj.eventOn === 'function') {
@@ -204,7 +221,7 @@
         safeBind(topWin);
     }
 
-    // 4. 侧边栏菜单 (100% 对齐原生)
+    // 4. 侧边栏菜单
     function renderSidebarButton() {
         const settings = getSettings();
         const $menu = $('#extensionsMenu, #extensions_menu', topDoc);
