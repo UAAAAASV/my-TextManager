@@ -2783,32 +2783,31 @@ document.getElementById('editor-content').addEventListener('blur', function() { 
 	if (window.self !== window.top) {
         const stModalFixStyle = document.createElement('style');
         stModalFixStyle.innerHTML = `
-            /* 1. 限制卡片外框不溢出，减小内边距 */
-            .modal-card {
-                width: 95% !important;
-                max-width: 380px !important;
-                padding: 16px 12px !important;
-                box-sizing: border-box !important;
-                overflow-x: hidden !important; /* 强制禁止外层卡片左右晃动 */
-            }
-
-            /* 2. 顶部 4 个按钮改为横向可左右顺畅滑动，防止撑爆卡片 */
-            #sysModalTabs {
-                overflow-x: auto !important;
-                flex-wrap: nowrap !important;
-                white-space: nowrap !important;
-                padding-bottom: 6px !important;
-                -webkit-overflow-scrolling: touch !important;
-                scrollbar-width: none !important; /* 隐藏滚动条 */
-            }
-            #sysModalTabs::-webkit-scrollbar {
-                display: none !important;
-            }
-
-            /* 3. 按钮不缩团，保持精致宽度 */
-            #sysModalTabs button {
+            /* 1. 强行覆盖按钮行内 flex:1 样式，让 4 个按钮保持正常字宽，允许向右滑出 */
+            #sysModalTabs > button {
                 flex: 0 0 auto !important;
+                width: auto !important;
+                min-width: 72px !important;
                 padding: 0 10px !important;
+            }
+
+            /* 2. 只允许这 4 个按钮所在的容器进行横向左右滑动 */
+            #sysModalTabs {
+                display: flex !important;
+                overflow-x: auto !important;
+                overflow-y: hidden !important;
+                flex-wrap: nowrap !important;
+                gap: 6px !important;
+                padding-bottom: 4px !important;
+                -webkit-overflow-scrolling: touch !important;
+            }
+
+            /* 3. 卡片与下面内容保持正常，禁止卡片本身左右晃动 */
+            .modal-card {
+                width: 92% !important;
+                max-width: 380px !important;
+                box-sizing: border-box !important;
+                overflow-x: hidden !important;
             }
         `;
         document.head.appendChild(stModalFixStyle);
