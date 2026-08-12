@@ -1,5 +1,5 @@
 // ==========================================
-// 番外文本管理器 - 酒馆加载器 (原生 100% 像素级对齐版)
+// 番外文本管理器 - 酒馆加载器 (防秒关 + 6px极简圆角版)
 // ==========================================
 (function() {
     'use strict';
@@ -12,7 +12,9 @@
     const STORAGE_SETTINGS_KEY = 'extra_text_mgr_settings_v3';
     const STORAGE_POS_KEY = 'extra_text_mgr_btn_pos_v3';
 
-    // 1. 注入顶级样式，强行恢复彩色 Emoji，并规范图标尺寸
+    let lastToggleTime = 0; // 防秒关锁
+
+    // 注入彩色 Emoji 渲染规则
     function injectEmojiStyle() {
         if (!topDoc.getElementById('extra-emoji-fix-style')) {
             const style = topDoc.createElement('style');
@@ -22,7 +24,7 @@
                     font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', sans-serif !important;
                     font-style: normal !important;
                     font-weight: normal !important;
-                    font-size: 16px !important;
+                    font-size: 20px !important;
                     line-height: 1 !important;
                     color: initial !important;
                     -webkit-text-fill-color: initial !important;
@@ -46,7 +48,6 @@
         localStorage.setItem(STORAGE_SETTINGS_KEY, JSON.stringify(s));
     }
 
-    // 渲染图标
     function renderIconHtml(iconStr) {
         if (!iconStr) iconStr = '📖';
         if (iconStr.includes('fa-') || iconStr.startsWith('fa ')) {
@@ -55,13 +56,19 @@
         return `<span class="extra-color-emoji">${iconStr}</span>`;
     }
 
-    // 2. 居中卡片弹窗 (点击空白关闭)
+    // 1. 双端自适应弹窗 (6px 极简圆角，解决手机端憋屈感)
     function createMainModal() {
         let $overlay = $('#extra-text-mgr-overlay', topDoc);
         if ($overlay.length === 0) {
+            const isMobile = (topWin.innerWidth || 800) <= 768;
+            
+            const modalStyle = isMobile 
+                ? 'width: 96vw; height: 94vh; border-radius: 6px;' 
+                : 'width: 85vw; height: 82vh; max-width: 1000px; max-height: 750px; border-radius: 6px;';
+
             const overlayHtml = `
                 <div id="extra-text-mgr-overlay" style="display: none; position: fixed; z-index: 1000000; left: 0; top: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.65); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); justify-content: center; align-items: center;">
-                    <div id="extra-text-mgr-modal" style="background: #11111b; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 14px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7); width: 80vw; height: 80vh; max-width: 900px; max-height: 700px; display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box; position: relative;">
+                    <div id="extra-text-mgr-modal" style="background: #11111b; border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7); display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box; position: relative; ${modalStyle}">
                         <iframe src="${MY_WEB_URL}" style="width:100%; height:100%; border:none; background:white;"></iframe>
                     </div>
                 </div>
@@ -78,7 +85,12 @@
         return $overlay;
     }
 
+    // 防触控秒关核心逻辑
     function toggleModal() {
+        const now = Date.now();
+        if (now - lastToggleTime < 400) return; // 400ms 内禁止重复触发
+        lastToggleTime = now;
+
         const $overlay = createMainModal();
         if ($overlay.is(':visible')) {
             $overlay.hide();
@@ -87,7 +99,7 @@
         }
     }
 
-    // 3. 悬浮按钮 (越界回归 + 拖拽)
+    // 2. 悬浮按钮 (手机端坐标防护)
     function renderFloatButton() {
         const settings = getSettings();
         let $btn = $('#extra-text-mgr-float-btn', topDoc);
@@ -174,7 +186,7 @@
         $button.on(`mousedown.extraMgr touchstart.extraMgr`, dragStart);
     }
 
-    // 4. 注册按钮事件
+    // 3. 注册酒馆助手按钮
     function registerTavernHelperButtons() {
         const safeBind = (winObj) => {
             if (typeof winObj.getButtonEvent === 'function' && typeof winObj.eventOn === 'function') {
@@ -191,7 +203,7 @@
         safeBind(topWin);
     }
 
-    // 5. 侧边栏菜单入口 (100% 像素级对齐酒馆原生菜单项)
+    // 4. 侧边栏菜单
     function renderSidebarButton() {
         const settings = getSettings();
         const $menu = $('#extensionsMenu, #extensions_menu', topDoc);
@@ -203,7 +215,6 @@
         }
 
         if ($menu.length) {
-            // 对齐结构：20px 固定图标宽度 + 无多余外边距，原生 flexGap5 排版
             const innerContent = `
                 <div style="width:20px; text-align:center; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;">
                     ${renderIconHtml(settings.icon)}
@@ -225,7 +236,7 @@
         }
     }
 
-    // 6. 跨窗口文本发送
+    // 5. 跨窗口文本发送
     function sendToTavernChat(text) {
         if (!text) return;
 
