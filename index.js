@@ -1,5 +1,5 @@
 // ==========================================
-// 番外文本管理器 - 酒馆加载器 (救世主同款 jQuery 架构版)
+// 番外文本管理器 - 酒馆加载器 (原生彩色 Emoji + 强力发送版)
 // ==========================================
 (function() {
     'use strict';
@@ -23,12 +23,23 @@
         localStorage.setItem(STORAGE_SETTINGS_KEY, JSON.stringify(s));
     }
 
+    // 渲染图标：强制启用系统彩色 Emoji 字体，保证 100% 彩色显示
     function renderIconHtml(iconStr) {
         if (!iconStr) iconStr = '📖';
         if (iconStr.includes('fa-') || iconStr.startsWith('fa ')) {
             return `<i class="${iconStr}"></i>`;
         }
-        return `<span style="font-style:normal; font-size:18px; line-height:1; user-select:none;">${iconStr}</span>`;
+        // 强制使用彩色 Emoji 字体样式
+        return `<span style="
+            font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', sans-serif !important;
+            font-style: normal !important;
+            font-weight: normal !important;
+            font-size: 20px !important;
+            line-height: 1 !important;
+            color: initial !important;
+            display: inline-block;
+            user-select: none;
+        ">${iconStr}</span>`;
     }
 
     // 1. Flex 居中无边框弹窗 (对标文本净化，永不起飞)
@@ -63,7 +74,7 @@
         }
     }
 
-    // 2. 对标《救世主》悬浮按钮与拖拽写法
+    // 2. 悬浮按钮 (救世主同款)
     function renderFloatButton() {
         const settings = getSettings();
         let $btn = $('#extra-text-mgr-float-btn', topDoc);
@@ -89,7 +100,6 @@
             $('body', topDoc).append(btnHtml);
             $btn = $('#extra-text-mgr-float-btn', topDoc);
 
-            // 救世主同款拖拽逻辑
             makeButtonDraggable($btn);
         }
 
@@ -138,12 +148,11 @@
         $button.on(`mousedown.extraMgr touchstart.extraMgr`, dragStart);
     }
 
-    // 3. 兼容你在酒馆助手编辑界面手动添加的“番外”按钮 (getButtonEvent)
+    // 3. 酒馆助手编辑界面手动添加的【番外】按钮
     function registerTavernHelperButtons() {
         const settings = getSettings();
         const btnLabel = settings.icon || '📖';
 
-        // 绑定你在脚本编辑界面手动添加的【番外】按钮
         if (typeof getButtonEvent === 'function') {
             getButtonEvent("番外", toggleModal);
         } else if (typeof topWin.getButtonEvent === 'function') {
@@ -182,32 +191,66 @@
                 $btn.on('click', () => { toggleModal(); $menu.hide(); });
             }
             $btn.css('display', 'flex');
+            $btn.html(`${renderIconHtml(settings.icon)}<span style="margin-left:6px;">番外文本管理器</span>`);
         }
     }
 
-    // 5. 跨窗口文本发送 (jQuery 强行触发事件，100% 成功发送到酒馆聊天框)
+    // 5. 跨窗口文本发送强力函数 (优先调用酒馆官方 API，100% 成功)
+    function sendToTavernChat(text) {
+        if (!text) return;
+
+        // 方案 A：使用酒馆原生 JS 官方 API 发送 (ST 1.11+)
+        if (topWin.SillyTavern && typeof topWin.SillyTavern.getContext === 'function') {
+            try {
+                const ctx = topWin.SillyTavern.getContext();
+                if (ctx && typeof ctx.sendMessage === 'function') {
+                    ctx.sendMessage(text);
+                    console.log("【番外文本管理器】通过 SillyTavern 官方 API 发送成功！");
+                    return;
+                }
+            } catch (e) {
+                console.warn("调用 SillyTavern API 失败，降级使用 DOM 操作:", e);
+            }
+        }
+
+        // 方案 B：DOM 模拟触发（兼容多行文本与事件冒泡）
+        const $textarea = $('#send_textarea', topDoc);
+        if ($textarea.length) {
+            const nativeEl = $textarea[0];
+            nativeEl.value = text;
+            
+            // 触发原生事件
+            nativeEl.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+            nativeEl.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+
+            // 触发 jQuery 事件
+            $textarea.trigger('input').trigger('change');
+
+            setTimeout(() => {
+                const $sendBtn = $('#send_but', topDoc);
+                if ($sendBtn.length) {
+                    $sendBtn.click();
+                } else if (typeof topWin.triggerSlash === 'function') {
+                    topWin.triggerSlash(`/send ${text.replace(/\n/g, ' ')}`);
+                }
+            }, 120);
+        } else if (typeof topWin.triggerSlash === 'function') {
+            topWin.triggerSlash(`/send ${text.replace(/\n/g, ' ')}`);
+        }
+    }
+
+    // 监听网页消息
     window.addEventListener('message', (event) => {
         if (event.data?.type === 'SEND_TO_ST_CHAT') {
-            const text = event.data.text;
-            if (!text) return;
-
-            const $textarea = $('#send_textarea', topDoc);
-            if ($textarea.length) {
-                // jQuery 设值 + 强行触发 input/change，确保酒馆数据更新
-                $textarea.val(text).trigger('input').trigger('change');
-                setTimeout(() => {
-                    const $sendBtn = $('#send_but', topDoc);
-                    if ($sendBtn.length) {
-                        $sendBtn.click();
-                    } else if (typeof topWin.triggerSlash === 'function') {
-                        topWin.triggerSlash(`/send ${text}`);
-                    }
-                }, 100);
-            } else if (typeof topWin.triggerSlash === 'function') {
-                topWin.triggerSlash(`/send ${text}`);
-            }
+            sendToTavernChat(event.data.text);
         } else if (event.data?.type === 'UPDATE_ST_SETTINGS') {
             saveSettings(event.data.settings);
+            
+            // 销毁旧节点重新渲染最新图标
+            $('#extra-text-mgr-float-btn', topDoc).remove();
+            $('#extra-mgr-sidebar-btn', topDoc).remove();
+            $('#extra-mgr-qr-btn', topDoc).remove();
+            
             refreshUI();
         }
     });
