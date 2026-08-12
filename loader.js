@@ -1,40 +1,81 @@
-// ==========================================
-// 1. 配置你的网页地址 (替换成你第一步获取的 Github Pages 网址)
-// ==========================================
+console.log("【调试】loader.js 开始加载...");
+
+// 1. 替换成你自己的 Github Pages 网址
 const MY_WEB_URL = 'https://github.com/UAAAAASV/my-TextManager'; 
 
-// ==========================================
-// 2. 创建嵌入网页的弹窗 (Modal + Iframe)
-// ==========================================
-function createWebModal() {
-    if (document.getElementById('my-html-modal')) return;
+// 2. 创建悬浮按钮（强制放在屏幕右下角，保证能看到）
+function createFloatingButton() {
+    if (document.getElementById('my-html-btn')) {
+        console.log("【调试】按钮已存在，跳过创建");
+        return;
+    }
 
-    // 创建弹窗容器
-    const modal = document.createElement('div');
-    modal.id = 'my-html-modal';
-    modal.style.cssText = `
-        display: none;
+    const btn = document.createElement('button');
+    btn.id = 'my-html-btn';
+    btn.innerHTML = '⚙️ 我的网页';
+    btn.style.cssText = `
         position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 80vw;
-        height: 80vh;
-        background: #1e1e2e;
-        border: 2px solid var(--SmartThemeBorderColor, #444);
-        border-radius: 12px;
-        z-index: 99999;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        overflow: hidden;
-        flex-direction: column;
+        bottom: 20px;
+        right: 20px;
+        z-index: 999999;
+        padding: 10px 15px;
+        background: #6366f1;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        font-weight: bold;
     `;
 
-    // 弹窗顶部标题栏 + 关闭按钮
-    modal.innerHTML = `
-        <div style="padding: 8px 15px; background: rgba(0,0,0,0.2); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1);">
-            <span style="color: #fff; font-weight: bold;">番外</span>
-            <button id="close-my-html-modal" style="background: transparent; border: none; color: #fff; cursor: pointer; font-size: 16px;">✕</button>
-        </div>
+    btn.onclick = () => {
+        console.log("【调试】点击了按钮，准备打开弹窗");
+        toggleModal();
+    };
+
+    document.body.appendChild(btn);
+    console.log("【调试】右下角悬浮按钮创建成功！");
+}
+
+// 3. 创建 Iframe 弹窗
+function toggleModal() {
+    let modal = document.getElementById('my-html-modal');
+    
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'my-html-modal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80vw;
+            height: 80vh;
+            background: #1e1e2e;
+            border: 2px solid #6366f1;
+            border-radius: 12px;
+            z-index: 1000000;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        `;
+
+        modal.innerHTML = `
+            <div style="padding: 10px; background: #2a2b3d; color: white; display: flex; justify-content: space-between; align-items: center;">
+                <span>我的网页工具</span>
+                <button onclick="document.getElementById('my-html-modal').style.display='none'" style="background:red; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">关闭</button>
+            </div>
+            <iframe src="${MY_WEB_URL}" style="width: 100%; height: 100%; border: none; background: white;"></iframe>
+        `;
+        document.body.appendChild(modal);
+    } else {
+        modal.style.display = modal.style.display === 'none' ? 'flex' : 'none';
+    }
+}
+
+// 执行创建
+createFloatingButton();        </div>
         <!-- 核心：用 iframe 直接加载你的 HTML 网页 -->
         <iframe id="my-html-iframe" src="${MY_WEB_URL}" style="width: 100%; height: 100%; border: none;"></iframe>
     `;
