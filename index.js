@@ -1,5 +1,5 @@
 // ==========================================
-// 番外文本管理器 - 酒馆加载器 (原生彩色 Emoji + 强力发送版)
+// 番外文本管理器 - 极简双端自适应加载器
 // ==========================================
 (function() {
     'use strict';
@@ -23,13 +23,12 @@
         localStorage.setItem(STORAGE_SETTINGS_KEY, JSON.stringify(s));
     }
 
-    // 渲染图标：强制启用系统彩色 Emoji 字体，保证 100% 彩色显示
+    // 渲染彩色 Emoji 图标
     function renderIconHtml(iconStr) {
         if (!iconStr) iconStr = '📖';
         if (iconStr.includes('fa-') || iconStr.startsWith('fa ')) {
             return `<i class="${iconStr}"></i>`;
         }
-        // 强制使用彩色 Emoji 字体样式
         return `<span style="
             font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', sans-serif !important;
             font-style: normal !important;
@@ -42,13 +41,18 @@
         ">${iconStr}</span>`;
     }
 
-    // 1. Flex 居中无边框弹窗 (对标文本净化，永不起飞)
+    // 1. 双端自适应弹窗 (手机端 100% 全屏，PC 端居中)
     function createMainModal() {
         let $overlay = $('#extra-text-mgr-overlay', topDoc);
         if ($overlay.length === 0) {
+            const isMobile = (topWin.innerWidth || 800) <= 768;
+            const modalWidth = isMobile ? '100vw' : '92vw';
+            const modalHeight = isMobile ? '100vh' : '88vh';
+            const borderRadius = isMobile ? '0px' : '12px';
+
             const overlayHtml = `
-                <div id="extra-text-mgr-overlay" style="display: none; position: fixed; z-index: 1000000; left: 0; top: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.65); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); justify-content: center; align-items: center;">
-                    <div id="extra-text-mgr-modal" style="background: #11111b; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 12px; box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6); width: 92vw; height: 88vh; max-width: 1300px; display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box; position: relative;">
+                <div id="extra-text-mgr-overlay" style="display: none; position: fixed; z-index: 1000000; left: 0; top: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); justify-content: center; align-items: center;">
+                    <div id="extra-text-mgr-modal" style="background: #11111b; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: ${borderRadius}; box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6); width: ${modalWidth}; height: ${modalHeight}; max-width: 1400px; display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box; position: relative;">
                         <iframe src="${MY_WEB_URL}" style="width:100%; height:100%; border:none; background:white;"></iframe>
                     </div>
                 </div>
@@ -74,7 +78,7 @@
         }
     }
 
-    // 2. 悬浮按钮 (救世主同款)
+    // 2. 悬浮按钮 (含手机屏坐标自动越界纠偏，防止飞出屏外)
     function renderFloatButton() {
         const settings = getSettings();
         let $btn = $('#extra-text-mgr-float-btn', topDoc);
@@ -86,14 +90,28 @@
 
         if ($btn.length === 0) {
             const savedPos = JSON.parse(localStorage.getItem(STORAGE_POS_KEY) || 'null');
-            const defaultTop = (topWin.innerHeight || 800) - 100;
-            const defaultLeft = (topWin.innerWidth || 400) - 70;
+            const winWidth = topWin.innerWidth || 375;
+            const winHeight = topWin.innerHeight || 667;
 
-            const btnTop = savedPos ? savedPos.top : defaultTop;
-            const btnLeft = savedPos ? savedPos.left : defaultLeft;
+            let defaultTop = winHeight - 90;
+            let defaultLeft = winWidth - 65;
+
+            // 如果读取的历史位置超过了当前屏幕宽度（比如从电脑切到手机），强制吸附回手机屏内
+            if (savedPos) {
+                if (savedPos.left < 0 || savedPos.left > winWidth - 50) {
+                    defaultLeft = winWidth - 65;
+                } else {
+                    defaultLeft = savedPos.left;
+                }
+                if (savedPos.top < 0 || savedPos.top > winHeight - 50) {
+                    defaultTop = winHeight - 90;
+                } else {
+                    defaultTop = savedPos.top;
+                }
+            }
 
             const btnHtml = `
-                <div id="extra-text-mgr-float-btn" title="打开番外文本管理器" style="position: fixed; z-index: 100050; cursor: grab; width: 46px; height: 44px; background: rgba(0, 0, 0, 0.45); backdrop-filter: blur(6px); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.3); user-select: none; top: ${btnTop}px; left: ${btnLeft}px;">
+                <div id="extra-text-mgr-float-btn" title="打开番外文本管理器" style="position: fixed; z-index: 100050; cursor: grab; width: 46px; height: 44px; background: rgba(0, 0, 0, 0.45); backdrop-filter: blur(6px); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.3); user-select: none; -webkit-user-select: none; touch-action: none; top: ${defaultTop}px; left: ${defaultLeft}px;">
                     ${renderIconHtml(settings.icon)}
                 </div>
             `;
@@ -106,6 +124,7 @@
         $btn.show().html(renderIconHtml(settings.icon));
     }
 
+    // 支持触摸屏与鼠标拖拽
     function makeButtonDraggable($button) {
         let startX, startY, hasDragged = false, offset;
         const $doc = $(topDoc);
@@ -127,11 +146,11 @@
 
         const dragMove = e => {
             const coords = getCoords(e);
-            if (Math.abs(coords.pageX - startX) > 5 || Math.abs(coords.pageY - startY) > 5) hasDragged = true;
+            if (Math.abs(coords.pageX - startX) > 4 || Math.abs(coords.pageY - startY) > 4) hasDragged = true;
             let newTop = coords.pageY - offset.y;
             let newLeft = coords.pageX - offset.x;
-            newTop = Math.max(0, Math.min(newTop, topWin.innerHeight - $button.outerHeight()));
-            newLeft = Math.max(0, Math.min(newLeft, topWin.innerWidth - $button.outerWidth()));
+            newTop = Math.max(10, Math.min(newTop, topWin.innerHeight - $button.outerHeight() - 10));
+            newLeft = Math.max(10, Math.min(newLeft, topWin.innerWidth - $button.outerWidth() - 10));
             $button.css({ top: newTop + 'px', left: newLeft + 'px', right: 'auto', bottom: 'auto' });
         };
 
@@ -148,7 +167,7 @@
         $button.on(`mousedown.extraMgr touchstart.extraMgr`, dragStart);
     }
 
-    // 3. 酒馆助手编辑界面手动添加的【番外】按钮
+    // 3. 注册绑定入口
     function registerTavernHelperButtons() {
         const settings = getSettings();
         const btnLabel = settings.icon || '📖';
@@ -168,7 +187,7 @@
         }
     }
 
-    // 4. 侧边栏魔杖菜单
+    // 4. 侧边栏菜单入口
     function renderSidebarButton() {
         const settings = getSettings();
         const $menu = $('#extensionsMenu, #extensions_menu', topDoc);
@@ -195,61 +214,46 @@
         }
     }
 
-    // 5. 跨窗口文本发送强力函数 (优先调用酒馆官方 API，100% 成功)
-    function sendToTavernChat(text) {
-        if (!text) return;
-
-        // 方案 A：使用酒馆原生 JS 官方 API 发送 (ST 1.11+)
-        if (topWin.SillyTavern && typeof topWin.SillyTavern.getContext === 'function') {
-            try {
-                const ctx = topWin.SillyTavern.getContext();
-                if (ctx && typeof ctx.sendMessage === 'function') {
-                    ctx.sendMessage(text);
-                    console.log("【番外文本管理器】通过 SillyTavern 官方 API 发送成功！");
-                    return;
-                }
-            } catch (e) {
-                console.warn("调用 SillyTavern API 失败，降级使用 DOM 操作:", e);
-            }
-        }
-
-        // 方案 B：DOM 模拟触发（兼容多行文本与事件冒泡）
-        const $textarea = $('#send_textarea', topDoc);
-        if ($textarea.length) {
-            const nativeEl = $textarea[0];
-            nativeEl.value = text;
-            
-            // 触发原生事件
-            nativeEl.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
-            nativeEl.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
-
-            // 触发 jQuery 事件
-            $textarea.trigger('input').trigger('change');
-
-            setTimeout(() => {
-                const $sendBtn = $('#send_but', topDoc);
-                if ($sendBtn.length) {
-                    $sendBtn.click();
-                } else if (typeof topWin.triggerSlash === 'function') {
-                    topWin.triggerSlash(`/send ${text.replace(/\n/g, ' ')}`);
-                }
-            }, 120);
-        } else if (typeof topWin.triggerSlash === 'function') {
-            topWin.triggerSlash(`/send ${text.replace(/\n/g, ' ')}`);
-        }
-    }
-
-    // 监听网页消息
+    // 5. 跨窗口文本发送通信 (对标酒馆核心事件引擎)
     window.addEventListener('message', (event) => {
         if (event.data?.type === 'SEND_TO_ST_CHAT') {
-            sendToTavernChat(event.data.text);
+            const text = event.data.text;
+            if (!text) return;
+
+            // 优先驱动酒馆主页面核心发送引擎
+            if (topWin.SillyTavern && typeof topWin.SillyTavern.getContext === 'function') {
+                try {
+                    const ctx = topWin.SillyTavern.getContext();
+                    if (ctx && typeof ctx.sendMessage === 'function') {
+                        ctx.sendMessage(text);
+                        return;
+                    }
+                } catch (e) {}
+            }
+
+            const $textarea = $('#send_textarea', topDoc);
+            if ($textarea.length) {
+                const nativeEl = $textarea[0];
+                nativeEl.value = text;
+                nativeEl.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+                nativeEl.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+
+                setTimeout(() => {
+                    const $sendBtn = $('#send_but', topDoc);
+                    if ($sendBtn.length) {
+                        $sendBtn.click();
+                    } else if (typeof topWin.triggerSlash === 'function') {
+                        topWin.triggerSlash(`/send ${text}`);
+                    }
+                }, 100);
+            } else if (typeof topWin.triggerSlash === 'function') {
+                topWin.triggerSlash(`/send ${text}`);
+            }
         } else if (event.data?.type === 'UPDATE_ST_SETTINGS') {
             saveSettings(event.data.settings);
             
-            // 销毁旧节点重新渲染最新图标
             $('#extra-text-mgr-float-btn', topDoc).remove();
             $('#extra-mgr-sidebar-btn', topDoc).remove();
-            $('#extra-mgr-qr-btn', topDoc).remove();
             
             refreshUI();
         }
