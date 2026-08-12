@@ -1,5 +1,5 @@
 // ==========================================
-// 番外文本管理器 - 酒馆加载器 (官方声明文件标准版)
+// 番外文本管理器 - 酒馆加载器 (无叉版 + 强力投递 + 即时图标)
 // ==========================================
 (function() {
     'use strict';
@@ -12,6 +12,29 @@
     const STORAGE_SETTINGS_KEY = 'extra_text_mgr_settings_v3';
     const STORAGE_POS_KEY = 'extra_text_mgr_btn_pos_v3';
 
+    // 注入彩色 Emoji 渲染规则
+    function injectEmojiStyle() {
+        if (!topDoc.getElementById('extra-emoji-fix-style')) {
+            const style = topDoc.createElement('style');
+            style.id = 'extra-emoji-fix-style';
+            style.innerHTML = `
+                .extra-color-emoji {
+                    font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', sans-serif !important;
+                    font-style: normal !important;
+                    font-weight: normal !important;
+                    font-size: 20px !important;
+                    line-height: 1 !important;
+                    color: initial !important;
+                    -webkit-text-fill-color: initial !important;
+                    display: inline-block !important;
+                    vertical-align: middle !important;
+                }
+            `;
+            topDoc.head.appendChild(style);
+        }
+    }
+    injectEmojiStyle();
+
     function getSettings() {
         const def = { icon: '📖', showFloat: true, showSidebar: true, showQR: true };
         try {
@@ -23,33 +46,22 @@
         localStorage.setItem(STORAGE_SETTINGS_KEY, JSON.stringify(s));
     }
 
-    // 渲染彩色 Emoji 图标
+    // 渲染图标
     function renderIconHtml(iconStr) {
         if (!iconStr) iconStr = '📖';
         if (iconStr.includes('fa-') || iconStr.startsWith('fa ')) {
             return `<i class="${iconStr}"></i>`;
         }
-        return `<span style="
-            font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', sans-serif !important;
-            font-style: normal !important;
-            font-weight: normal !important;
-            font-size: 19px !important;
-            line-height: 1 !important;
-            color: initial !important;
-            -webkit-text-fill-color: initial !important;
-            display: inline-block;
-            user-select: none;
-        ">${iconStr}</span>`;
+        return `<span class="extra-color-emoji">${iconStr}</span>`;
     }
 
-    // 1. 精致居中卡片弹窗 (80vw / 80vh，拒绝全屏占满，四周留空白)
+    // 1. 精致居中卡片弹窗 (去掉了红框小叉叉，点击空白直接关闭)
     function createMainModal() {
         let $overlay = $('#extra-text-mgr-overlay', topDoc);
         if ($overlay.length === 0) {
             const overlayHtml = `
                 <div id="extra-text-mgr-overlay" style="display: none; position: fixed; z-index: 1000000; left: 0; top: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.65); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); justify-content: center; align-items: center;">
                     <div id="extra-text-mgr-modal" style="background: #11111b; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 14px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7); width: 80vw; height: 80vh; max-width: 900px; max-height: 700px; display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box; position: relative;">
-                        <button id="extra-modal-close-btn" style="position: absolute; top: 8px; right: 10px; z-index: 1000001; background: #ef4444; color: white; border: none; border-radius: 50%; width: 28px; height: 28px; font-weight: bold; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.4);">✕</button>
                         <iframe src="${MY_WEB_URL}" style="width:100%; height:100%; border:none; background:white;"></iframe>
                     </div>
                 </div>
@@ -57,16 +69,11 @@
             $('body', topDoc).append(overlayHtml);
             $overlay = $('#extra-text-mgr-overlay', topDoc);
 
-            // 点击外部背景空白处关闭
+            // 点击黑色背景空白处关闭
             $overlay.on('click', function(e) {
                 if (e.target === this) {
                     $(this).hide();
                 }
-            });
-
-            // 右上角按钮关闭
-            $('#extra-modal-close-btn', topDoc).on('click', function() {
-                $overlay.hide();
             });
         }
         return $overlay;
@@ -81,7 +88,7 @@
         }
     }
 
-    // 2. 悬浮按钮 (支持越界回归与拖拽)
+    // 2. 悬浮按钮 (支持拖拽 + 即时图标更新)
     function renderFloatButton() {
         const settings = getSettings();
         let $btn = $('#extra-text-mgr-float-btn', topDoc);
@@ -168,30 +175,22 @@
         $button.on(`mousedown.extraMgr touchstart.extraMgr`, dragStart);
     }
 
-    // 3. 严格遵循酒馆助手 .d.ts 声明文件的标准绑定机制
+    // 3. 注册绑定入口
     function registerTavernHelperButtons() {
         const settings = getSettings();
         const btnLabel = settings.icon || '📖';
 
-        // 官方标准用法：getButtonEvent('按钮名') 获取事件名，再用 eventOn 监听
         if (typeof getButtonEvent === 'function' && typeof eventOn === 'function') {
             try {
-                const eventNameFanWai = getButtonEvent("番外");
-                eventOn(eventNameFanWai, toggleModal);
-
-                const eventNameIcon = getButtonEvent(btnLabel);
-                eventOn(eventNameIcon, toggleModal);
+                eventOn(getButtonEvent("番外"), toggleModal);
+                eventOn(getButtonEvent(btnLabel), toggleModal);
             } catch(e){}
         }
 
-        // 兼容 topWin 上的接口
         if (typeof topWin.getButtonEvent === 'function' && typeof topWin.eventOn === 'function') {
             try {
-                const eventNameFanWai = topWin.getButtonEvent("番外");
-                topWin.eventOn(eventNameFanWai, toggleModal);
-
-                const eventNameIcon = topWin.getButtonEvent(btnLabel);
-                topWin.eventOn(eventNameIcon, toggleModal);
+                topWin.eventOn(topWin.getButtonEvent("番外"), toggleModal);
+                topWin.eventOn(topWin.getButtonEvent(btnLabel), toggleModal);
             } catch(e){}
         }
     }
@@ -223,58 +222,47 @@
         }
     }
 
-    // 5. 跨窗口文本发送通信 (结合 .d.ts 声明文件的 createChatMessages 接口)
+    // 5. 跨窗口发送逻辑：优先驱动输入框并点击发送按钮
     function sendToTavernChat(text) {
         if (!text) return;
 
-        // 优先使用声明文件中的 createChatMessages 接口
-        if (typeof topWin.createChatMessages === 'function') {
-            topWin.createChatMessages([{ role: 'user', message: text }]);
-            return;
-        }
-        if (topWin.TavernHelper && typeof topWin.TavernHelper.createChatMessages === 'function') {
-            topWin.TavernHelper.createChatMessages([{ role: 'user', message: text }]);
-            return;
-        }
+        const textarea = topDoc.getElementById('send_textarea');
+        const sendBtn = topDoc.getElementById('send_but');
 
-        // 备用：SillyTavern 上下文发送
-        if (topWin.SillyTavern && typeof topWin.SillyTavern.getContext === 'function') {
-            try {
-                const ctx = topWin.SillyTavern.getContext();
-                if (ctx && typeof ctx.sendMessage === 'function') {
-                    ctx.sendMessage(text);
-                    return;
-                }
-            } catch (e) {}
-        }
+        if (textarea) {
+            // 直接设值
+            textarea.value = text;
+            
+            // 触发原生输入与改变事件
+            textarea.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+            textarea.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
 
-        // 备用：DOM 强行发送
-        const $textarea = $('#send_textarea', topDoc);
-        if ($textarea.length) {
-            const nativeEl = $textarea[0];
-            nativeEl.value = text;
-            nativeEl.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
-            nativeEl.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+            // 触发 jQuery 事件
+            if ($) {
+                $(textarea).trigger('input').trigger('change');
+            }
 
+            // 点击发送按钮
             setTimeout(() => {
-                const $sendBtn = $('#send_but', topDoc);
-                if ($sendBtn.length) {
-                    $sendBtn.click();
+                if (sendBtn) {
+                    sendBtn.click();
                 } else if (typeof topWin.triggerSlash === 'function') {
                     topWin.triggerSlash(`/send ${text}`);
                 }
-            }, 100);
+            }, 120);
         } else if (typeof topWin.triggerSlash === 'function') {
             topWin.triggerSlash(`/send ${text}`);
         }
     }
 
+    // 信令接收
     window.addEventListener('message', (event) => {
         if (event.data?.type === 'SEND_TO_ST_CHAT') {
             sendToTavernChat(event.data.text);
         } else if (event.data?.type === 'UPDATE_ST_SETTINGS') {
             saveSettings(event.data.settings);
             
+            // 销毁旧节点，强行使用新图标重新绘制
             $('#extra-text-mgr-float-btn', topDoc).remove();
             $('#extra-mgr-sidebar-btn', topDoc).remove();
             
