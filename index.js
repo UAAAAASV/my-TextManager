@@ -1,7 +1,7 @@
 console.log("【调试】loader.js 开始加载...");
 
 // 1. 替换成你自己的 Github Pages 网址
-const MY_WEB_URL = 'https://github.com/UAAAAASV/my-TextManager'; 
+const MY_WEB_URL = 'https://uaaaaasv.github.io/my-TextManager/';
 
 // 2. 创建悬浮按钮（强制放在屏幕右下角，保证能看到）
 function createFloatingButton() {
