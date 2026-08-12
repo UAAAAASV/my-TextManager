@@ -854,11 +854,10 @@
     }
     function toggleLock() { projectData.config.isLocked = document.getElementById('lockSwitch').checked; hasShownLockToast = false; saveData(); refreshEditorContent(); }
     function toggleRoleSwap() {
+        // 1. 判定交替取消锁定
         if (projectData.config.autoUnlockOnSwap) {
-            if (projectData.config.isLocked) {
-                projectData.config.isLocked = false;
-                document.getElementById('lockSwitch').checked = false;
-            }
+            projectData.config.isLocked = false;
+            document.getElementById('lockSwitch').checked = false;
         } else {
             if (!projectData.config.isLocked) {
                 projectData.config.isLocked = true;
@@ -866,9 +865,21 @@
             }
         }
 
+        // 2. 标记：已激活交替展示（不再退回原始占位符）
+        projectData.config.isSwapActive = true;
+
+        // 3. 在 文本1 (true) 与 文本2 (false) 之间循环切换
         projectData.config.isSwapped = !projectData.config.isSwapped;
-        saveData(); updateSwapStatusUI(); refreshEditorContent();
-        showToast(projectData.config.isSwapped ? `已交替\nFr=${projectData.config.displayOptions.sc} \nSc=${projectData.config.displayOptions.fr}` : `已交替\nFr=${projectData.config.displayOptions.fr} \nSc=${projectData.config.displayOptions.sc}`);
+
+        saveData(); 
+        updateSwapStatusUI(); 
+        refreshEditorContent();
+
+        const isText1 = !projectData.config.isSwapped;
+        showToast(isText1 
+            ? `已交替\nFr=${projectData.config.displayOptions.fr} \nSc=${projectData.config.displayOptions.sc}` 
+            : `已交替\nFr=${projectData.config.displayOptions.sc} \nSc=${projectData.config.displayOptions.fr}`
+        );
     }
     function updateSwapStatusUI() {
         const p = document.getElementById('swapStatusText');
@@ -881,13 +892,27 @@
     function refreshEditorContent() {
         if (!currentNode || currentNode.type !== 'item') return;
         const el = document.getElementById('editor-content');
-        if (projectData.config.isLocked) {
+
+        // 核心修正：只要处在锁定状态，或者已经触发了交替模式，就进行文本替换展示（不再退回占位符）
+        const shouldReplace = projectData.config.isLocked || projectData.config.isSwapActive;
+
+        if (shouldReplace) {
             let text = currentNode.text || '';
-            const frV = projectData.config.isSwapped ? projectData.config.displayOptions.sc : projectData.config.displayOptions.fr;
-            const scV = projectData.config.isSwapped ? projectData.config.displayOptions.fr : projectData.config.displayOptions.sc;
+            // !isSwapped 为 文本1，isSwapped 为 文本2
+            const isText1 = !projectData.config.isSwapped;
+            const frV = isText1 ? projectData.config.displayOptions.fr : projectData.config.displayOptions.sc;
+            const scV = isText1 ? projectData.config.displayOptions.sc : projectData.config.displayOptions.fr;
+
             text = text.split('<Q7Fr>').join(frV).split('<Q7Sc>').join(scV);
-            el.value = text; el.readOnly = true; el.style.backgroundColor = '#f8fafc'; 
-        } else { el.value = currentNode.text || ''; el.readOnly = false; el.style.backgroundColor = '#ffffff'; }
+            el.value = text;
+        } else {
+            // 初始未点击交替且未锁定，显示原始占位符 <Q7Fr> / <Q7Sc>
+            el.value = currentNode.text || '';
+        }
+
+        // 仅在开启“文本编辑锁定”时禁止编辑；“交替取消锁定”状态下保持可编辑！
+        el.readOnly = projectData.config.isLocked;
+        el.style.backgroundColor = projectData.config.isLocked ? '#f8fafc' : '#ffffff';
     }
 
     function toggleStarFilter() {
