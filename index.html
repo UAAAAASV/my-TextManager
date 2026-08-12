@@ -2070,7 +2070,7 @@
         if (!currentNode) { showToast('请先选择一个文本条目'); return; }
         if (currentNode.type !== 'item') { showToast('仅支持复制文本'); return; }
         
-        const el = document.getElementById('editor-content'); let text = el.value || '';
+        const el = document.getElementById('editor-content'); let text = el ? el.value : (currentNode.text || '');
         
         let pathArr = getPath(projectData.data, currentNode.id) || [];
         pathArr.pop(); 
@@ -2096,21 +2096,17 @@
             }); 
         }
 
-        // ==========================================
-        // 核心修改：智能判定【酒馆发送】还是【网页复制】
-        // ==========================================
         const finalText = prefixStr + text + suffixStr;
-        const isInSillyTavern = window.self !== window.top; // 自动判断是否被嵌入酒馆
+        const isInSillyTavern = window.self !== window.top;
 
         if (isInSillyTavern) {
-            // 在酒馆里：直接发送文本到酒馆聊天框
-            window.parent.postMessage({
+            // 向主界面推送信令
+            (window.top || window.self).postMessage({
                 type: 'SEND_TO_ST_CHAT',
                 text: finalText
             }, '*');
             showToast('🚀已发送');
         } else {
-            // 普通网页：保持原来的复制到剪贴板逻辑
             navigator.clipboard.writeText(finalText).then(() => { 
                 if(prefixStr || suffixStr) showToast('已附加前/后缀并复制'); else showToast('已复制到剪贴板');
             });
@@ -2673,9 +2669,8 @@ document.getElementById('editor-content').addEventListener('blur', function() { 
             const newSettings = { icon, showFloat, showSidebar, showQR };
             localStorage.setItem(ST_KEY, JSON.stringify(newSettings));
 
-            // 关键：通知父窗口即时重新绘制图标
-            if (window.parent) {
-                window.parent.postMessage({ type: 'UPDATE_ST_SETTINGS', settings: newSettings }, '*');
+            if (window.top || window.self) {
+                (window.top || window.self).postMessage({ type: 'UPDATE_ST_SETTINGS', settings: newSettings }, '*');
             }
             showToast("酒馆设置已保存！");
             closeModal();
