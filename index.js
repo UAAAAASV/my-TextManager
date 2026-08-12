@@ -64,8 +64,8 @@
             
             // 极大化渲染空间：手机端 98vw/96vh，电脑端 92vw/90vh
             const modalStyle = isMobile 
-                ? 'width: 98vw; height: 96vh; border-radius: 8px;' 
-                : 'width: 92vw; height: 90vh; max-width: 1400px; max-height: 900px; border-radius: 10px;';
+                ? 'width: 90vw; height: 92vh; border-radius: 8px;' 
+                : 'width: 88vw; height: 85vh; max-width: 1400px; max-height: 900px; border-radius: 10px;';
 
             const overlayHtml = `
                 <div id="extra-text-mgr-overlay" style="display: none; position: fixed; z-index: 1000000; left: 0; top: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.65); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); justify-content: center; align-items: center;">
