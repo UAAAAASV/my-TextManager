@@ -2668,24 +2668,18 @@ document.getElementById('editor-content').addEventListener('blur', function() { 
             const icon = document.getElementById('st-set-icon').value.trim() || '📖';
             const showFloat = document.getElementById('st-set-float').checked;
             const showSidebar = document.getElementById('st-set-sidebar').checked;
-            const showQR = document.getElementById('st-set-qr').checked;
-
-            if (!showFloat && !showSidebar && !showQR) {
-                showToast("⚠️ 至少必须保留一个入口！");
-                return;
-            }
+            const showQR = document.getElementById('chk-qr') ? document.getElementById('chk-qr').checked : true;
 
             const newSettings = { icon, showFloat, showSidebar, showQR };
             localStorage.setItem(ST_KEY, JSON.stringify(newSettings));
 
-            // 通知酒馆即时刷新入口按钮
+            // 关键：通知父窗口即时重新绘制图标
             if (window.parent) {
                 window.parent.postMessage({ type: 'UPDATE_ST_SETTINGS', settings: newSettings }, '*');
             }
             showToast("酒馆设置已保存！");
             closeModal();
         };
-    }
 	
     const quickNewBtn = document.getElementById('mobileQuickNewFloat');
     let isDraggingNewBtn = false;
