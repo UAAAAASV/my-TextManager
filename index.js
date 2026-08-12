@@ -1,7 +1,8 @@
 // ==========================================
-// 番外文本管理器 - 酒馆加载器 (Emoji + 双端防遮挡版)
+// 番外文本管理器 - 酒馆加载器 (原生 eventOnButton 同排绑定版)
 // ==========================================
-const topDoc = (window.top && window.top.document) ? window.top.document : document;
+const topWin = window.top || window;
+const topDoc = topWin.document || document;
 
 const MY_WEB_URL = 'https://uaaaaasv.github.io/my-TextManager/';
 const STORAGE_SETTINGS_KEY = 'extra_text_mgr_settings_v3';
@@ -18,16 +19,15 @@ function saveSettings(s) {
     localStorage.setItem(STORAGE_SETTINGS_KEY, JSON.stringify(s));
 }
 
-// 渲染图标（智能识别 Emoji 表情 / 文本 / FontAwesome 类名）
 function renderIconHtml(iconStr) {
     if (!iconStr) iconStr = '📖';
     if (iconStr.includes('fa-') || iconStr.startsWith('fa ')) {
         return `<i class="${iconStr}"></i>`;
     }
-    return `<span style="font-style:normal; font-size:18px; line-height:1; user-select:none;">${iconStr}</span>`;
+    return `<span style="font-style:normal; font-size:16px; line-height:1; user-select:none;">${iconStr}</span>`;
 }
 
-// 1. Flex 居中无边框弹窗
+// 1. Flex 居中无边框弹窗 (对标文本净化，永不起飞)
 function createMainModal() {
     let overlay = topDoc.getElementById('extra-text-mgr-overlay');
     if (!overlay) {
@@ -66,7 +66,7 @@ function toggleModal() {
     overlay.style.display = (overlay.style.display === 'none' || !overlay.style.display) ? 'flex' : 'none';
 }
 
-// 2. 悬浮按钮 (最高层级防遮挡 + 触摸拖动)
+// 2. 悬浮图标
 function renderFloatButton() {
     const settings = getSettings();
     let btn = topDoc.getElementById('extra-text-mgr-float-btn');
@@ -171,47 +171,60 @@ function renderSidebarButton() {
     }
 }
 
-// 4. 快捷回复栏入口 (增强型多选择器匹配)
+// 4. 核心：使用酒馆助手原生的 eventOnButton 绑定 (保证和 回顶/回底/回楼层 排在同一排)
 function renderQRButton() {
     const settings = getSettings();
-    let btn = topDoc.getElementById('extra-mgr-qr-btn');
+    if (!settings.showQR) return;
 
-    if (!settings.showQR) {
-        if (btn) btn.style.display = 'none';
-        return;
-    }
+    const btnLabel = settings.icon || '📖';
 
-    // 适配各类酒馆版本/主题的底栏容器选择器
-    const qrBar = topDoc.getElementById('quick-reply-bar') || 
-                  topDoc.querySelector('.quick_reply_bar') || 
-                  topDoc.getElementById('send_controls') || 
-                  topDoc.getElementById('send_form') || 
-                  topDoc.querySelector('.write_form');
-
-    if (qrBar) {
-        if (!btn) {
+    // 优先使用酒馆助手的原生 eventOnButton API (与回顶脚本保持 100% 一致，自动完美排在一行)
+    if (typeof eventOnButton === 'function') {
+        eventOnButton(btnLabel, toggleModal);
+    } else if (typeof topWin.eventOnButton === 'function') {
+        topWin.eventOnButton(btnLabel, toggleModal);
+    } else {
+        // 备用 DOM 拼接
+        const qrBar = topDoc.getElementById('quick-reply-bar') || 
+                      topDoc.querySelector('.quick_reply_bar') || 
+                      topDoc.getElementById('send_controls');
+        let btn = topDoc.getElementById('extra-mgr-qr-btn');
+        if (qrBar && !btn) {
             btn = topDoc.createElement('div');
             btn.id = 'extra-mgr-qr-btn';
             btn.className = 'menu_button interactable';
-            btn.title = '番外文本管理器';
             btn.style.cssText = 'padding: 4px 8px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; margin: 2px;';
             btn.onclick = toggleModal;
             qrBar.appendChild(btn);
         }
-        btn.style.display = 'inline-flex';
-        btn.innerHTML = renderIconHtml(settings.icon);
+        if (btn) {
+            btn.style.display = 'inline-flex';
+            btn.innerHTML = renderIconHtml(settings.icon);
+        }
     }
 }
 
-// 5. 跨跨通信监听
+// 5. 跨窗口文本发送 (引入 triggerSlash 确保 100% 原生触发发送)
 window.addEventListener('message', (event) => {
     if (event.data?.type === 'SEND_TO_ST_CHAT') {
-        const textarea = topDoc.getElementById('send_textarea');
-        const sendBtn = topDoc.getElementById('send_but');
-        if (textarea && sendBtn) {
-            textarea.value = event.data.text;
-            textarea.dispatchEvent(new Event('input', { bubbles: true }));
-            setTimeout(() => { sendBtn.click(); }, 100);
+        const text = event.data.text;
+        if (!text) return;
+
+        // 优先使用酒馆原生的 /send 命令触发发送 (100% 成功，不受系统拦截)
+        if (typeof triggerSlash === 'function') {
+            triggerSlash(`/send ${text}`);
+        } else if (typeof topWin.triggerSlash === 'function') {
+            topWin.triggerSlash(`/send ${text}`);
+        } else {
+            // DOM 备用操作
+            const textarea = topDoc.getElementById('send_textarea');
+            const sendBtn = topDoc.getElementById('send_but');
+            if (textarea) {
+                textarea.value = text;
+                textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                textarea.dispatchEvent(new Event('change', { bubbles: true }));
+                if (sendBtn) sendBtn.click();
+            }
         }
     } else if (event.data?.type === 'UPDATE_ST_SETTINGS') {
         saveSettings(event.data.settings);
@@ -226,4 +239,4 @@ function refreshUI() {
     renderQRButton();
 }
 
-setTimeout(refreshUI, 1200);
+setTimeout(refreshUI, 1000);
