@@ -1,7 +1,7 @@
 // ==========================================
 // 1. 配置你的网页地址 (替换成你第一步获取的 Github Pages 网址)
 // ==========================================
-const MY_WEB_URL = 'https://xxx.github.io/your-repo-name/'; 
+const MY_WEB_URL = 'https://github.com/UAAAAASV/my-TextManager'; 
 
 // ==========================================
 // 2. 创建嵌入网页的弹窗 (Modal + Iframe)
@@ -32,7 +32,7 @@ function createWebModal() {
     // 弹窗顶部标题栏 + 关闭按钮
     modal.innerHTML = `
         <div style="padding: 8px 15px; background: rgba(0,0,0,0.2); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1);">
-            <span style="color: #fff; font-weight: bold;">我的工具箱</span>
+            <span style="color: #fff; font-weight: bold;">番外</span>
             <button id="close-my-html-modal" style="background: transparent; border: none; color: #fff; cursor: pointer; font-size: 16px;">✕</button>
         </div>
         <!-- 核心：用 iframe 直接加载你的 HTML 网页 -->
@@ -56,7 +56,7 @@ function injectButton() {
     const btn = document.createElement('div');
     btn.id = 'my-html-btn';
     btn.className = 'menu_button'; // 酒馆原生按钮样式
-    btn.title = '打开我的网页';
+    btn.title = '番外';
     btn.innerHTML = '<i class="fa-solid fa-window-maximize"></i>'; // 图标
 
     // 点击按钮显示/隐藏弹窗
