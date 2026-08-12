@@ -2100,7 +2100,6 @@
         const isInSillyTavern = window.self !== window.top;
 
         if (isInSillyTavern) {
-            // 向主界面推送信令
             (window.top || window.self).postMessage({
                 type: 'SEND_TO_ST_CHAT',
                 text: finalText
