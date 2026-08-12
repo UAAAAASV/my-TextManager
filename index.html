@@ -2812,6 +2812,24 @@ document.getElementById('editor-content').addEventListener('blur', function() { 
         `;
         document.head.appendChild(stModalFixStyle);
     }
+
+	
+	// ==========================================
+    // 阻止手机输入法自动弹起：打开/初始化时强制失焦
+    // ==========================================
+
+	function preventAutoKeyboard() {
+        if (window.self !== window.top || window.innerWidth <= 768) {
+            if (document.activeElement && typeof document.activeElement.blur === 'function') {
+                document.activeElement.blur();
+            }
+        }
+    }
+    // 1. 页面加载完成后取消自动聚焦
+    document.addEventListener('DOMContentLoaded', preventAutoKeyboard);
+    
+    // 2. 延迟再次失焦保底，保证软键盘绝不自动唤起
+    setTimeout(preventAutoKeyboard, 300);
 	
 </script>
 </body>
