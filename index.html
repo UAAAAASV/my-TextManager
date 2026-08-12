@@ -2629,12 +2629,13 @@ document.getElementById('editor-content').addEventListener('blur', function() { 
         if (row) row.style.display = 'flex';
     }
 
-    // 打开酒馆内部设置弹窗
+    // 打开酒馆内部设置弹窗 (调用网页原生 sysModal 机制)
     function openStSettingsModal() {
         const ST_KEY = 'extra_text_mgr_settings_v3';
         let settings = { icon: 'fa-solid fa-book-journal-whills', showFloat: true, showSidebar: true, showQR: true };
         try {
-            settings = { ...settings, ...JSON.parse(localStorage.getItem(ST_KEY) || '{}') };
+            const stored = localStorage.getItem(ST_KEY);
+            if (stored) settings = { ...settings, ...JSON.parse(stored) };
         } catch(e){}
 
         showModalClear("【酒馆内部设置】", "");
@@ -2651,7 +2652,7 @@ document.getElementById('editor-content').addEventListener('blur', function() { 
                         <input type="checkbox" id="st-set-float" ${settings.showFloat ? 'checked' : ''}> 开启悬浮图标按钮
                     </label>
                     <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-                        <input type="checkbox" id="st-set-sidebar" ${settings.showSidebar ? 'checked' : ''}> 开启侧边栏(魔杖)入口
+                        <input type="checkbox" id="st-set-sidebar" ${settings.showSidebar ? 'checked' : ''}> 开启侧边栏入口
                     </label>
                     <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
                         <input type="checkbox" id="st-set-qr" ${settings.showQR ? 'checked' : ''}> 开启快捷回复栏入口
@@ -2677,7 +2678,7 @@ document.getElementById('editor-content').addEventListener('blur', function() { 
             const newSettings = { icon, showFloat, showSidebar, showQR };
             localStorage.setItem(ST_KEY, JSON.stringify(newSettings));
 
-            // 通知酒馆页面刷新入口按钮
+            // 发送消息通知酒馆主窗口即时更新三个入口按钮
             if (window.parent) {
                 window.parent.postMessage({ type: 'UPDATE_ST_SETTINGS', settings: newSettings }, '*');
             }
