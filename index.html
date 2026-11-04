@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -54,6 +55,15 @@
         .btn.primary:hover { background: #000; }
         .btn.danger { color: #ef4444; }
 
+        .btn.active-mode { 
+            background: #f1f5f9; 
+            color: #ef4444; 
+            border: 1px solid #cbd5e1; 
+        }
+        .btn.active-mode:hover { 
+            background: #e2e8f0; 
+        }
+
         .app-layout {
             display: grid;
             grid-template-columns: var(--sidebar-w) 1fr 320px;
@@ -73,6 +83,17 @@
             z-index: 50; 
             background: var(--bg-side);
             box-shadow: 0 10px 0 var(--bg-side), 0 11px 0 var(--border-color);
+        }
+
+        .side-header .btn {
+            height: 36px !important;
+            padding: 0 4px !important;
+            font-size: 13px !important;
+            flex: 1 1 0 !important;
+            width: 0 !important;
+            min-width: 0 !important;
+            box-sizing: border-box !important;
+            white-space: nowrap !important;
         }
 
         .search-box {
@@ -113,6 +134,31 @@
         }
         
         .node-cb { margin: 0; cursor: pointer; width: 15px; height: 15px; flex-shrink: 0; }
+
+        /* 仅勾选框常驻浅灰色背景，文本绝不标红 */
+        .node-cb.is-ignored-node {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 15px;
+            height: 15px;
+            border: 1px solid #94a3b8;
+            background-color: #cbd5e1 !important;
+            border-radius: 3px;
+            cursor: pointer;
+            position: relative;
+        }
+        .node-cb.is-ignored-node:checked::after {
+            content: '';
+            position: absolute;
+            left: 4px;
+            top: 1px;
+            width: 4px;
+            height: 8px;
+            border: solid #0f172a;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+
         .index-badge { font-size: 11px; color: var(--text-secondary); margin-right: 2px; flex-shrink: 0; }
         .fold-icon { width: 16px; text-align: center; color: var(--text-secondary); display: inline-block; cursor: pointer; margin-left: -4px; flex-shrink: 0; }
 
@@ -162,12 +208,60 @@
             overflow-y: auto;
         }
 
-        .tool-section { border: 1px solid var(--border-color); border-radius: var(--radius); padding: 16px; }
-        .tool-section h4 { margin: 0 0 12px 0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center; }
+        .tool-section { 
+            border: 1px solid var(--border-color); 
+            border-radius: var(--radius); 
+            padding: 16px; 
+            transition: padding 0.3s;
+        }
+        .tool-section h4 { 
+            margin: 0 0 12px 0; 
+            font-size: 13px; 
+            text-transform: uppercase; 
+            letter-spacing: 0.05em; 
+            color: var(--text-secondary); 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            cursor: pointer; 
+            user-select: none; 
+            transition: margin 0.3s;
+        }
 
         .shortcuts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .stat-item { display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 8px; transition: opacity 0.2s; }
+
+        .stat-item { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            font-size: 13px; 
+            height: 26px; 
+            margin-bottom: 6px; 
+            box-sizing: border-box;
+            transition: opacity 0.2s; 
+        }
         .stat-item:has(input[type="checkbox"]:not(:checked)) { opacity: 0.5; }
+
+        .stat-divider {
+            border-top: 1px dashed var(--border-color);
+            margin: 10px 0;
+        }
+
+        /* 强制双列网格并排，小分类大分类死锁同一行 */
+        #groupSettingsUI {
+            display: none;
+            background: var(--hover-bg);
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin-top: 8px;
+            box-sizing: border-box;
+            gap: 8px;
+            align-items: center;
+        }
+        #groupSettingsUI.show-group {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+        }
 
         .find-panel { background: var(--bg-side); padding: 12px; border-radius: var(--radius); margin-top: 10px; }
         .input-group { display: flex; flex-direction: column; gap: 8px; }
@@ -227,7 +321,6 @@
             .mobile-tabbar button:last-child { border-right: none; }
         }
     </style>
-    <!-- 引入拖拽兼容 Polyfill，解决手机端无法拖拽和长按卡死问题 -->
     <script src="https://cdn.jsdelivr.net/npm/drag-drop-touch@1.3.1/DragDropTouch.min.js"></script>
 </head>
 <body>
@@ -243,34 +336,38 @@
 
 <div id="mobileQuickNewFloat" style="display:none; position:fixed; bottom: 85px; right: 20px; z-index:1100; font-size:36px; font-weight:300; color:var(--text-primary); cursor:pointer; touch-action: none; user-select: none;">+</div>
 
+<div id="dupMinimizeFloat" style="display:none; position:fixed; right:20px; bottom:140px; background:var(--accent-color); color:white; padding:10px 16px; border-radius:30px; cursor:pointer; z-index:5000; box-shadow:0 4px 12px rgba(0,0,0,0.2); font-size:13px; font-weight:bold;" onclick="restoreDupModal()">
+    🔍 查重进行中...
+</div>
+
 <div class="app-layout" id="mainLayout">
     <div class="sidebar" id="sidebar">
         <div id="resizerLeft" style="position: absolute; right: 0; top: 0; bottom: 0; width: 5px; cursor: col-resize; z-index: 999; background: transparent;"></div>
 
         <div class="side-header">
             <div id="topActions" class="foldable-area" style="display: flex; gap: 8px;">
-                <button class="btn" style="flex:1" onclick="exportJson()">导出</button>
-                <button class="btn" style="flex:1" onclick="importJson()">导入</button>
+                <button class="btn" onclick="exportJson()">导出</button>
+                <button class="btn" onclick="importJson()">导入</button>
             </div>
             
             <input type="text" class="search-box" id="searchTree" placeholder="...搜索目录..." oninput="clearTimeout(searchDebounceTimer); searchDebounceTimer=setTimeout(renderTree, 300)">
             
             <div id="sideHeaderActions" class="foldable-area">
                 <div style="margin-top: 12px; display: flex; gap: 8px;">
-                    <button class="btn" style="flex:1" onclick="addNew('folder')">+ 文件夹</button>
-                    <button class="btn" style="flex:1" onclick="addNew('item')">+ 文本</button>
+                    <button class="btn" onclick="addNew('folder')">+ 文件夹</button>
+                    <button class="btn" onclick="addNew('item')">+ 文本</button>
                 </div>
                 <div style="margin-top: 8px; display: flex; gap: 8px;">
-                    <button class="btn" style="flex:1" onclick="copyCurrentText()">复制内容</button>
-                    <button class="btn danger" style="flex:1" onclick="confirmDeleteCurrent()">删除选中</button>
+                    <button class="btn" onclick="copyCurrentText()">复制内容</button>
+                    <button class="btn danger" id="deleteModeBtn" onclick="confirmDeleteCurrent()">删除文本</button>
                 </div>
                 <div style="margin-top: 8px; display: flex; gap: 8px;">
-                    <button class="btn" style="flex:1" onclick="openBatchModal()">批量管理</button>
-                    <button class="btn" style="flex:1" onclick="doRangeSelect()">区间连选</button>
+                    <button class="btn" onclick="openBatchModal()">批量管理</button>
+                    <button class="btn" onclick="doRangeSelect()">区间连选</button>
                 </div>
                 <div style="margin-top: 8px; display: flex; gap: 8px;">
-                    <button class="btn" style="flex:1" id="starFilterBtn" onclick="toggleStarFilter()">收藏筛选</button>
-                    <button class="btn" style="flex:1" onclick="toggleStarSelected()">收藏选中</button>
+                    <button class="btn" id="starFilterBtn" onclick="handleFilterBtnClick()">收藏筛选</button>
+                    <button class="btn" onclick="toggleStarSelected()">收藏选中</button>
                 </div>
             </div>
             
@@ -285,7 +382,6 @@
         <div class="editor-header">
             <div class="breadcrumb" id="pathDisplay">请选择一个条目</div>
         </div>
-        <!-- 空数据欢迎面板 -->
         <div id="emptyState" style="display:none; flex:1; flex-direction:column; align-items:center; justify-content:center; gap:20px; height:100%;">
             <div style="font-size:30px; color:var(--border-color); margin-bottom:5px;">🍽️</div>
             <div style="display:flex; gap:12px;">
@@ -306,7 +402,7 @@
         <div class="tool-section">
             <h4>
                 <span>快速插入</span>
-                <button class="btn" style="height:24px; min-width:50px; font-size:12px; padding:0 8px;" onclick="addShortcut()">+ 添加</button>
+                <button class="btn" style="height:20px; min-width:30px; font-size:14px; padding:0 8px; line-height:1;" onclick="addShortcut()">+</button>
             </h4>
             <div class="shortcuts-grid" id="shortcutGrid"></div>
         </div>
@@ -347,7 +443,7 @@
                         <input type="text" id="scDisplay" style="width:120px;" onchange="updatePlaceholderConfig()">
                     </div>
                 </div>
-                <p id="swapStatusText" style="font-size:13px; color:var(--text-secondary); margin-bottom:12px; line-height: 1.6;"></p>
+                <p id="swapStatusText" style="font-size:13px; color:var(--text-secondary); margin-bottom:12px; line-height: 1.6; cursor:pointer;" onclick="toggleRawPlaceholder()"></p>
                 <button class="btn primary" style="width:100%;" onclick="toggleRoleSwap()">交替</button>
             </div>
         </div>
@@ -374,7 +470,6 @@
 
         <div class="tool-section" id="statsPanel">
             <h4>设置与操作</h4>
-			<!-- 1. 新增：酒馆内部设置（放在删除二次确认的正上方） -->
             <div class="stat-item" id="stInternalSettingsRow" style="display:none;">
                 <span>酒馆内部设置</span>
                 <button class="btn" style="height:24px; min-width:40px; padding:0 8px; font-size:12px;" onclick="openStSettingsModal()">管理</button>
@@ -388,8 +483,8 @@
                 <input type="checkbox" id="autoCloseToolboxSwitch" onchange="saveConfig()" title="手机端快捷插入后工具栏自动缩回">
             </div>
             <div class="stat-item">
-                <span>文本编辑锁定</span>
-                <input type="checkbox" id="lockSwitch" onchange="toggleLock()">
+                <span>文本锁定修改</span>
+                <input type="checkbox" id="lockSwitch" onchange="toggleLockMode()" title="开启后在左侧打钩以单独锁定/解锁所选文本">
             </div>
 			<div class="stat-item">
                 <span>文本新建解锁</span>
@@ -432,59 +527,52 @@
                 <button class="btn" style="height:24px; min-width:40px; padding:0 8px; font-size:12px;" onclick="openCopyAddonModal()">管理</button>
             </div>
 
-            <!-- 文本快捷新建折叠组 -->
-            <div style="margin-top:16px; padding-top:16px; border-top:1px dashed var(--border-color); display:flex; flex-direction:column; gap:8px;">
-                <div id="quickNewSubOptions" style="display:flex; flex-direction:column; gap:8px; transition: opacity 0.3s;">
-                    <div class="stat-item" style="margin-bottom:0;">
-                        <span>所选后尾新建</span>
-                        <input type="checkbox" id="quickNewAfterSwitch" onchange="toggleQuickNewMode('after')">
-                    </div>
-                    <div class="stat-item" style="margin-bottom:0;">
-                        <span>所属末尾新建</span>
-                        <input type="checkbox" id="quickNewBottomSwitch" onchange="toggleQuickNewMode('bottom')">
-                    </div>
+            <div class="stat-divider"></div>
+            <div id="quickNewSubOptions" style="transition: opacity 0.3s;">
+                <div class="stat-item">
+                    <span>所选后尾新建</span>
+                    <input type="checkbox" id="quickNewAfterSwitch" onchange="toggleQuickNewMode('after')">
                 </div>
-                <div class="stat-item" style="margin-bottom:0;">
-                    <span>文本快捷新建</span>
-                    <button id="quickNewToggleBtn" class="btn" style="height:24px; min-width:40px; padding:0 8px; font-size:12px;" onclick="toggleQuickNewMaster()">禁用</button>
+                <div class="stat-item">
+                    <span>所属末尾新建</span>
+                    <input type="checkbox" id="quickNewBottomSwitch" onchange="toggleQuickNewMode('bottom')">
                 </div>
             </div>
-
-            <!-- 文本随机抽取折叠组 -->
-            <div style="margin-top:16px; padding-top:16px; border-top:1px dashed var(--border-color); display:flex; flex-direction:column; gap:8px;">
-                <div class="stat-item" style="margin-bottom:0;">
-                    <span>仅限勾选文件</span>
-                    <input type="checkbox" id="randomOnlyCheckedSwitch" onchange="toggleRandomMode('only')">
-                </div>
-                <div class="stat-item" style="margin-bottom:0;">
-                    <span>忽略勾选文件</span>
-                    <input type="checkbox" id="randomIgnoreCheckedSwitch" onchange="toggleRandomMode('ignore')">
-                </div>
-                <div class="stat-item" style="margin-bottom:0;">
-                    <span>文本随机抽取</span>
-                    <div style="display:flex; gap:4px;">
-                        <button class="btn" style="height:24px; min-width:40px; padding:0 8px; font-size:12px;" onclick="doRandom('local')">当前</button>
-                        <button class="btn" style="height:24px; min-width:40px; padding:0 8px; font-size:12px;" onclick="doRandom('global')">全局</button>
-                    </div>
-                </div>
-                <div id="randomSelectedFoldersUI" style="display:none; flex-direction:column; background:var(--hover-bg); padding:8px; border-radius:4px; max-height:150px; overflow-y:auto; font-size:12px; color:var(--text-secondary); line-height: 1.5;">
-                </div>
+            <div class="stat-item">
+                <span>文本快捷新建</span>
+                <button id="quickNewToggleBtn" class="btn" style="height:24px; min-width:40px; padding:0 8px; font-size:12px;" onclick="toggleQuickNewMaster()">禁用</button>
             </div>
 
-            <div style="margin-top:16px; padding-top:16px; border-top:1px dashed var(--border-color); display:flex; flex-direction:column; gap:8px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
-                    <span>目录折叠分组 (0为关)</span>
-                    <input type="checkbox" id="autoGroupSwitch" onchange="toggleAutoGroup()">
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+                <span>勾选忽略文本</span>
+                <input type="checkbox" id="randomIgnoreCheckedSwitch" onchange="toggleRandomMode('ignore')">
+            </div>
+            <div class="stat-item">
+                <span>文本随机抽取</span>
+                <div style="display:flex; gap:4px;">
+                    <button class="btn" style="height:24px; min-width:40px; padding:0 8px; font-size:12px;" onclick="doRandom('local')">当前</button>
+                    <button class="btn" style="height:24px; min-width:40px; padding:0 8px; font-size:12px;" onclick="doRandom('global')">全局</button>
                 </div>
-                <div id="groupSettingsUI" style="display:none; justify-content:space-between; align-items:center; background:var(--hover-bg); padding:8px; border-radius:4px;">
-                    <div style="display:flex; align-items:center; gap:4px;">
-                        <span style="font-size:12px; color:var(--text-secondary)">小分类:</span>
-                        <input type="number" id="groupSmallInput" value="10" style="width:40px; padding:2px 4px; font-size:12px; border:1px solid var(--border-color); border-radius:4px;" onchange="updateGroupConfig()">
-                    </div>
-                    <div style="display:flex; align-items:center; gap:4px;">
-                        <span style="font-size:12px; color:var(--text-secondary)">大分类:</span>
-                        <input type="number" id="groupLargeInput" value="50" style="width:40px; padding:2px 4px; font-size:12px; border:1px solid var(--border-color); border-radius:4px;" onchange="updateGroupConfig()">
-                    </div>
+            </div>
+            <div id="randomSelectedFoldersUI" style="display:none; flex-direction:column; background:var(--hover-bg); padding:8px; border-radius:4px; max-height:150px; overflow-y:auto; font-size:12px; color:var(--text-secondary); line-height: 1.5; margin-bottom: 6px;">
+            </div>
+
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+                <span>目录折叠分组 (0为关)</span>
+                <input type="checkbox" id="autoGroupSwitch" onchange="toggleAutoGroup()">
+            </div>
+            
+            <!-- Grid 强制死锁双列并排，永不换行 -->
+            <div id="groupSettingsUI">
+                <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+                    <span style="font-size: 12px; color: var(--text-secondary);">小分类:</span>
+                    <input type="number" id="groupSmallInput" value="10" style="width: 100%; min-width: 0; padding: 2px 4px; font-size: 12px; border: 1px solid var(--border-color); border-radius: 4px;" onchange="updateGroupConfig()">
+                </div>
+                <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+                    <span style="font-size: 12px; color: var(--text-secondary);">大分类:</span>
+                    <input type="number" id="groupLargeInput" value="50" style="width: 100%; min-width: 0; padding: 2px 4px; font-size: 12px; border: 1px solid var(--border-color); border-radius: 4px;" onchange="updateGroupConfig()">
                 </div>
             </div>
 
@@ -549,8 +637,10 @@
 </div>
 
 <div id="dupModal" class="modal-overlay" style="display:none; align-items:center; justify-content:center; position:fixed; z-index:4000;">
-    <div style="background:var(--bg-main); width:90%; max-width:800px; height:80vh; border-radius:var(--radius); display:flex; flex-direction:column; padding:20px; box-shadow:0 10px 25px -3px rgba(0,0,0,0.5);">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+    <div style="background:var(--bg-main); width:90%; max-width:800px; height:80vh; border-radius:var(--radius); display:flex; flex-direction:column; padding:20px; box-shadow:0 10px 25px -3px rgba(0,0,0,0.5); position:relative;">
+        <button class="btn" onclick="minimizeDupModal()" style="position:absolute; top:15px; right:15px; border:none; background:transparent; font-size:18px; width:30px; height:30px; padding:0;" title="缩小悬浮">➖</button>
+        
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding-right:30px;">
             <h3 id="dupTitle" style="margin:0;">发现重复 (<span id="dupProgress">1/1</span>)</h3>
             <label style="font-size:13px; display:flex; align-items:center; gap:4px; cursor:pointer;">
                 <input type="checkbox" id="dupApplyAll" style="margin:0;">
@@ -561,16 +651,22 @@
         <div style="display:flex; gap:16px; flex:1; overflow:hidden; min-height:0;">
             <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
                 <div style="font-size:13px; font-weight:bold; color:#d97706; margin-bottom:4px;" id="dupOldLabel">旧文本/文本1</div>
-                <input type="text" id="dupOldTitle" readonly style="margin-bottom:8px; border:1px solid var(--border-color); padding:8px; border-radius:4px; font-size:13px; outline:none; background:#f8fafc;">
+                <div style="display:flex; gap:8px; margin-bottom:8px;">
+                    <input type="text" id="dupOldTitle" readonly style="flex:1; min-width:0; border:1px solid var(--border-color); padding:8px; border-radius:4px; font-size:13px; outline:none; background:#f8fafc;">
+                    <button class="btn primary" id="dupOldLocateBtn" style="padding:0 10px; font-size:12px;">定位</button>
+                </div>
                 <div id="dupOldText" style="flex:1; border:1px solid var(--border-color); padding:8px; font-size:13px; line-height:1.6; border-radius:4px; overflow-y:auto; background:#f8fafc; white-space:pre-wrap; word-break:break-all;"></div>
             </div>
             <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
                 <div style="font-size:13px; font-weight:bold; color:#16a34a; margin-bottom:4px;" id="dupNewLabel">新导入/文本2</div>
-                <input type="text" id="dupNewTitle" readonly style="margin-bottom:8px; border:1px solid var(--border-color); padding:8px; border-radius:4px; font-size:13px; outline:none; background:#f0fdf4;">
+                <div style="display:flex; gap:8px; margin-bottom:8px;">
+                    <input type="text" id="dupNewTitle" readonly style="flex:1; min-width:0; border:1px solid var(--border-color); padding:8px; border-radius:4px; font-size:13px; outline:none; background:#f0fdf4;">
+                    <button class="btn primary" id="dupNewLocateBtn" style="padding:0 10px; font-size:12px; display:none;">定位</button>
+                </div>
                 <div id="dupNewText" style="flex:1; border:1px solid var(--border-color); padding:8px; font-size:13px; line-height:1.6; border-radius:4px; overflow-y:auto; background:#f0fdf4; white-space:pre-wrap; word-break:break-all;"></div>
             </div>
         </div>
-        <div style="margin-top:16px; display:flex; gap:12px; justify-content:flex-end;" id="dupActionBtns">
+        <div style="margin-top:16px; display:flex; gap:12px; justify-content:flex-end; overflow-x:auto; white-space:nowrap; padding-bottom:4px;" id="dupActionBtns">
         </div>
     </div>
 </div>
@@ -630,9 +726,12 @@
     const defaultData = { 
     data: [], 
     config: { 
-	    autoUnlockOnNew: false, // 新增
-        autoUnlockOnSwap: false, // 新增
-        selectedIds: [], // 新增：保存勾选节点 ID 的数组
+	    autoUnlockOnNew: false, 
+        autoUnlockOnSwap: false, 
+        selectedIds: [], 
+        ignoredIds: [], 
+        toolFoldStates: {}, 
+        showRawPlaceholder: false,
         shortcuts: [
             { display: "Fr", text: "<Q7Fr>" },
                 { display: "Sc", text: "<Q7Sc>" },
@@ -681,11 +780,55 @@
     let vgCollapseStates = {};
     let modalCallback = null;
     let isStarFilterMode = false;
+    let isLockFilterMode = false;
+    let isIgnoreFilterMode = false;
 
-    // 核心新增全局变量
+    window.currentCheckboxMode = 'normal'; 
+
     let saveDebounceTimer = null;
+    let titleSaveTimer = null;
     let searchDebounceTimer = null;
     let textHistoryStack = [];
+
+    function initToolFolds() {
+        if (!projectData.config.toolFoldStates) projectData.config.toolFoldStates = {};
+        document.querySelectorAll('.tool-section').forEach((section, idx) => {
+            const h4 = section.querySelector('h4');
+            const contentEls = Array.from(section.children).filter(c => c !== h4);
+            
+            if (!h4.dataset.bound) {
+                h4.title = '点击折叠/展开';
+                h4.onclick = (e) => {
+                    if(e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
+                    const isFolded = contentEls[0].style.display === 'none';
+                    
+                    if (isFolded) { 
+                        section.style.paddingBottom = '16px';
+                        h4.style.marginBottom = '12px';
+                        contentEls.forEach(el => el.style.display = '');
+                        projectData.config.toolFoldStates[idx] = false;
+                    } else { 
+                        section.style.paddingBottom = '12px';
+                        h4.style.marginBottom = '0';
+                        contentEls.forEach(el => el.style.display = 'none');
+                        projectData.config.toolFoldStates[idx] = true;
+                    }
+                    saveConfig();
+                };
+                h4.dataset.bound = 'true';
+            }
+            
+            if (projectData.config.toolFoldStates[idx]) {
+                section.style.paddingBottom = '12px';
+                h4.style.marginBottom = '0';
+                contentEls.forEach(el => el.style.display = 'none');
+            } else {
+                section.style.paddingBottom = '16px';
+                h4.style.marginBottom = '12px';
+                contentEls.forEach(el => el.style.display = '');
+            }
+        });
+    }
 
     document.addEventListener('focusin', (e) => { if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) lastFocusedElement = e.target; });
     document.addEventListener('click', () => { const toast = document.getElementById('toast'); if(toast.classList.contains('show')) toast.classList.remove('show'); }, true);
@@ -770,7 +913,6 @@
     window.syncUIToConfig = function() {
         document.getElementById('confirmSwitch').checked = projectData.config.deleteConfirmEnabled;
         document.getElementById('autoCloseToolboxSwitch').checked = projectData.config.autoCloseToolbox || false;
-        document.getElementById('lockSwitch').checked = projectData.config.isLocked;
         document.getElementById('dragSortSwitch').checked = projectData.config.dragSortEnabled !== false;
         document.getElementById('globalFindSwitch').checked = projectData.config.globalFind;
         document.getElementById('globalReplaceSwitch').checked = projectData.config.globalReplace;
@@ -801,14 +943,16 @@
         document.getElementById('groupSmallInput').value = projectData.config.groupSmall;
         document.getElementById('groupLargeInput').value = projectData.config.groupLarge;
         
-        const rMode = projectData.config.randomMode || 'none';
-        document.getElementById('randomOnlyCheckedSwitch').checked = (rMode === 'only');
-        document.getElementById('randomIgnoreCheckedSwitch').checked = (rMode === 'ignore');
-        
         document.getElementById('frDisplay').value = projectData.config.displayOptions.fr;
         document.getElementById('scDisplay').value = projectData.config.displayOptions.sc;
         updateSwapStatusUI();
-        document.getElementById('groupSettingsUI').style.display = projectData.config.autoGroup ? 'flex' : 'none';
+        
+        const groupUI = document.getElementById('groupSettingsUI');
+        if (projectData.config.autoGroup) {
+            groupUI.classList.add('show-group');
+        } else {
+            groupUI.classList.remove('show-group');
+        }
     };
 
     function confirmAction(msg, actionFn) {
@@ -838,7 +982,12 @@
 
     function toggleAutoGroup() {
         projectData.config.autoGroup = document.getElementById('autoGroupSwitch').checked;
-        document.getElementById('groupSettingsUI').style.display = projectData.config.autoGroup ? 'flex' : 'none';
+        const groupUI = document.getElementById('groupSettingsUI');
+        if (projectData.config.autoGroup) {
+            groupUI.classList.add('show-group');
+        } else {
+            groupUI.classList.remove('show-group');
+        }
         saveData(); renderTree();
     }
     function updateGroupConfig() {
@@ -852,23 +1001,102 @@
         projectData.config.displayOptions.sc = document.getElementById('scDisplay').value || '{{char}}';
         saveData(); updateSwapStatusUI(); refreshEditorContent();
     }
-    function toggleLock() { projectData.config.isLocked = document.getElementById('lockSwitch').checked; hasShownLockToast = false; saveData(); refreshEditorContent(); }
-    function toggleRoleSwap() {
-        // 1. 判定交替取消锁定
-        if (projectData.config.autoUnlockOnSwap) {
-            projectData.config.isLocked = false;
-            document.getElementById('lockSwitch').checked = false;
-        } else {
-            if (!projectData.config.isLocked) {
-                projectData.config.isLocked = true;
-                document.getElementById('lockSwitch').checked = true;
+
+    function isLockedNode(node) {
+        if (!node) return false;
+        if (node.isLocked) return true;
+        let isParentLocked = false;
+        const checkParent = (list, targetId, currentLockStatus) => {
+            for (let n of list) {
+                let nextLockStatus = currentLockStatus || n.isLocked;
+                if (n.id === targetId) { isParentLocked = nextLockStatus; return true; }
+                if (n.children && checkParent(n.children, targetId, nextLockStatus)) return true;
             }
+            return false;
+        }
+        checkParent(projectData.data, node.id, false);
+        return isParentLocked;
+    }
+
+    function updateFilterBtnUI() {
+        const starBtn = document.getElementById('starFilterBtn');
+        if (!starBtn) return;
+        if (window.currentCheckboxMode === 'ignore' || window.currentCheckboxMode === 'lock') {
+            starBtn.innerText = '锁定筛选';
+            starBtn.style.color = '#ef4444';
+            const isActive = (window.currentCheckboxMode === 'ignore' && isIgnoreFilterMode) || (window.currentCheckboxMode === 'lock' && isLockFilterMode);
+            if (isActive) starBtn.classList.add('primary');
+            else starBtn.classList.remove('primary');
+        } else {
+            starBtn.innerText = '收藏筛选';
+            starBtn.style.color = '';
+            if (isStarFilterMode) starBtn.classList.add('primary');
+            else starBtn.classList.remove('primary');
+        }
+    }
+
+    function toggleLockMode() { 
+        const lockSwitch = document.getElementById('lockSwitch');
+        if (lockSwitch.checked) {
+            window.currentCheckboxMode = 'lock';
+            isIgnoreFilterMode = false;
+            showToast("已进入锁定分配模式\n左侧打钩即可锁定/解锁\n点击【锁定筛选】可查看全部锁定项");
+        } else {
+            window.currentCheckboxMode = 'normal';
+            isLockFilterMode = false;
+            showToast("已退出锁定分配模式");
+        }
+        updateFilterBtnUI();
+        renderTree();
+    }
+
+    function toggleRandomMode(clickedMode) {
+        const ignoreCheckbox = document.getElementById('randomIgnoreCheckedSwitch');
+        if (ignoreCheckbox.checked) {
+            window.currentCheckboxMode = 'ignore';
+            isLockFilterMode = false;
+            showToast("已进入忽略文本模式\n点击左侧框直接加入/移出忽略名单\n点击【锁定筛选】可仅查看忽略项");
+        } else {
+            window.currentCheckboxMode = 'normal';
+            isIgnoreFilterMode = false;
+            showToast("退出忽略文本模式");
+        }
+        updateFilterBtnUI();
+        renderTree();
+    }
+
+    function handleFilterBtnClick() {
+        const btn = document.getElementById('starFilterBtn');
+        if (window.currentCheckboxMode === 'ignore') {
+            isIgnoreFilterMode = !isIgnoreFilterMode;
+            if (isIgnoreFilterMode) btn.classList.add('primary');
+            else btn.classList.remove('primary');
+            renderTree();
+        } else if (window.currentCheckboxMode === 'lock') {
+            isLockFilterMode = !isLockFilterMode;
+            if (isLockFilterMode) btn.classList.add('primary');
+            else btn.classList.remove('primary');
+            renderTree();
+        } else {
+            toggleStarFilter();
+        }
+    }
+
+    window.toggleRawPlaceholder = function() {
+        projectData.config.showRawPlaceholder = !projectData.config.showRawPlaceholder;
+        saveConfig();
+        updateSwapStatusUI();
+        refreshEditorContent();
+    };
+
+    function toggleRoleSwap() {
+        if (projectData.config.autoUnlockOnSwap && currentNode && isLockedNode(currentNode)) {
+            currentNode.isLocked = false;
+            saveData();
+            renderTree();
         }
 
-        // 2. 标记：已激活交替展示（不再退回原始占位符）
         projectData.config.isSwapActive = true;
-
-        // 3. 在 文本1 (true) 与 文本2 (false) 之间循环切换
         projectData.config.isSwapped = !projectData.config.isSwapped;
 
         saveData(); 
@@ -881,38 +1109,49 @@
             : `已交替\nFr=${projectData.config.displayOptions.sc} \nSc=${projectData.config.displayOptions.fr}`
         );
     }
+
     function updateSwapStatusUI() {
         const p = document.getElementById('swapStatusText');
-        const frVal = escapeHTML(projectData.config.displayOptions.fr); const scVal = escapeHTML(projectData.config.displayOptions.sc);
-        p.innerHTML = projectData.config.isSwapped ? 
-            `当前显示状态: <br><strong style="color:var(--text-primary)">&lt;Q7Fr&gt; = ${scVal}</strong><br><strong style="color:var(--text-primary)">&lt;Q7Sc&gt; = ${frVal}</strong>` :
-            `当前显示状态: <br><strong style="color:var(--text-primary)">&lt;Q7Fr&gt; = ${frVal}</strong><br><strong style="color:var(--text-primary)">&lt;Q7Sc&gt; = ${scVal}</strong>`;
+        const frVal = escapeHTML(projectData.config.displayOptions.fr); 
+        const scVal = escapeHTML(projectData.config.displayOptions.sc);
+        
+        let displayFr = projectData.config.showRawPlaceholder ? '&lt;Q7Fr&gt;' : (projectData.config.isSwapped ? scVal : frVal);
+        let displaySc = projectData.config.showRawPlaceholder ? '&lt;Q7Sc&gt;' : (projectData.config.isSwapped ? frVal : scVal);
+
+        p.innerHTML = `当前显示状态: <br><strong style="color:var(--text-primary)">&lt;Q7Fr&gt; = ${displayFr}</strong><br><strong style="color:var(--text-primary)">&lt;Q7Sc&gt; = ${displaySc}</strong>`;
     }
 
     function refreshEditorContent() {
         if (!currentNode || currentNode.type !== 'item') return;
         const el = document.getElementById('editor-content');
+        
+        const isLocked = isLockedNode(currentNode);
+        let text = currentNode.text || '';
+        const frV = projectData.config.displayOptions.fr || '{{user}}';
+        const scV = projectData.config.displayOptions.sc || '{{char}}';
 
-        // 核心修正：只要处在锁定状态，或者已经触发了交替模式，就进行文本替换展示（不再退回占位符）
-        const shouldReplace = projectData.config.isLocked || projectData.config.isSwapActive;
+        if (projectData.config.showRawPlaceholder) {
+            if (frV) text = text.split(frV).join('<Q7Fr>');
+            if (scV) text = text.split(scV).join('<Q7Sc>');
+            
+            currentNode.text = text;
+            saveData();
 
-        if (shouldReplace) {
-            let text = currentNode.text || '';
-            // !isSwapped 为 文本1，isSwapped 为 文本2
-            const isText1 = !projectData.config.isSwapped;
-            const frV = isText1 ? projectData.config.displayOptions.fr : projectData.config.displayOptions.sc;
-            const scV = isText1 ? projectData.config.displayOptions.sc : projectData.config.displayOptions.fr;
-
-            text = text.split('<Q7Fr>').join(frV).split('<Q7Sc>').join(scV);
             el.value = text;
         } else {
-            // 初始未点击交替且未锁定，显示原始占位符 <Q7Fr> / <Q7Sc>
-            el.value = currentNode.text || '';
+            if (frV) text = text.split(frV).join('<Q7Fr>');
+            if (scV) text = text.split(scV).join('<Q7Sc>');
+            
+            const isText1 = !projectData.config.isSwapped;
+            const targetFr = isText1 ? frV : scV;
+            const targetSc = isText1 ? scV : frV;
+
+            text = text.split('<Q7Fr>').join(targetFr).split('<Q7Sc>').join(targetSc);
+            el.value = text;
         }
 
-        // 仅在开启“文本编辑锁定”时禁止编辑；“交替取消锁定”状态下保持可编辑！
-        el.readOnly = projectData.config.isLocked;
-        el.style.backgroundColor = projectData.config.isLocked ? '#f8fafc' : '#ffffff';
+        el.readOnly = isLocked;
+        el.style.backgroundColor = isLocked ? '#f8fafc' : '#ffffff';
     }
 
     function toggleStarFilter() {
@@ -953,6 +1192,23 @@
         return false;
     }
 
+    function hasLockedDescendant(list) {
+        for (let c of list) {
+            if (c.isLocked) return true;
+            if (c.children && hasLockedDescendant(c.children)) return true;
+        }
+        return false;
+    }
+
+    function hasIgnoredDescendant(list) {
+        const ignored = projectData.config.ignoredIds || [];
+        for (let c of list) {
+            if (ignored.includes(c.id)) return true;
+            if (c.children && hasIgnoredDescendant(c.children)) return true;
+        }
+        return false;
+    }
+
     function containsCurrentNode(list) {
         if (!currentNode) return false;
         const find = (arr) => {
@@ -981,7 +1237,7 @@
     }
 
     function renderLevel(nodes, container, filter, baseIndex, depth = 0) {
-        if (projectData.config.autoGroup && !filter && !isStarFilterMode) {
+        if (projectData.config.autoGroup && !filter && !isStarFilterMode && !isLockFilterMode && !isIgnoreFilterMode) {
             let large = parseInt(projectData.config.groupLarge) || 0; let small = parseInt(projectData.config.groupSmall) || 0;
             if (large > 0 && nodes.length > large) { return renderVirtualGroups(nodes, container, filter, baseIndex, large, small, false, depth); } 
             else if (small > 0 && nodes.length > small) { return renderVirtualGroups(nodes, container, filter, baseIndex, small, 0, true, depth); }
@@ -1069,6 +1325,8 @@
 
     function renderActualNodes(nodes, container, filter, displayIndex, depth) {
         let currentIndex = displayIndex;
+        const ignoredList = projectData.config.ignoredIds || [];
+
         nodes.forEach((node) => {
             const isMatch = filter && node.name.toLowerCase().includes(filter);
             const childMatch = filter && node.children && hasMatchingDescendant(node, filter);
@@ -1076,11 +1334,22 @@
             const isStarMatch = !isStarFilterMode || node.isStarred;
             const childStarMatch = isStarFilterMode && node.children && hasStarredDescendant(node.children);
 
+            const isLockMatch = !isLockFilterMode || node.isLocked;
+            const childLockMatch = isLockFilterMode && node.children && hasLockedDescendant(node.children);
+
+            const isIgnored = ignoredList.includes(node.id);
+            const isIgnoreMatch = !isIgnoreFilterMode || isIgnored;
+            const childIgnoreMatch = isIgnoreFilterMode && node.children && hasIgnoredDescendant(node.children);
+
             if (filter && !isMatch && !childMatch) return;
             if (isStarFilterMode && !isStarMatch && !childStarMatch) return;
+            if (isLockFilterMode && !isLockMatch && !childLockMatch) return;
+            if (isIgnoreFilterMode && !isIgnoreMatch && !childIgnoreMatch) return;
 
             if (childMatch) node._collapsed = false;
             if (childStarMatch && isStarFilterMode) node._collapsed = false;
+            if (childLockMatch && isLockFilterMode) node._collapsed = false;
+            if (childIgnoreMatch && isIgnoreFilterMode) node._collapsed = false;
 
             if (node._collapsed === undefined) node._collapsed = false;
             currentVisibleIds.push(node.id);
@@ -1104,11 +1373,21 @@
             content.draggable = dragSortEnabled;
             
             const foldIcon = node.type === 'folder' ? `<span class="fold-icon" onclick="toggleFold(event, '${node.id}')">${node._collapsed ? '▶' : '▼'}</span>` : `<span class="fold-icon"></span>`;
-            const typeIcon = node.type === 'folder' ? '📁' : '📄';
-            const isChecked = selectedIds.has(node.id) ? 'checked' : '';
+            const typeIcon = node.type === 'folder' ? (node.isLocked ? '🔒' : '📁') : (node.isLocked ? '🔒' : '📄');
+            
+            let isChecked = false;
+            if (window.currentCheckboxMode === 'lock') {
+                isChecked = node.isLocked === true;
+            } else {
+                isChecked = selectedIds.has(node.id);
+            }
+            const checkedAttr = isChecked ? 'checked' : '';
+
+            // 仅勾选框常驻浅灰底色类，文本名称彻底去除红色，保持默认原色
+            const cbClass = isIgnored ? 'node-cb is-ignored-node' : 'node-cb';
             const starIcon = node.isStarred ? '<span style="color:#eab308;margin-left:4px;font-size:12px;">★</span>' : '';
 
-            content.innerHTML = `<input type="checkbox" class="node-cb" onclick="toggleCheck(event, '${node.id}')" ${isChecked}>
+            content.innerHTML = `<input type="checkbox" class="${cbClass}" onclick="toggleCheck(event, '${node.id}')" ${checkedAttr}>
             <span class="index-badge">${currentIndex}.</span>
             ${foldIcon} 
             <span style="flex-shrink:0;">${typeIcon}</span>
@@ -1147,31 +1426,82 @@
     }
 
     function toggleCheck(e, id) {
-    e.stopPropagation();
-    if (e.target.checked) { 
-        selectedIds.add(id); 
-        checkHistory.push(id); 
-        if (checkHistory.length > 2) checkHistory.shift(); 
-    } else { 
-        selectedIds.delete(id); 
-        checkHistory = checkHistory.filter(x => x !== id); 
+        e.stopPropagation();
+        
+        if (window.currentCheckboxMode === 'ignore') {
+            if (!projectData.config.ignoredIds) projectData.config.ignoredIds = [];
+            if (!projectData.config.ignoredIds.includes(id)) {
+                projectData.config.ignoredIds.push(id);
+            } else {
+                projectData.config.ignoredIds = projectData.config.ignoredIds.filter(x => x !== id);
+            }
+            saveData();
+            if(typeof updateRandomFoldersUI === 'function') updateRandomFoldersUI();
+            renderTree();
+            return;
+        }
+        
+        if (window.currentCheckboxMode === 'lock') {
+            const findNodeById = (list, tid) => {
+                for (let n of list) {
+                    if (n.id === tid) return n;
+                    if (n.children) { let r = findNodeById(n.children, tid); if(r) return r; }
+                } return null;
+            };
+            const n = findNodeById(projectData.data, id);
+            if (n) n.isLocked = e.target.checked;
+            saveData();
+            refreshEditorContent();
+            renderTree();
+            return;
+        }
+
+        if (e.target.checked) { 
+            selectedIds.add(id); 
+            checkHistory.push(id); 
+            if (checkHistory.length > 2) checkHistory.shift(); 
+        } else { 
+            selectedIds.delete(id); 
+            checkHistory = checkHistory.filter(x => x !== id); 
+        }
+        projectData.config.selectedIds = Array.from(selectedIds);
+        saveData();
+        
+        if (window.currentCheckboxMode === 'delete') {
+            document.getElementById('deleteModeBtn').innerText = `确认删除(${selectedIds.size})`;
+        }
     }
-    // 将勾选数据更新到配置并写入缓存
-    projectData.config.selectedIds = Array.from(selectedIds);
-    saveData();
-    if(typeof updateRandomFoldersUI === 'function') updateRandomFoldersUI();
-}
+    
     function doRangeSelect() {
-    if (checkHistory.length < 2) { showToast("请先单独勾选两个项作为首尾"); return; }
-    const idx1 = currentVisibleIds.indexOf(checkHistory[0]); const idx2 = currentVisibleIds.indexOf(checkHistory[1]);
-    if (idx1 === -1 || idx2 === -1) { showToast("选中的项被折叠隐藏，请先展开"); return; }
-    const start = Math.min(idx1, idx2); const end = Math.max(idx1, idx2);
-    for (let i = start; i <= end; i++) selectedIds.add(currentVisibleIds[i]);
-    // 连选后更新配置并保存
-    projectData.config.selectedIds = Array.from(selectedIds);
-    saveData();
-    renderTree(); showToast(`连选 ${end - start + 1} 项`);
-}
+        if (checkHistory.length < 2) { showToast("请先单独勾选两个项作为首尾"); return; }
+        const idx1 = currentVisibleIds.indexOf(checkHistory[0]); const idx2 = currentVisibleIds.indexOf(checkHistory[1]);
+        if (idx1 === -1 || idx2 === -1) { showToast("选中的项被折叠隐藏，请先展开"); return; }
+        const start = Math.min(idx1, idx2); const end = Math.max(idx1, idx2);
+        
+        if (window.currentCheckboxMode === 'ignore') {
+            if (!projectData.config.ignoredIds) projectData.config.ignoredIds = [];
+            for (let i = start; i <= end; i++) {
+                if(!projectData.config.ignoredIds.includes(currentVisibleIds[i])) {
+                    projectData.config.ignoredIds.push(currentVisibleIds[i]);
+                }
+            }
+        } else if (window.currentCheckboxMode === 'lock') {
+            const findNodeById = (list, tid) => { for(let n of list) { if(n.id === tid) return n; if(n.children){let r=findNodeById(n.children,tid);if(r)return r;} } return null;};
+            for (let i = start; i <= end; i++) {
+                let n = findNodeById(projectData.data, currentVisibleIds[i]);
+                if(n) n.isLocked = true;
+            }
+            refreshEditorContent();
+        } else {
+            for (let i = start; i <= end; i++) selectedIds.add(currentVisibleIds[i]);
+            projectData.config.selectedIds = Array.from(selectedIds);
+            if(window.currentCheckboxMode === 'delete') {
+                document.getElementById('deleteModeBtn').innerText = `确认删除(${selectedIds.size})`;
+            }
+        }
+        saveData();
+        renderTree(); showToast(`连选 ${end - start + 1} 项`);
+    }
 
     function toggleQuickNewMaster() {
         projectData.config.quickNew = !projectData.config.quickNew;
@@ -1193,42 +1523,20 @@
         saveConfig();
     }
 
-    function toggleRandomMode(clickedMode) {
-        const onlyCheckbox = document.getElementById('randomOnlyCheckedSwitch');
-        const ignoreCheckbox = document.getElementById('randomIgnoreCheckedSwitch');
-        if (clickedMode === 'only' && onlyCheckbox.checked) ignoreCheckbox.checked = false;
-        else if (clickedMode === 'ignore' && ignoreCheckbox.checked) onlyCheckbox.checked = false;
-        projectData.config.randomMode = onlyCheckbox.checked ? 'only' : (ignoreCheckbox.checked ? 'ignore' : 'none');
-        saveConfig(); updateRandomFoldersUI();
-    }
-
     function updateRandomFoldersUI() {
         const ui = document.getElementById('randomSelectedFoldersUI');
-        const mode = projectData.config.randomMode || 'none';
-        if (mode === 'none') { ui.style.display = 'none'; return; }
+        if (window.currentCheckboxMode !== 'ignore') { ui.style.display = 'none'; return; }
         
-        let checkedFolders = [];
-        const findChecked = (list, depth = 0) => {
-            for (let n of list) {
-                if (selectedIds.has(n.id) && n.type === 'folder') {
-                    let indent = depth > 0 ? '&nbsp;&nbsp;'.repeat(depth * 2) + '└─ ' : '';
-                    checkedFolders.push(indent + escapeHTML(n.name));
-                }
-                if (n.children) findChecked(n.children, depth + 1);
-            }
-        };
-        findChecked(projectData.data, 0);
-        
+        let ignoredCount = (projectData.config.ignoredIds || []).length;
         let htmlContent = '';
-        if (checkedFolders.length > 0) {
-            htmlContent += `<div style="margin-bottom:6px;"><strong>已勾选文件夹：</strong></div>`;
-            htmlContent += `<div style="padding-left:4px;">${checkedFolders.map(x => '<div style="margin-bottom:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + x + '</div>').join('')}</div>`;
+        if (ignoredCount > 0) {
+            htmlContent += `<div style="text-align:center;">目前已有 ${ignoredCount} 项被设定为永远忽略</div>`;
         } else {
-            htmlContent += `<div style="color:#999; text-align:center;">暂未勾选文件夹</div>`;
+            htmlContent += `<div style="color:#999; text-align:center;">暂无任何忽略项</div>`;
         }
         
         htmlContent += `<div style="margin-top:6px; padding-top:6px; border-top:1px solid #cbd5e1; font-size:11px; color:#94a3b8;">
-            注：【全局】只受 [忽略勾选] 影响。
+            注：开启此模式时，勾选即为添加忽略。该名单永久有效，自动在局部/全局以及启动随机中将其排除。
         </div>`;
         
         ui.style.display = 'flex';
@@ -1243,43 +1551,78 @@
 
     let tempEditToastTimer = null;
     function selectNode(node, isSilent = false) {
+        if (saveDebounceTimer && currentNode && !isLockedNode(currentNode)) {
+            clearTimeout(saveDebounceTimer); saveDebounceTimer = null;
+            let valToSave = document.getElementById('editor-content').value;
+            const frV = projectData.config.displayOptions.fr || '{{user}}';
+            const scV = projectData.config.displayOptions.sc || '{{char}}';
+            if (frV) valToSave = valToSave.split(frV).join('<Q7Fr>');
+            if (scV) valToSave = valToSave.split(scV).join('<Q7Sc>');
+            currentNode.text = valToSave;
+            saveData();
+        }
+        if (titleSaveTimer && currentNode && !isLockedNode(currentNode)) {
+            clearTimeout(titleSaveTimer); titleSaveTimer = null;
+            currentNode.name = document.getElementById('editor-title').value;
+            saveData(); renderTree();
+        }
+
         currentNode = node; lastFindIndex = 0; 
         document.getElementById('emptyState').style.display = 'none';
-        document.getElementById('editorContainer').style.visibility = 'visible'; // 修复Bug：使用visibility控制可视状态
+        document.getElementById('editorContainer').style.visibility = 'visible';
         document.getElementById('editor-title').value = node.name;
         
         const contentArea = document.getElementById('editor-content');
         if (node.type === 'item') { contentArea.style.display = 'block'; refreshEditorContent(); } else { contentArea.style.display = 'none'; }
 
-        // 重置自定义撤销栈
         textHistoryStack = [contentArea.value || ''];
 
         const pathArr = getPath(projectData.data, node.id);
         document.getElementById('pathDisplay').innerText = pathArr ? pathArr.join(' > ') : node.name;
         
-        document.getElementById('editor-title').oninput = (e) => { node.name = e.target.value; saveData(); renderTree(); };
+        document.getElementById('editor-title').oninput = (e) => { 
+            if (isLockedNode(currentNode)) return;
+            const editingNode = currentNode;
+            const val = e.target.value;
+            clearTimeout(titleSaveTimer);
+            titleSaveTimer = setTimeout(() => {
+                if (editingNode) { editingNode.name = val; saveData(); renderTree(); }
+            }, 800);
+        };
+
         contentArea.oninput = (e) => { 
-            if (projectData.config.isLocked) return;
+            if (isLockedNode(currentNode)) return;
             if (projectData.config.tempEdit) {
                 if (!tempEditToastTimer) { showToast("当前为临时修改，不保存内容"); tempEditToastTimer = setTimeout(() => { tempEditToastTimer = null; }, 3000); }
                 return; 
             }
             
-            // 压入撤销栈
-            if (textHistoryStack[textHistoryStack.length - 1] !== e.target.value) {
-                textHistoryStack.push(e.target.value);
+            const editingNode = currentNode;
+            const val = e.target.value;
+
+            if (textHistoryStack[textHistoryStack.length - 1] !== val) {
+                textHistoryStack.push(val);
                 if (textHistoryStack.length > 50) textHistoryStack.shift();
             }
 
-            // 防抖保存，解决打字卡顿
             clearTimeout(saveDebounceTimer);
             saveDebounceTimer = setTimeout(() => {
-                node.text = e.target.value; saveData();
+                if(editingNode) { 
+                    let valToSave = val;
+                    const frV = projectData.config.displayOptions.fr || '{{user}}';
+                    const scV = projectData.config.displayOptions.sc || '{{char}}';
+
+                    if (frV) valToSave = valToSave.split(frV).join('<Q7Fr>');
+                    if (scV) valToSave = valToSave.split(scV).join('<Q7Sc>');
+
+                    editingNode.text = valToSave; 
+                    saveData(); 
+                }
             }, 800); 
         };
         
-        contentArea.onclick = () => { if (projectData.config.isLocked && !hasShownLockToast) { showToast("已锁定编辑"); hasShownLockToast = true; } };
-        contentArea.onfocus = () => { if (!projectData.config.isLocked) updateQuickNavVisibility(true); };
+        contentArea.onclick = () => { if (isLockedNode(currentNode) && !hasShownLockToast) { showToast("此文本处于锁定保护状态"); hasShownLockToast = true; } };
+        contentArea.onfocus = () => { if (!isLockedNode(currentNode)) updateQuickNavVisibility(true); };
         contentArea.onblur = () => setTimeout(()=>updateQuickNavVisibility(false), 200);
 
         if (projectData.config.autoScrollTop) {
@@ -1289,7 +1632,6 @@
         if (window.innerWidth <= 768 && !isSilent) closePanelsOnMobile();
         renderTree(); updateQuickNavVisibility();
 
-        // 视觉定位效果 (优化：平滑的背景高亮淡出动画)
         setTimeout(() => {
             const row = document.querySelector(`input[onclick*="${node.id}"]`)?.parentElement;
             if (row) {
@@ -1345,14 +1687,10 @@
     }
 
     function addNew(type) {
-        if (type === 'item' && projectData.config.autoUnlockOnNew && projectData.config.isLocked) {
-            projectData.config.isLocked = false;
-            document.getElementById('lockSwitch').checked = false;
-        }
         const newNode = {
             id: 'd_' + Math.random().toString(36).substr(2, 9),
             name: type === 'folder' ? '新建文件夹' : '新建文本',
-            type: type, _collapsed: false, text: type === 'item' ? '' : undefined, children: type === 'folder' ? [] : undefined, isStarred: false
+            type: type, _collapsed: false, text: type === 'item' ? '' : undefined, children: type === 'folder' ? [] : undefined, isStarred: false, isLocked: false
         };
         
         let mode = projectData.config.quickNewMode || 'after';
@@ -1362,7 +1700,6 @@
                 currentNode._collapsed = false; currentNode.children.push(newNode);
             } else if (currentNode.type === 'item') {
                 if (mode === 'bottom') {
-                    // 所属末尾新建
                     let parentList = null;
                     const findParent = (arr) => {
                         if(arr.some(n=>n.id === currentNode.id)) { parentList = arr; return true;}
@@ -1372,7 +1709,6 @@
                     findParent(projectData.data);
                     if(parentList) parentList.push(newNode); else projectData.data.push(newNode);
                 } else {
-                    // 所选后尾新建 (默认 after)
                     const insertAfter = (list, targetId) => {
                         for (let i = 0; i < list.length; i++) {
                             if (list[i].id === targetId) { list.splice(i + 1, 0, newNode); return true; }
@@ -1389,14 +1725,66 @@
     }
 
     function confirmDeleteCurrent() {
-        if (selectedIds.size === 0) { showToast('请先勾选要删除的项'); return; }
+        const btn = document.getElementById('deleteModeBtn');
+
+        if (window.currentCheckboxMode !== 'delete') {
+            selectedIds.clear();
+            checkHistory = [];
+            projectData.config.selectedIds = [];
+            saveData();
+
+            window.currentCheckboxMode = 'delete';
+            btn.innerText = '确认删除(0)';
+            btn.classList.add('active-mode');
+            showToast("已清空旧勾选并进入删除模式\n请重新勾选需要删除的项目");
+            renderTree();
+        } else {
+            if (selectedIds.size === 0) {
+                window.currentCheckboxMode = 'normal';
+                btn.innerText = '删除文本';
+                btn.classList.remove('active-mode');
+                renderTree();
+                showToast("已退出删除模式");
+                return;
+            }
+            doActualDelete();
+        }
+    }
+
+    function doActualDelete() {
         confirmAction(`确定要删除选定的 ${selectedIds.size} 项吗？`, () => {
             let count = 0;
+            let lockedFound = false;
+            
+            const checkLocked = (list, targetId) => {
+                let locked = false;
+                const findAndCheck = (arr) => {
+                    for(let n of arr) {
+                        if (n.id === targetId) {
+                            if (n.isLocked) return true;
+                            if (n.children) { const cCheck = (cArr) => { for(let cn of cArr) { if(cn.isLocked) return true; if(cn.children && cCheck(cn.children)) return true; } return false; }; if(cCheck(n.children)) return true; }
+                            return false;
+                        }
+                        if (n.children && findAndCheck(n.children)) return true;
+                    }
+                    return false;
+                }
+                return findAndCheck(list);
+            };
+
+            for(let id of selectedIds) {
+                if (checkLocked(projectData.data, id)) { lockedFound = true; break; }
+            }
+
+            if (lockedFound) {
+                showToast("删除失败，选中内容中包含被锁定的文本或目录");
+                return;
+            }
+
             selectedIds.forEach(id => {
                 if(removeNodeById(projectData.data, id)) count++;
             });
             selectedIds.clear(); checkHistory = [];
-            // 删除后清空并保存选定缓存
             projectData.config.selectedIds = [];
             
             if (currentNode && document.getElementById('editorContainer').style.visibility === 'visible') {
@@ -1409,7 +1797,12 @@
                     document.getElementById('pathDisplay').innerText = '请选择一个条目';
                 }
             }
-            saveData(); renderTree(); showToast(`成功删除 ${count} 项`);
+            saveData(); 
+            window.currentCheckboxMode = 'normal';
+            const btn = document.getElementById('deleteModeBtn');
+            if(btn) { btn.innerText = '删除文本'; btn.classList.remove('active-mode'); }
+            renderTree(); 
+            showToast(`成功删除 ${count} 项`);
         });
     }
 
@@ -1662,9 +2055,20 @@
         }, 50);
     }
 
+    function minimizeDupModal() {
+        document.getElementById('dupModal').style.display = 'none';
+        document.getElementById('dupMinimizeFloat').style.display = 'block';
+    }
+
+    function restoreDupModal() {
+        document.getElementById('dupMinimizeFloat').style.display = 'none';
+        document.getElementById('dupModal').style.display = 'flex';
+    }
+
     function processNextDup() {
         if(dupQueue.length === 0) {
             document.getElementById('dupModal').style.display = 'none';
+            document.getElementById('dupMinimizeFloat').style.display = 'none';
             if(dupContext === 'import') finishImport(); else { saveData(); renderTree(); showToast("查重与处理完毕"); }
             return;
         }
@@ -1672,10 +2076,13 @@
         let cur = dupQueue[0];
         if(dupActionAll) { applyDupAction(dupActionAll); return; }
         
-        document.getElementById('dupModal').style.display = 'flex';
+        if (document.getElementById('dupMinimizeFloat').style.display !== 'block') {
+            document.getElementById('dupModal').style.display = 'flex';
+        }
         document.getElementById('dupProgress').innerText = `${dupQueue.length} 剩余`;
         
         document.getElementById('dupOldTitle').value = cur.oldItem.name || '';
+        document.getElementById('dupOldLocateBtn').onclick = () => { locateNode(cur.oldItem.id); minimizeDupModal(); };
         let newTextForHl = dupContext === 'import' ? cur.newItem._newText : cur.newItem.text;
         
         let hl = getHighlightedHTML(cur.oldItem.text, newTextForHl);
@@ -1684,6 +2091,7 @@
         
         if(dupContext === 'import') {
             document.getElementById('dupNewTitle').value = cur.newItem.name || '';
+            document.getElementById('dupNewLocateBtn').style.display = 'none';
             document.getElementById('dupOldLabel').innerText = "冲突：源库已有文本";
             document.getElementById('dupNewLabel').innerText = "冲突：准备导入文本";
             document.getElementById('dupActionBtns').innerHTML = `
@@ -1693,6 +2101,8 @@
             `;
         } else {
             document.getElementById('dupNewTitle').value = cur.newItem.name || '';
+            document.getElementById('dupNewLocateBtn').style.display = 'inline-flex';
+            document.getElementById('dupNewLocateBtn').onclick = () => { locateNode(cur.newItem.id); minimizeDupModal(); };
             document.getElementById('dupOldLabel').innerText = "相似：库内文本 1";
             document.getElementById('dupNewLabel').innerText = "相似：库内文本 2";
             document.getElementById('dupActionBtns').innerHTML = `
@@ -1777,7 +2187,9 @@
                     let contentSim = simT > 0 ? getSimilarity(aPrep.pText, bPrep.pText, 3) : 0;
 
                     if((simT > 0 && contentSim >= simT) || (titleT > 0 && tSim >= titleT)) {
-                        dupQueue.push({ oldItem: itemA, newItem: itemB });
+                        if (!dupQueue.some(q => (q.oldItem.id === itemA.id && q.newItem.id === itemB.id) || (q.oldItem.id === itemB.id && q.newItem.id === itemA.id))) {
+                            dupQueue.push({ oldItem: itemA, newItem: itemB });
+                        }
                     }
                 }
             }
@@ -1805,7 +2217,10 @@
                 }
             };
             gather(projectData.data);
-            pool = [...new Set(pool)];
+            let uniqueMap = new Map();
+            pool.forEach(n => uniqueMap.set(n.id, n));
+            pool = Array.from(uniqueMap.values());
+
             if (pool.length === 0) { showToast("选中项中无文本"); return; }
             runDupCheckProcess(pool, getAllItems(projectData.data));
         } else {
@@ -2156,7 +2571,6 @@
         const isInSillyTavern = window.self !== window.top;
 
         if (isInSillyTavern) {
-            // 向最顶层主窗口发送信令
             window.top.postMessage({
                 type: 'SEND_TO_ST_CHAT',
                 text: finalText
@@ -2174,7 +2588,7 @@
         projectData.config.shortcuts.forEach(sc => {
             const btn = document.createElement('button'); btn.className = 'btn'; btn.innerText = sc.display;
             btn.onclick = () => {
-                if (projectData.config.isLocked) { showToast('锁定状态无法插入内容'); return; }
+                if (isLockedNode(currentNode)) { showToast('该文本处于锁定状态，无法插入内容'); return; }
                 const el = lastFocusedElement || document.getElementById('editor-content');
                 if (el && typeof el.selectionStart === 'number' && !el.readOnly) {
                     const start = el.selectionStart; el.setRangeText(sc.text, start, el.selectionEnd, 'end'); el.focus(); el.dispatchEvent(new Event('input')); 
@@ -2220,42 +2634,52 @@
     }
 
     function doReplace() {
-        if (projectData.config.isLocked) { showToast('编辑锁定状态下无法替换'); return; }
         const f1 = document.getElementById('findInput').value; const r1 = document.getElementById('replaceInput').value;
         const isDouble = document.getElementById('doubleReplaceSwitch').checked; const f2 = document.getElementById('findInput2').value; const r2 = document.getElementById('replaceInput2').value;
         if (!f1) return;
 
         if (projectData.config.globalReplace) {
+            const backupData = JSON.parse(JSON.stringify(projectData.data));
             let replaceCount = 0; const allItems = getAllItems(projectData.data);
             allItems.forEach(item => {
-                if(item.text && item.text.includes(f1)) {
+                if(item.text && item.text.includes(f1) && !isLockedNode(item)) {
                     let text = item.text;
                     if (isDouble && f2) { const ph = "<TEMP_REP_" + Date.now() + ">"; text = text.split(f1).join(ph).split(f2).join(r2).split(ph).join(r1); } 
                     else { text = text.split(f1).join(r1); }
                     if(item.text !== text) { item.text = text; replaceCount++; }
                 }
             });
-            if(replaceCount > 0) { saveData(); if(currentNode && currentNode.type === 'item') refreshEditorContent(); showToast(`全局替换成功，共修改 ${replaceCount} 篇文本`); } 
-            else { showToast("全库未找到可替换的目标"); }
+            if(replaceCount > 0) { 
+                saveData(); 
+                if(currentNode && currentNode.type === 'item') refreshEditorContent(); 
+                showModalClear("全局替换成功", `共修改 ${replaceCount} 篇文本（自动过滤锁定的文本）。\n如需复原，请点击下方撤销按钮。`);
+                document.getElementById('sysModalRevokeBtn').style.display = 'inline-flex';
+                document.getElementById('sysModalRevokeBtn').onclick = () => {
+                    projectData.data = backupData;
+                    saveData(); renderTree(); refreshEditorContent(); closeModal(); showToast('已成功撤回全局替换');
+                };
+            } else { showToast("全库未找到可替换的目标，或目标处于锁定状态"); }
         } else {
             if (!currentNode || currentNode.type !== 'item') return;
+            if (isLockedNode(currentNode)) { showToast('该文本处于锁定状态下无法替换'); return; }
+            const backupText = currentNode.text;
             let text = currentNode.text;
             if (isDouble && f2) { const ph = "<TEMP_REP_" + Date.now() + ">"; text = text.split(f1).join(ph).split(f2).join(r2).split(ph).join(r1); } 
             else { text = text.split(f1).join(r1); }
-            currentNode.text = text; document.getElementById('editor-content').value = currentNode.text;
-            saveData(); showToast(isDouble ? '执行双项替换成功' : '执行替换成功');
+            if (currentNode.text !== text) {
+                currentNode.text = text; document.getElementById('editor-content').value = currentNode.text;
+                saveData(); 
+                showModalClear("本文替换成功", isDouble ? '执行双项替换成功。\n如需复原，请点击下方撤销按钮。' : '执行替换成功。\n如需复原，请点击下方撤销按钮。');
+                document.getElementById('sysModalRevokeBtn').style.display = 'inline-flex';
+                document.getElementById('sysModalRevokeBtn').onclick = () => {
+                    currentNode.text = backupText; document.getElementById('editor-content').value = backupText;
+                    saveData(); closeModal(); showToast('已撤回本文替换');
+                }
+            } else { showToast("文中未找到要替换的内容"); }
         }
     }
 
     function doRandom(scope) {
-        let mode = projectData.config.randomMode || 'none';
-        
-        // 全局随机不受【仅限勾选文件】限制
-        let effectiveMode = mode;
-        if (scope === 'global' && mode === 'only') {
-            effectiveMode = 'none';
-        }
-
         if (scope === 'local' && !currentNode) {
             showToast("请先选择文件或文本"); return;
         }
@@ -2276,72 +2700,44 @@
         }
 
         let pool = [];
+        let ignored = projectData.config.ignoredIds || [];
         
-        const traverse = (list, parentId, isIgnored, isOnlyChecked, inLocalTree) => {
+        const traverse = (list, parentId, inLocalTree) => {
             for (let n of list) {
-                let curIgnored = isIgnored || (effectiveMode === 'ignore' && selectedIds.has(n.id));
-                let curOnlyChecked = isOnlyChecked || (effectiveMode === 'only' && selectedIds.has(n.id));
                 let curInLocalTree = inLocalTree || (n.id === targetParentId);
                 
                 if (n.type === 'item') {
-                    let valid = true;
-                    // 忽略过滤
-                    if (effectiveMode === 'ignore' && curIgnored) valid = false;
-                    
-                    if (valid) {
+                    if (!ignored.includes(n.id)) {
                         if (scope === 'global') {
-                            // 全局直接收集
                             pool.push(n);
                         } else {
-                            // 局部随机
-                            if (effectiveMode === 'only') {
-                                // 只要在当前 target 树下，且位于被勾选的分支中（嵌套小文件夹也能玩）
-                                if (curInLocalTree && curOnlyChecked) pool.push(n);
-                            } else {
-                                // ignore 或 none：只在当前层级（不向深层小文件夹递归）
-                                if (parentId === targetParentId && !curIgnored) pool.push(n);
-                            }
+                            if (parentId === targetParentId) pool.push(n);
                         }
                     }
                 } else if (n.children) {
-                    if (!curIgnored) {
-                        traverse(n.children, n.id, curIgnored, curOnlyChecked, curInLocalTree);
+                    if (!ignored.includes(n.id)) {
+                        traverse(n.children, n.id, curInLocalTree);
                     }
                 }
             }
         };
 
-        traverse(projectData.data, 'root', false, false, targetParentId === 'root');
+        traverse(projectData.data, 'root', targetParentId === 'root');
 
-        if (pool.length === 0) {
-            if (scope === 'local' && mode === 'only') {
-                // 判断 local 树内是否有任何勾选项，如果没有则回退并提示
-                let hasAnyCheckedInLocal = false;
-                const checkLocal = (list, inTree) => {
-                    for (let n of list) {
-                        let curInTree = inTree || n.id === targetParentId;
-                        if (curInTree && selectedIds.has(n.id)) { hasAnyCheckedInLocal = true; return; }
-                        if (n.children) checkLocal(n.children, curInTree);
+        if (pool.length === 0 && scope === 'local') {
+            if (!window._hasShownNoCheckPrompt) { showToast("所处文件夹内无可抽取项，向深层检索"); window._hasShownNoCheckPrompt = true; }
+            const fallbackTraverse = (list, parentId) => {
+                for (let n of list) {
+                    if (!ignored.includes(n.id)) {
+                        if (n.type === 'item' && parentId === targetParentId) pool.push(n);
+                        else if (n.children) fallbackTraverse(n.children, n.id);
                     }
-                };
-                checkLocal(projectData.data, targetParentId === 'root');
-
-                if (!hasAnyCheckedInLocal) {
-                    if (!window._hasShownNoCheckPrompt) { showToast("未勾选文件，将在所处文件夹内随机文本"); window._hasShownNoCheckPrompt = true; }
-                    const fallbackTraverse = (list, parentId) => {
-                        for (let n of list) {
-                            if (n.type === 'item' && parentId === targetParentId) pool.push(n);
-                            else if (n.children) fallbackTraverse(n.children, n.id);
-                        }
-                    };
-                    fallbackTraverse(projectData.data, 'root');
                 }
-            } else if (scope === 'local' && mode === 'ignore') {
-                if (!window._hasShownIgnoreAllPrompt) { showToast("已忽略全部文本"); window._hasShownIgnoreAllPrompt = true; }
-            }
+            };
+            fallbackTraverse(projectData.data, 'root');
         }
 
-        if (pool.length === 0) { showToast("目标层级内无可抽取的文本"); return; }
+        if (pool.length === 0) { showToast("目标层级内无可抽取的文本（或全被忽略）"); return; }
         
         let selectedItem = pool[Math.floor(Math.random() * pool.length)];
         const expandP = (list, tid) => { 
@@ -2390,7 +2786,7 @@
         const token = localStorage.getItem('TMP_GithubToken'); if(!token) return showToast("需填写 Token 推送");
         showToast("正在同步推送数据...");
         setTimeout(async () => {
-            const dataObj = JSON.parse(JSON.stringify(projectData)); dataObj.config.isLocked = false; dataObj.config.isSwapped = false;
+            const dataObj = JSON.parse(JSON.stringify(projectData)); 
             let currentGistId = localStorage.getItem('TMP_GistId') || '';
             try {
                 const res = await fetch('https://api.github.com/gists' + (currentGistId ? `/${currentGistId}` : ''), {
@@ -2438,10 +2834,9 @@
     }
 
     function exportJson() {
-    const exportData = JSON.parse(JSON.stringify(projectData)); exportData.config.isLocked = false; exportData.config.isSwapped = false;
+    const exportData = JSON.parse(JSON.stringify(projectData));
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(exportData, null, 2)], {type: 'application/json;charset=utf-8'}));
     
-    // 生成标准的 YYYYMMDD 年月日格式
     const now = new Date();
     const yyyy = now.getFullYear();
     const mm = String(now.getMonth() + 1).padStart(2, '0');
@@ -2529,7 +2924,6 @@
     function handleMobileUndo() {
         const btn = document.getElementById('mobileUndoBtn');
         if (btn.innerText.includes('回顶')) {
-            // 同时重置文本框与外层容器的scrollTop，解决移动端(尤其iOS)只滚动容器导致回顶失效的内核问题
             document.getElementById('editor-content').scrollTop = 0;
             document.getElementById('editorContainer').scrollTop = 0;
         } else {
@@ -2542,11 +2936,9 @@
     const btn = document.getElementById('mobileUndoBtn');
     const contentArea = document.getElementById('editor-content');
     
-    // 输入法未弹起（即未获得焦点）、或者文本框处于锁定/只读状态，均判定为非编辑状态
-    const isNonEditing = projectData.config.isLocked || contentArea.readOnly || (document.activeElement !== contentArea);
+    const isNonEditing = isLockedNode(currentNode) || contentArea.readOnly || (document.activeElement !== contentArea);
     
     if (isNonEditing) {
-        // 非编辑状态下，只要向上滚动超过 30 像素，即显示回顶按钮
         if (el.scrollTop > 30) {
             btn.innerText = '⬆ 回顶';
         } else {
@@ -2557,11 +2949,9 @@
     }
 }
 
-// 监听滚动事件
 document.getElementById('editor-content').addEventListener('scroll', function() { checkMobileScrollToTop(this); });
 document.getElementById('editorContainer').addEventListener('scroll', function() { checkMobileScrollToTop(this); });
 
-// 新增焦点变化监听，确保键盘收起或弹起时能即时响应按钮状态切换
 document.getElementById('editor-content').addEventListener('focus', function() { checkMobileScrollToTop(this); });
 document.getElementById('editor-content').addEventListener('blur', function() { checkMobileScrollToTop(this); });
 
@@ -2582,7 +2972,6 @@ document.getElementById('editor-content').addEventListener('blur', function() { 
             if (savedData) {
                 projectData.data = savedData.data || [];
                 
-                // 新增：定义并运行递归折叠函数，重进时默认将所有文件夹设为折叠状态
                 const collapseAllFolders = (list) => {
                     for (let n of list) {
                         if (n.type === 'folder') {
@@ -2595,7 +2984,6 @@ document.getElementById('editor-content').addEventListener('blur', function() { 
 
                 projectData.config = { ...defaultData.config, ...(savedData.config || {}) };
             
-            // 从配置中恢复已被勾选的节点 ID
             selectedIds = new Set(projectData.config.selectedIds || []);
             
             if(!projectData.config.shortcuts) projectData.config.shortcuts = JSON.parse(JSON.stringify(defaultData.config.shortcuts));
@@ -2625,6 +3013,8 @@ document.getElementById('editor-content').addEventListener('blur', function() { 
                 if(projectData.config.randomMode === undefined) projectData.config.randomMode = 'none';
                 if(projectData.config.autoDupCheckOnImport === undefined) projectData.config.autoDupCheckOnImport = true;
                 if(projectData.config.autoScrollTop === undefined) projectData.config.autoScrollTop = false;
+                if(projectData.config.ignoredIds === undefined) projectData.config.ignoredIds = [];
+                if(projectData.config.showRawPlaceholder === undefined) projectData.config.showRawPlaceholder = false;
             }
         } catch (e) {
             console.error("加载数据异常", e);
@@ -2634,40 +3024,40 @@ document.getElementById('editor-content').addEventListener('blur', function() { 
         renderShortcuts();
         renderTree();
         updateQuickNavVisibility();
+        initToolFolds();
 
-        // 空数据判断与启动自动随机体验
         if (projectData.data.length === 0) {
             document.getElementById('editorContainer').style.visibility = 'hidden';
             document.getElementById('emptyState').style.display = 'flex';
             document.getElementById('pathDisplay').innerText = '欢迎使用';
         } else {
-            // 如果有数据，静默触发一次全局随机并定位
-            let allItems = getAllItems(projectData.data);
-            if (allItems.length > 0) {
-                let rItem = allItems[Math.floor(Math.random() * allItems.length)];
-                
-                const expandP = (list, tid) => { 
-                    for(let node of list) { 
-                        if (node.id === tid) return true; 
-                        if (node.children && expandP(node.children, tid)) { node._collapsed = false; return true; } 
-                    } return false; 
-                };
-                expandP(projectData.data, rItem.id);
-                
-                selectNode(rItem, true); // true 表示不触发关闭侧边栏
-            } else {
-                // 有文件夹但没文本
-                document.getElementById('editorContainer').style.visibility = 'hidden';
-                document.getElementById('emptyState').style.display = 'flex';
+            if (projectData.config.quickRandom !== false) {
+                let allItems = getAllItems(projectData.data);
+                let ignored = projectData.config.ignoredIds || [];
+                allItems = allItems.filter(item => !ignored.includes(item.id));
+
+                if (allItems.length > 0) {
+                    let rItem = allItems[Math.floor(Math.random() * allItems.length)];
+                    
+                    const expandP = (list, tid) => { 
+                        for(let node of list) { 
+                            if (node.id === tid) return true; 
+                            if (node.children && expandP(node.children, tid)) { node._collapsed = false; return true; } 
+                        } return false; 
+                    };
+                    expandP(projectData.data, rItem.id);
+                    
+                    selectNode(rItem, true);
+                } else {
+                    document.getElementById('editorContainer').style.visibility = 'hidden';
+                    document.getElementById('emptyState').style.display = 'flex';
+                }
             }
         }
     }
 
     startApp();
 	
-	// ==========================================
-    // 强制自动转换：如果在酒馆内，底栏“复制”按钮锁定替换为“🚀 发送”
-    // ==========================================
     function applySendButtonText() {
         if (window.self !== window.top) {
             document.querySelectorAll('button').forEach(btn => {
@@ -2678,25 +3068,19 @@ document.getElementById('editor-content').addEventListener('blur', function() { 
         }
     }
 
-    // 1. 立即执行一次
     applySendButtonText();
-
-    // 2. 页面加载完成后再执行一次
     document.addEventListener('DOMContentLoaded', applySendButtonText);
 
-    // 3. 开启实时监听，防止按钮重新渲染时反弹回“复制”
     if (window.self !== window.top) {
         const btnObserver = new MutationObserver(applySendButtonText);
         btnObserver.observe(document.body, { childList: true, subtree: true });
     }
 
-    // 4. 判定在酒馆内打开时显示“酒馆内部设置”
     if (window.self !== window.top) {
         const row = document.getElementById('stInternalSettingsRow');
         if (row) row.style.display = 'flex';
     }
 
-    // 5. 打开酒馆内部设置弹窗
     function openStSettingsModal() {
         const ST_KEY = 'extra_text_mgr_settings_v3';
         let settings = { icon: '📖', showFloat: true, showSidebar: true, showQR: true };
@@ -2740,7 +3124,6 @@ document.getElementById('editor-content').addEventListener('blur', function() { 
             const newSettings = { icon, showFloat, showSidebar, showQR };
             localStorage.setItem(ST_KEY, JSON.stringify(newSettings));
 
-            // 向最顶层主窗口发送设置更新信令
             window.top.postMessage({ type: 'UPDATE_ST_SETTINGS', settings: newSettings }, '*');
             
             showToast("酒馆设置已保存！");
@@ -2808,7 +3191,6 @@ document.getElementById('editor-content').addEventListener('blur', function() { 
 	if (window.self !== window.top) {
         const stModalFixStyle = document.createElement('style');
         stModalFixStyle.innerHTML = `
-            /* 1. 限制卡片外框不溢出 */
             .modal-card {
                 width: 95% !important;
                 max-width: 380px !important;
@@ -2817,7 +3199,6 @@ document.getElementById('editor-content').addEventListener('blur', function() { 
                 overflow-x: hidden !important;
             }
 
-            /* 2. 严禁使用 display: flex !important 破坏隐藏机制！仅在未被隐藏时生效 */
             #sysModalTabs:not([style*="display: none"]) {
                 overflow-x: auto !important;
                 overflow-y: hidden !important;
@@ -2827,12 +3208,10 @@ document.getElementById('editor-content').addEventListener('blur', function() { 
                 -webkit-overflow-scrolling: touch !important;
             }
 
-            /* 隐藏横向滚动条 */
             #sysModalTabs::-webkit-scrollbar {
                 display: none !important;
             }
 
-            /* 3. 覆盖按钮内联 flex:1，允许横向向右滑出 */
             #sysModalTabs > button {
                 flex: 0 0 auto !important;
                 width: auto !important;
@@ -2843,11 +3222,6 @@ document.getElementById('editor-content').addEventListener('blur', function() { 
         document.head.appendChild(stModalFixStyle);
     }
 
-	
-	// ==========================================
-    // 阻止手机输入法自动弹起：打开/初始化时强制失焦
-    // ==========================================
-
 	function preventAutoKeyboard() {
         if (window.self !== window.top || window.innerWidth <= 768) {
             if (document.activeElement && typeof document.activeElement.blur === 'function') {
@@ -2855,10 +3229,7 @@ document.getElementById('editor-content').addEventListener('blur', function() { 
             }
         }
     }
-    // 1. 页面加载完成后取消自动聚焦
     document.addEventListener('DOMContentLoaded', preventAutoKeyboard);
-    
-    // 2. 延迟再次失焦保底，保证软键盘绝不自动唤起
     setTimeout(preventAutoKeyboard, 300);
 	
 </script>
