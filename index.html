@@ -135,7 +135,6 @@
         
         .node-cb { margin: 0; cursor: pointer; width: 15px; height: 15px; flex-shrink: 0; }
 
-        /* 仅勾选框常驻浅灰色背景，文本绝不标红 */
         .node-cb.is-ignored-node {
             appearance: none;
             -webkit-appearance: none;
@@ -247,7 +246,6 @@
             margin: 10px 0;
         }
 
-        /* 强制双列网格并排，小分类大分类死锁同一行 */
         #groupSettingsUI {
             display: none;
             background: var(--hover-bg);
@@ -281,7 +279,7 @@
 
         .toast-msg {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(26, 28, 30, 0.425); color: #fff;
+            background: rgba(26, 28, 30, 0.7); color: #fff;
             padding: 12px 24px; border-radius: 8px; font-size: 14px; text-align: center;
             z-index: 5000; opacity: 0; visibility: hidden; pointer-events: none;
             transition: opacity 0.2s ease, transform 0.2s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
@@ -337,7 +335,7 @@
 <div id="mobileQuickNewFloat" style="display:none; position:fixed; bottom: 85px; right: 20px; z-index:1100; font-size:36px; font-weight:300; color:var(--text-primary); cursor:pointer; touch-action: none; user-select: none;">+</div>
 
 <div id="dupMinimizeFloat" style="display:none; position:fixed; right:20px; bottom:140px; background:var(--accent-color); color:white; padding:10px 16px; border-radius:30px; cursor:pointer; z-index:5000; box-shadow:0 4px 12px rgba(0,0,0,0.2); font-size:13px; font-weight:bold;" onclick="restoreDupModal()">
-    🔍 查重进行中...
+    🔍 回到查重
 </div>
 
 <div class="app-layout" id="mainLayout">
@@ -346,8 +344,8 @@
 
         <div class="side-header">
             <div id="topActions" class="foldable-area" style="display: flex; gap: 8px;">
-                <button class="btn" onclick="exportJson()">导出</button>
                 <button class="btn" onclick="importJson()">导入</button>
+                <button class="btn" onclick="exportJson()">导出</button>
             </div>
             
             <input type="text" class="search-box" id="searchTree" placeholder="...搜索目录..." oninput="clearTimeout(searchDebounceTimer); searchDebounceTimer=setTimeout(renderTree, 300)">
@@ -410,7 +408,10 @@
         <div class="tool-section">
             <h4>
                 <span>查找与替换</span>
-                <input type="checkbox" id="doubleReplaceSwitch" onchange="toggleDoubleReplace()" style="margin:0; cursor:pointer;" title="双项替换">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <button class="btn danger" id="inlineReplaceUndoBtn" style="display:none; height:20px; min-width:40px; font-size:12px; padding:0 6px; line-height:1;" onclick="revertLastReplace()">撤回</button>
+                    <input type="checkbox" id="doubleReplaceSwitch" onchange="toggleDoubleReplace()" style="margin:0; cursor:pointer;" title="双项替换">
+                </div>
             </h4>
             <div class="find-panel">
                 <div style="display: flex; gap: 8px; width: 100%;">
@@ -470,112 +471,112 @@
 
         <div class="tool-section" id="statsPanel">
             <h4>设置与操作</h4>
-            <div class="stat-item" id="stInternalSettingsRow" style="display:none;">
-                <span>酒馆内部设置</span>
-                <button class="btn" style="height:24px; min-width:40px; padding:0 8px; font-size:12px;" onclick="openStSettingsModal()">管理</button>
-            </div>
-            <div class="stat-item">
-                <span>删除二次确认</span>
-                <input type="checkbox" id="confirmSwitch" onchange="saveConfig()">
-            </div>
-            <div class="stat-item">
-                <span>工具自动缩回</span>
-                <input type="checkbox" id="autoCloseToolboxSwitch" onchange="saveConfig()" title="手机端快捷插入后工具栏自动缩回">
-            </div>
-            <div class="stat-item">
-                <span>文本锁定修改</span>
-                <input type="checkbox" id="lockSwitch" onchange="toggleLockMode()" title="开启后在左侧打钩以单独锁定/解锁所选文本">
-            </div>
-			<div class="stat-item">
-                <span>文本新建解锁</span>
-                <input type="checkbox" id="autoUnlockOnNewSwitch" onchange="saveConfig()">
-            </div>
-            <div class="stat-item">
-                <span>文本交替解锁</span>
-                <input type="checkbox" id="autoUnlockOnSwapSwitch" onchange="saveConfig()">
-            </div>
-			<div class="stat-item">
-                <span>文本拖拽排序</span>
-                <input type="checkbox" id="dragSortSwitch" onchange="saveConfig(); renderTree();" title="开启后允许拖拽排序，关闭可防止手机端滑动冲突">
-            </div>
-            <div class="stat-item">
-                <span>文本全局查找</span>
-                <input type="checkbox" id="globalFindSwitch" onchange="saveConfig()">
-            </div>
-            <div class="stat-item">
-                <span>文本全局替换</span>
-                <input type="checkbox" id="globalReplaceSwitch" onchange="saveConfig()">
-            </div>
-            <div class="stat-item">
-                <span>文本临时修改</span>
-                <input type="checkbox" id="tempEditSwitch" onchange="saveConfig()" title="开启后修改不保存，切换文本即还原">
-            </div>
-            <div class="stat-item">
-                <span>文本自动回顶</span>
-                <input type="checkbox" id="autoScrollTopSwitch" onchange="saveConfig()" title="切换文本时自动回到顶部">
-            </div>
-            <div class="stat-item">
-                <span>文本快捷跳转</span>
-                <input type="checkbox" id="quickNavSwitch" onchange="saveConfig()" title="手机端可见的左右文本切换">
-            </div>
-            <div class="stat-item">
-                <span>文本快捷随机</span>
-                <input type="checkbox" id="quickRandomSwitch" onchange="saveConfig()" title="手机端可见的底部悬浮随机按钮">
-            </div>
-            <div class="stat-item">
-                <span>文本复制附加</span>
-                <button class="btn" style="height:24px; min-width:40px; padding:0 8px; font-size:12px;" onclick="openCopyAddonModal()">管理</button>
-            </div>
-
-            <div class="stat-divider"></div>
-            <div id="quickNewSubOptions" style="transition: opacity 0.3s;">
-                <div class="stat-item">
-                    <span>所选后尾新建</span>
-                    <input type="checkbox" id="quickNewAfterSwitch" onchange="toggleQuickNewMode('after')">
+            <div class="stats-collapsible-wrapper">
+                <div class="stat-item" id="stInternalSettingsRow" style="display:none;">
+                    <span>酒馆内部设置</span>
+                    <button class="btn" style="height:24px; min-width:40px; padding:0 8px; font-size:12px;" onclick="openStSettingsModal()">管理</button>
                 </div>
                 <div class="stat-item">
-                    <span>所属末尾新建</span>
-                    <input type="checkbox" id="quickNewBottomSwitch" onchange="toggleQuickNewMode('bottom')">
+                    <span>删除二次确认</span>
+                    <input type="checkbox" id="confirmSwitch" onchange="saveConfig()">
                 </div>
-            </div>
-            <div class="stat-item">
-                <span>文本快捷新建</span>
-                <button id="quickNewToggleBtn" class="btn" style="height:24px; min-width:40px; padding:0 8px; font-size:12px;" onclick="toggleQuickNewMaster()">禁用</button>
-            </div>
+                <div class="stat-item">
+                    <span>工具自动缩回</span>
+                    <input type="checkbox" id="autoCloseToolboxSwitch" onchange="saveConfig()" title="手机端快捷插入后工具栏自动缩回">
+                </div>
+                <div class="stat-item">
+                    <span>文本锁定修改</span>
+                    <input type="checkbox" id="lockSwitch" onchange="toggleLockMode()" title="开启后在左侧打钩以单独锁定/解锁所选文本">
+                </div>
+                <div class="stat-item">
+                    <span>文本新建解锁</span>
+                    <input type="checkbox" id="autoUnlockOnNewSwitch" onchange="saveConfig()">
+                </div>
+                <div class="stat-item">
+                    <span>文本交替解锁</span>
+                    <input type="checkbox" id="autoUnlockOnSwapSwitch" onchange="saveConfig()">
+                </div>
+                <div class="stat-item">
+                    <span>文本拖拽排序</span>
+                    <input type="checkbox" id="dragSortSwitch" onchange="saveConfig(); renderTree();" title="开启后允许拖拽排序，关闭可防止手机端滑动冲突">
+                </div>
+                <div class="stat-item">
+                    <span>文本全局查找</span>
+                    <input type="checkbox" id="globalFindSwitch" onchange="saveConfig()">
+                </div>
+                <div class="stat-item">
+                    <span>文本全局替换</span>
+                    <input type="checkbox" id="globalReplaceSwitch" onchange="saveConfig()">
+                </div>
+                <div class="stat-item">
+                    <span>文本临时修改</span>
+                    <input type="checkbox" id="tempEditSwitch" onchange="saveConfig()" title="开启后修改不保存，切换文本即还原">
+                </div>
+                <div class="stat-item">
+                    <span>文本自动回顶</span>
+                    <input type="checkbox" id="autoScrollTopSwitch" onchange="saveConfig()" title="切换文本时自动回到顶部">
+                </div>
+                <div class="stat-item">
+                    <span>文本快捷跳转</span>
+                    <input type="checkbox" id="quickNavSwitch" onchange="saveConfig()" title="手机端可见的左右文本切换">
+                </div>
+                <div class="stat-item">
+                    <span>文本快捷随机</span>
+                    <input type="checkbox" id="quickRandomSwitch" onchange="saveConfig()" title="手机端可见的底部悬浮随机按钮">
+                </div>
+                <div class="stat-item">
+                    <span>文本复制附加</span>
+                    <button class="btn" style="height:24px; min-width:40px; padding:0 8px; font-size:12px;" onclick="openCopyAddonModal()">管理</button>
+                </div>
 
-            <div class="stat-divider"></div>
-            <div class="stat-item">
-                <span>勾选忽略文本</span>
-                <input type="checkbox" id="randomIgnoreCheckedSwitch" onchange="toggleRandomMode('ignore')">
-            </div>
-            <div class="stat-item">
-                <span>文本随机抽取</span>
-                <div style="display:flex; gap:4px;">
-                    <button class="btn" style="height:24px; min-width:40px; padding:0 8px; font-size:12px;" onclick="doRandom('local')">当前</button>
-                    <button class="btn" style="height:24px; min-width:40px; padding:0 8px; font-size:12px;" onclick="doRandom('global')">全局</button>
+                <div class="stat-divider"></div>
+                <div id="quickNewSubOptions">
+                    <div class="stat-item">
+                        <span>所选后尾新建</span>
+                        <input type="checkbox" id="quickNewAfterSwitch" onchange="toggleQuickNewMode('after')">
+                    </div>
+                    <div class="stat-item">
+                        <span>所属末尾新建</span>
+                        <input type="checkbox" id="quickNewBottomSwitch" onchange="toggleQuickNewMode('bottom')">
+                    </div>
                 </div>
-            </div>
-            <div id="randomSelectedFoldersUI" style="display:none; flex-direction:column; background:var(--hover-bg); padding:8px; border-radius:4px; max-height:150px; overflow-y:auto; font-size:12px; color:var(--text-secondary); line-height: 1.5; margin-bottom: 6px;">
-            </div>
+                <div class="stat-item">
+                    <span>文本快捷新建</span>
+                    <button id="quickNewToggleBtn" class="btn" style="height:24px; min-width:40px; padding:0 8px; font-size:12px;" onclick="toggleQuickNewMaster()">禁用</button>
+                </div>
 
-            <div class="stat-divider"></div>
-            <div class="stat-item">
-                <span>目录折叠分组 (0为关)</span>
-                <input type="checkbox" id="autoGroupSwitch" onchange="toggleAutoGroup()">
-            </div>
-            
-            <!-- Grid 强制死锁双列并排，永不换行 -->
-            <div id="groupSettingsUI">
-                <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap;">
-                    <span style="font-size: 12px; color: var(--text-secondary);">小分类:</span>
-                    <input type="number" id="groupSmallInput" value="10" style="width: 100%; min-width: 0; padding: 2px 4px; font-size: 12px; border: 1px solid var(--border-color); border-radius: 4px;" onchange="updateGroupConfig()">
+                <div class="stat-divider"></div>
+                <div class="stat-item">
+                    <span>勾选忽略文本</span>
+                    <input type="checkbox" id="randomIgnoreCheckedSwitch" onchange="toggleRandomMode('ignore')">
                 </div>
-                <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap;">
-                    <span style="font-size: 12px; color: var(--text-secondary);">大分类:</span>
-                    <input type="number" id="groupLargeInput" value="50" style="width: 100%; min-width: 0; padding: 2px 4px; font-size: 12px; border: 1px solid var(--border-color); border-radius: 4px;" onchange="updateGroupConfig()">
+                <div class="stat-item">
+                    <span>文本随机抽取</span>
+                    <div style="display:flex; gap:4px;">
+                        <button class="btn" style="height:24px; min-width:40px; padding:0 8px; font-size:12px;" onclick="doRandom('local')">当前</button>
+                        <button class="btn" style="height:24px; min-width:40px; padding:0 8px; font-size:12px;" onclick="doRandom('global')">全局</button>
+                    </div>
                 </div>
-            </div>
+                <div id="randomSelectedFoldersUI" style="display:none; flex-direction:column; background:var(--hover-bg); padding:8px; border-radius:4px; max-height:150px; overflow-y:auto; font-size:12px; color:var(--text-secondary); line-height: 1.5; margin-bottom: 6px;">
+                </div>
 
+                <div class="stat-divider"></div>
+                <div class="stat-item">
+                    <span>目录折叠分组 (0为关)</span>
+                    <input type="checkbox" id="autoGroupSwitch" onchange="toggleAutoGroup()">
+                </div>
+                
+                <div id="groupSettingsUI">
+                    <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+                        <span style="font-size: 12px; color: var(--text-secondary);">小分类:</span>
+                        <input type="number" id="groupSmallInput" value="10" style="width: 100%; min-width: 0; padding: 2px 4px; font-size: 12px; border: 1px solid var(--border-color); border-radius: 4px;" onchange="updateGroupConfig()">
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+                        <span style="font-size: 12px; color: var(--text-secondary);">大分类:</span>
+                        <input type="number" id="groupLargeInput" value="50" style="width: 100%; min-width: 0; padding: 2px 4px; font-size: 12px; border: 1px solid var(--border-color); border-radius: 4px;" onchange="updateGroupConfig()">
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -621,7 +622,7 @@
                 <button class="btn primary" style="flex:1; padding:0 8px;" onclick="pullFromGist()">拉取(覆盖本地)</button>
                 <button class="btn primary" style="flex:1; padding:0 8px;" onclick="pushToGist()">推送(更新/新建)</button>
             </div>
-            <div style="font-size:12px; color:#ef4444; line-height:1.5;">提示：同步时将覆盖对应端数据，请谨慎操作。大文本自动转换直链。</div>
+            <div style="font-size:12px; color:#ef4444; line-height:1.5;">提示：同步将覆盖对应端数据，请谨慎操作。</div>
         </div>
 
         <div id="sysModalDynamicPanel" style="display:none; flex-direction:column; margin-top:10px;"></div>
@@ -723,17 +724,50 @@
                                 .replace(/'/g, '&#039;');
     }
 
+    /* 原生高效流式压缩工具（把超大文本转为安全 Base64，避开 GitHub 单文件尺寸上限） */
+    async function compressStringToBase64(str) {
+        if ('CompressionStream' in window) {
+            const stream = new Blob([new TextEncoder().encode(str)]).stream();
+            const compressedStream = stream.pipeThrough(new CompressionStream('gzip'));
+            const response = await new Response(compressedStream).blob();
+            const buffer = await response.arrayBuffer();
+            let binary = '';
+            const bytes = new Uint8Array(buffer);
+            const len = bytes.byteLength;
+            for (let i = 0; i < len; i += 8192) {
+                binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + 8192, len)));
+            }
+            return 'GZIP:' + btoa(binary);
+        }
+        return str; // 回退
+    }
+
+    async function decompressBase64ToString(str) {
+        if (str.startsWith('GZIP:') && 'DecompressionStream' in window) {
+            const binary = atob(str.substring(5));
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+                bytes[i] = binary.charCodeAt(i);
+            }
+            const stream = new Blob([bytes]).stream();
+            const decompressedStream = stream.pipeThrough(new DecompressionStream('gzip'));
+            const response = await new Response(decompressedStream).blob();
+            return await response.text();
+        }
+        return str;
+    }
+
     const defaultData = { 
-    data: [], 
-    config: { 
-	    autoUnlockOnNew: false, 
-        autoUnlockOnSwap: false, 
-        selectedIds: [], 
-        ignoredIds: [], 
-        toolFoldStates: {}, 
-        showRawPlaceholder: false,
-        shortcuts: [
-            { display: "Fr", text: "<Q7Fr>" },
+        data: [], 
+        config: { 
+            autoUnlockOnNew: false, 
+            autoUnlockOnSwap: false, 
+            selectedIds: [], 
+            ignoredIds: [], 
+            toolFoldStates: {}, 
+            showRawPlaceholder: false,
+            shortcuts: [
+                { display: "Fr", text: "<Q7Fr>" },
                 { display: "Sc", text: "<Q7Sc>" },
                 { display: "U", text: "{{user}}" },
                 { display: "C", text: "{{char}}" }
@@ -789,6 +823,19 @@
     let titleSaveTimer = null;
     let searchDebounceTimer = null;
     let textHistoryStack = [];
+
+    let replaceHistoryStack = [];
+
+    function updateInlineUndoBtnUI() {
+        const undoBtn = document.getElementById('inlineReplaceUndoBtn');
+        if (!undoBtn) return;
+        if (replaceHistoryStack.length > 0) {
+            undoBtn.style.display = 'inline-flex';
+            undoBtn.innerText = `撤回(${replaceHistoryStack.length})`;
+        } else {
+            undoBtn.style.display = 'none';
+        }
+    }
 
     function initToolFolds() {
         if (!projectData.config.toolFoldStates) projectData.config.toolFoldStates = {};
@@ -903,8 +950,8 @@
         projectData.config.quickRandom = document.getElementById('quickRandomSwitch').checked;
         
         projectData.config.quickNewMode = document.getElementById('quickNewAfterSwitch').checked ? 'after' : 'bottom';
-		
-		projectData.config.autoUnlockOnNew = document.getElementById('autoUnlockOnNewSwitch').checked;
+        
+        projectData.config.autoUnlockOnNew = document.getElementById('autoUnlockOnNewSwitch').checked;
         projectData.config.autoUnlockOnSwap = document.getElementById('autoUnlockOnSwapSwitch').checked;
         
         saveData(); updateQuickNavVisibility();
@@ -920,19 +967,20 @@
         document.getElementById('autoScrollTopSwitch').checked = projectData.config.autoScrollTop;
         document.getElementById('quickNavSwitch').checked = projectData.config.quickNav;
         document.getElementById('quickRandomSwitch').checked = projectData.config.quickRandom;
-		
-		document.getElementById('autoUnlockOnNewSwitch').checked = !!projectData.config.autoUnlockOnNew;
+        
+        document.getElementById('autoUnlockOnNewSwitch').checked = !!projectData.config.autoUnlockOnNew;
         document.getElementById('autoUnlockOnSwapSwitch').checked = !!projectData.config.autoUnlockOnSwap;
         
         const isQuickNew = projectData.config.quickNew || false;
         const toggleBtn = document.getElementById('quickNewToggleBtn');
-        const subOptions = document.getElementById('quickNewSubOptions');
         if (toggleBtn) {
             toggleBtn.innerText = isQuickNew ? '启用' : '禁用';
         }
+        
+        const subOptions = document.getElementById('quickNewSubOptions');
         if (subOptions) {
-            subOptions.style.opacity = isQuickNew ? '1' : '0.5';
-            subOptions.style.pointerEvents = isQuickNew ? 'auto' : 'none';
+            subOptions.style.opacity = '1';
+            subOptions.style.pointerEvents = 'auto';
         }
         
         let qMode = projectData.config.quickNewMode || 'after';
@@ -1018,6 +1066,26 @@
         return isParentLocked;
     }
 
+    function isIgnoredNodeOrAncestor(targetId) {
+        const ignored = projectData.config.ignoredIds || [];
+        if (ignored.includes(targetId)) return true;
+        
+        let foundIgnoredParent = false;
+        function walk(list, parentIgnored) {
+            for (let n of list) {
+                let isCurIgnored = parentIgnored || ignored.includes(n.id);
+                if (n.id === targetId) {
+                    if (isCurIgnored) foundIgnoredParent = true;
+                    return true;
+                }
+                if (n.children && walk(n.children, isCurIgnored)) return true;
+            }
+            return false;
+        }
+        walk(projectData.data, false);
+        return foundIgnoredParent;
+    }
+
     function updateFilterBtnUI() {
         const starBtn = document.getElementById('starFilterBtn');
         if (!starBtn) return;
@@ -1040,7 +1108,7 @@
         if (lockSwitch.checked) {
             window.currentCheckboxMode = 'lock';
             isIgnoreFilterMode = false;
-            showToast("已进入锁定分配模式\n左侧打钩即可锁定/解锁\n点击【锁定筛选】可查看全部锁定项");
+            showToast("已进入锁定模式\n左侧勾选即可锁定/解锁\n点击【锁定筛选】可查看锁定项");
         } else {
             window.currentCheckboxMode = 'normal';
             isLockFilterMode = false;
@@ -1055,7 +1123,7 @@
         if (ignoreCheckbox.checked) {
             window.currentCheckboxMode = 'ignore';
             isLockFilterMode = false;
-            showToast("已进入忽略文本模式\n点击左侧框直接加入/移出忽略名单\n点击【锁定筛选】可仅查看忽略项");
+            showToast("已进入忽略文本模式\n左侧勾选加入/移出忽略名单\n点击【锁定筛选】可查看忽略项");
         } else {
             window.currentCheckboxMode = 'normal';
             isIgnoreFilterMode = false;
@@ -1378,12 +1446,13 @@
             let isChecked = false;
             if (window.currentCheckboxMode === 'lock') {
                 isChecked = node.isLocked === true;
+            } else if (window.currentCheckboxMode === 'ignore') {
+                isChecked = ignoredList.includes(node.id);
             } else {
                 isChecked = selectedIds.has(node.id);
             }
             const checkedAttr = isChecked ? 'checked' : '';
 
-            // 仅勾选框常驻浅灰底色类，文本名称彻底去除红色，保持默认原色
             const cbClass = isIgnored ? 'node-cb is-ignored-node' : 'node-cb';
             const starIcon = node.isStarred ? '<span style="color:#eab308;margin-left:4px;font-size:12px;">★</span>' : '';
 
@@ -1536,7 +1605,7 @@
         }
         
         htmlContent += `<div style="margin-top:6px; padding-top:6px; border-top:1px solid #cbd5e1; font-size:11px; color:#94a3b8;">
-            注：开启此模式时，勾选即为添加忽略。该名单永久有效，自动在局部/全局以及启动随机中将其排除。
+            注：开启此模式时，勾选即为添加忽略。包含文件夹的整个分支及其子项将永久排除在局部/全局与开局随机外。
         </div>`;
         
         ui.style.display = 'flex';
@@ -1736,7 +1805,7 @@
             window.currentCheckboxMode = 'delete';
             btn.innerText = '确认删除(0)';
             btn.classList.add('active-mode');
-            showToast("已清空旧勾选并进入删除模式\n请重新勾选需要删除的项目");
+            showToast("已清空勾选并进入删除模式\n请勾选需要删除的项目");
             renderTree();
         } else {
             if (selectedIds.size === 0) {
@@ -1794,6 +1863,7 @@
                 if(!stillExists(projectData.data, currentNode.id)) {
                     currentNode = null;
                     document.getElementById('editorContainer').style.visibility = 'hidden';
+                    document.getElementById('emptyState').style.display = 'flex';
                     document.getElementById('pathDisplay').innerText = '请选择一个条目';
                 }
             }
@@ -1817,6 +1887,10 @@
         document.getElementById('sysModalSearch').style.display = 'none'; document.getElementById('sysModalSearch').value = '';
         document.getElementById('sysModalRevokeBtn').style.display = 'none';
         
+        const ta = document.getElementById('sysModalTextarea');
+        ta.value = '';
+        delete ta._cacheExport;
+
         document.getElementById('sysModal').style.display = 'flex';
         switchBatchTab('import');
     }
@@ -1832,22 +1906,51 @@
         ta.style.display = 'none'; syncPanel.style.display = 'none'; btn.style.display = 'none'; clearBtn.style.display = 'none'; dynPanel.style.display = 'none';
         msg.style.display = 'block';
 
+        ta.value = '';
+        delete ta._cacheExport;
+
         if (mode === 'import') {
             tImport.classList.add('primary');
             let autoMsg = projectData.config.autoDupCheckOnImport ? "⭐导入时会自动触发查重检测" : "⭐导入自动查重已关闭";
             msg.innerText = `${autoMsg}\n\n说明：\n1. > 文件夹 > 子目录 表示路径 (无则在根目录)\n2. = 文本 作为标题\n3. 标题下的多行内容为文本内容`;
             ta.style.display = 'block'; ta.readOnly = false; ta.placeholder = "在此粘贴需要批量导入的文本...";
-            if (ta._cacheExport !== undefined && ta.value === ta._cacheExport) ta.value = ''; 
             btn.style.display = 'inline-flex'; btn.innerText = '确认导入'; clearBtn.style.display = 'inline-flex';
             modalCallback = processBatchText;
         } else if (mode === 'export') {
             tExport.classList.add('primary');
-            const scopeText = currentNode ? (currentNode.type === 'folder' ? '⭐已生成【该文件夹及子目录】数据：' : '⭐已生成【当前文本】数据：') : '⭐已生成【全局所有】的数据：';
-            msg.innerText = `${scopeText}\n\n说明：\n1. 选中文件夹或文本可导出对应文本\n2. 不选择则为全部数据\n3. 占位`;
-            const exportText = getBatchExportText(currentNode);
-            ta.style.display = 'block'; ta.value = exportText; ta._cacheExport = exportText; ta.readOnly = true;
-            btn.style.display = 'inline-flex'; btn.innerText = '复制关闭'; clearBtn.style.display = 'inline-flex';
-            modalCallback = () => { navigator.clipboard.writeText(ta.value).then(() => { showToast('复制成功'); }); closeModal(); };
+            
+            let checkedNodes = [];
+            const findCheckedNodes = (list) => {
+                for(let n of list) {
+                    if (selectedIds.has(n.id)) checkedNodes.push(n);
+                    if (n.children) findCheckedNodes(n.children);
+                }
+            };
+            findCheckedNodes(projectData.data);
+
+            if (checkedNodes.length > 0) {
+                let names = checkedNodes.map(n => n.name).join('、');
+                if (names.length > 30) names = names.substring(0, 30) + "...";
+                msg.innerText = `⭐已生成【${names}】数据：\n\n说明：\n1. 导出已勾选项及其子目录\n2. 点击下方按钮一键复制\n3. 占位`;
+                const exportText = getBatchExportTextByChecked(checkedNodes);
+                ta.style.display = 'block'; 
+                ta.value = exportText; 
+                ta.readOnly = true;
+                btn.style.display = 'inline-flex'; 
+                btn.innerText = '复制关闭'; 
+                clearBtn.style.display = 'inline-flex';
+                modalCallback = () => { 
+                    navigator.clipboard.writeText(ta.value).then(() => { showToast('复制成功'); }); 
+                    closeModal(); 
+                };
+            } else {
+                msg.innerText = `⭐未勾选内容。\n\n请在目录中勾选想要导出的文件夹或文本后，再次点击导出。`;
+                ta.style.display = 'none';
+                ta.value = '';
+                btn.style.display = 'none';
+                clearBtn.style.display = 'none';
+                modalCallback = null;
+            }
         } else if (mode === 'sync') {
             tSync.classList.add('primary');
             msg.innerHTML = `GitHub Gist 云端数据同步：\n<div style="font-size:12px; color:#999; margin-bottom:15px; margin-top:8px; line-height:1.5;">👉 <a href="https://github.com/settings/tokens/new" target="_blank" style="color:var(--accent-color);">点击前往 GitHub 免费生成 Token (须勾选 gist 权限)</a></div>`;
@@ -1862,8 +1965,8 @@
             renderStatsPanel(dynPanel);
         }
     }
-	
-	function renderStatsPanel(container) {
+    
+    function renderStatsPanel(container) {
         let folders = 0; let items = 0; let chars = 0; let emptyItems = [];
         
         function traverse(list) {
@@ -1913,11 +2016,11 @@
         `;
     }
 
-    function getBatchExportText(targetNode) {
+    function getBatchExportTextByChecked(checkedNodes) {
         let result = ""; let lastPathStr = null;
         function walk(list, basePath) {
             for (let n of list) {
-                if (n.type === 'folder') walk(n.children, [...basePath, n.name]);
+                if (n.type === 'folder') walk(n.children || [], [...basePath, n.name]);
                 else if (n.type === 'item') {
                     let currentPathStr = basePath.join(" > ");
                     if (currentPathStr !== lastPathStr) { result += `> ${currentPathStr}\n`; lastPathStr = currentPathStr; }
@@ -1925,11 +2028,22 @@
                 }
             }
         }
-        if (!targetNode) walk(projectData.data, []);
-        else if (targetNode.type === 'item') {
-            let p = getPath(projectData.data, targetNode.id) || []; p.pop(); 
-            result += `> ${p.join(" > ")}\n`; result += `= ${targetNode.name}\n${targetNode.text || ''}\n\n`;
-        } else if (targetNode.type === 'folder') { let p = getPath(projectData.data, targetNode.id) || []; walk(targetNode.children, p); }
+
+        if (!checkedNodes || checkedNodes.length === 0) {
+            return '';
+        } else {
+            checkedNodes.forEach(node => {
+                let p = getPath(projectData.data, node.id) || [];
+                if (node.type === 'item') {
+                    p.pop();
+                    let currentPathStr = p.join(" > ");
+                    if (currentPathStr !== lastPathStr) { result += `> ${currentPathStr}\n`; lastPathStr = currentPathStr; }
+                    result += `= ${node.name}\n${node.text || ''}\n\n`;
+                } else if (node.type === 'folder') {
+                    walk(node.children || [], p);
+                }
+            });
+        }
         return result.trim() || '无可导出文本';
     }
 
@@ -2107,8 +2221,8 @@
             document.getElementById('dupNewLabel').innerText = "相似：库内文本 2";
             document.getElementById('dupActionBtns').innerHTML = `
                 <button class="btn" onclick="applyDupAction('skip')">跳过(不再提示)</button>
-                <button class="btn danger" onclick="applyDupAction('delRight')">删除文本2</button>
                 <button class="btn danger" onclick="applyDupAction('delLeft')">删除文本1</button>
+                <button class="btn danger" onclick="applyDupAction('delRight')">删除文本2</button>
             `;
         }
     }
@@ -2325,7 +2439,7 @@
                 currentActivePairIdx = -1; revokeBtn.style.display = 'none';
                 c.innerHTML = '<div style="text-align:center;color:#999;padding:30px;">暂无对应记录</div>'; return; 
             }
-            if (dupPairPage < 1) dupPairPage = 1; if (dupPairPage > pairs.length) dupPairPage = phrases.length;
+            if (dupPairPage < 1) dupPairPage = 1; if (dupPairPage > pairs.length) dupPairPage = pairs.length;
             
             let p = pairs[dupPairPage - 1];
             currentActivePairIdx = p._idx;
@@ -2652,13 +2766,16 @@
             if(replaceCount > 0) { 
                 saveData(); 
                 if(currentNode && currentNode.type === 'item') refreshEditorContent(); 
-                showModalClear("全局替换成功", `共修改 ${replaceCount} 篇文本（自动过滤锁定的文本）。\n如需复原，请点击下方撤销按钮。`);
-                document.getElementById('sysModalRevokeBtn').style.display = 'inline-flex';
-                document.getElementById('sysModalRevokeBtn').onclick = () => {
-                    projectData.data = backupData;
-                    saveData(); renderTree(); refreshEditorContent(); closeModal(); showToast('已成功撤回全局替换');
-                };
-            } else { showToast("全库未找到可替换的目标，或目标处于锁定状态"); }
+
+                replaceHistoryStack.push({
+                    type: 'global',
+                    backup: backupData
+                });
+                updateInlineUndoBtnUI();
+                showToast(`全局替换成功，共修改 ${replaceCount} 篇`);
+            } else { 
+                showToast("全库未找到可替换的目标，或目标处于锁定状态"); 
+            }
         } else {
             if (!currentNode || currentNode.type !== 'item') return;
             if (isLockedNode(currentNode)) { showToast('该文本处于锁定状态下无法替换'); return; }
@@ -2667,16 +2784,52 @@
             if (isDouble && f2) { const ph = "<TEMP_REP_" + Date.now() + ">"; text = text.split(f1).join(ph).split(f2).join(r2).split(ph).join(r1); } 
             else { text = text.split(f1).join(r1); }
             if (currentNode.text !== text) {
-                currentNode.text = text; document.getElementById('editor-content').value = currentNode.text;
+                currentNode.text = text; 
+                document.getElementById('editor-content').value = currentNode.text;
                 saveData(); 
-                showModalClear("本文替换成功", isDouble ? '执行双项替换成功。\n如需复原，请点击下方撤销按钮。' : '执行替换成功。\n如需复原，请点击下方撤销按钮。');
-                document.getElementById('sysModalRevokeBtn').style.display = 'inline-flex';
-                document.getElementById('sysModalRevokeBtn').onclick = () => {
-                    currentNode.text = backupText; document.getElementById('editor-content').value = backupText;
-                    saveData(); closeModal(); showToast('已撤回本文替换');
-                }
-            } else { showToast("文中未找到要替换的内容"); }
+
+                replaceHistoryStack.push({
+                    type: 'local',
+                    nodeId: currentNode.id,
+                    backupText: backupText
+                });
+                updateInlineUndoBtnUI();
+                showToast("本文替换成功");
+            } else { 
+                showToast("文中未找到要替换的内容"); 
+            }
         }
+    }
+
+    function revertLastReplace() {
+        if (replaceHistoryStack.length === 0) return;
+        const lastAction = replaceHistoryStack.pop();
+
+        if (lastAction.type === 'global') {
+            projectData.data = lastAction.backup;
+            saveData(); 
+            renderTree(); 
+            refreshEditorContent(); 
+            showToast('已撤回全局替换');
+        } else if (lastAction.type === 'local') {
+            const findNodeById = (list, tid) => {
+                for(let n of list) {
+                    if(n.id === tid) return n;
+                    if(n.children) { let r = findNodeById(n.children, tid); if(r) return r; }
+                }
+                return null;
+            };
+            let targetNode = findNodeById(projectData.data, lastAction.nodeId);
+            if (targetNode) {
+                targetNode.text = lastAction.backupText;
+                if (currentNode && currentNode.id === targetNode.id) {
+                    document.getElementById('editor-content').value = targetNode.text;
+                }
+                saveData();
+                showToast('已撤回本文替换');
+            }
+        }
+        updateInlineUndoBtnUI();
     }
 
     function doRandom(scope) {
@@ -2700,41 +2853,41 @@
         }
 
         let pool = [];
-        let ignored = projectData.config.ignoredIds || [];
+        const ignored = projectData.config.ignoredIds || [];
         
-        const traverse = (list, parentId, inLocalTree) => {
+        const traverse = (list, parentId, inLocalTree, branchIgnored) => {
             for (let n of list) {
+                let curBranchIgnored = branchIgnored || ignored.includes(n.id);
                 let curInLocalTree = inLocalTree || (n.id === targetParentId);
                 
+                if (curBranchIgnored) continue; 
+
                 if (n.type === 'item') {
-                    if (!ignored.includes(n.id)) {
-                        if (scope === 'global') {
-                            pool.push(n);
-                        } else {
-                            if (parentId === targetParentId) pool.push(n);
-                        }
+                    if (scope === 'global') {
+                        pool.push(n);
+                    } else {
+                        if (parentId === targetParentId) pool.push(n);
                     }
                 } else if (n.children) {
-                    if (!ignored.includes(n.id)) {
-                        traverse(n.children, n.id, curInLocalTree);
-                    }
+                    traverse(n.children, n.id, curInLocalTree, curBranchIgnored);
                 }
             }
         };
 
-        traverse(projectData.data, 'root', targetParentId === 'root');
+        traverse(projectData.data, 'root', targetParentId === 'root', false);
 
         if (pool.length === 0 && scope === 'local') {
             if (!window._hasShownNoCheckPrompt) { showToast("所处文件夹内无可抽取项，向深层检索"); window._hasShownNoCheckPrompt = true; }
-            const fallbackTraverse = (list, parentId) => {
+            const fallbackTraverse = (list, parentId, branchIgnored) => {
                 for (let n of list) {
-                    if (!ignored.includes(n.id)) {
-                        if (n.type === 'item' && parentId === targetParentId) pool.push(n);
-                        else if (n.children) fallbackTraverse(n.children, n.id);
-                    }
+                    let curBranchIgnored = branchIgnored || ignored.includes(n.id);
+                    if (curBranchIgnored) continue;
+
+                    if (n.type === 'item' && parentId === targetParentId) pool.push(n);
+                    else if (n.children) fallbackTraverse(n.children, n.id, curBranchIgnored);
                 }
             };
-            fallbackTraverse(projectData.data, 'root');
+            fallbackTraverse(projectData.data, 'root', false);
         }
 
         if (pool.length === 0) { showToast("目标层级内无可抽取的文本（或全被忽略）"); return; }
@@ -2782,45 +2935,91 @@
     }
     document.getElementById('sysModalConfirmBtn').onclick = () => { if (modalCallback) modalCallback(); closeModal(); };
 
+    /* 优化后的 Gist 超大容量上传与下载引擎（自动流式高密度压缩，规避 1MB/4MB 溢出错误） */
     async function pushToGist() {
-        const token = localStorage.getItem('TMP_GithubToken'); if(!token) return showToast("需填写 Token 推送");
-        showToast("正在同步推送数据...");
+        const token = localStorage.getItem('TMP_GithubToken'); 
+        if(!token) return showToast("需填写 Token 推送");
+        showToast("正在处理超大数据包并上传...");
+        
         setTimeout(async () => {
-            const dataObj = JSON.parse(JSON.stringify(projectData)); 
-            let currentGistId = localStorage.getItem('TMP_GistId') || '';
             try {
+                const dataObj = JSON.parse(JSON.stringify(projectData)); 
+                let jsonStr = JSON.stringify(dataObj);
+                
+                // 超过 500KB 自动开启压缩流，把体积压缩到原来的 10%
+                let finalContent = jsonStr;
+                let isCompressed = false;
+                if (jsonStr.length > 500000) {
+                    finalContent = await compressStringToBase64(jsonStr);
+                    isCompressed = true;
+                }
+
+                let currentGistId = localStorage.getItem('TMP_GistId') || '';
+                const payload = {
+                    description: isCompressed ? "TextManagerPro Data (Gzip Stream)" : "TextManagerPro Sync",
+                    public: false,
+                    files: {
+                        "textManagerData.json": { content: finalContent }
+                    }
+                };
+
                 const res = await fetch('https://api.github.com/gists' + (currentGistId ? `/${currentGistId}` : ''), {
-                    method: currentGistId ? 'PATCH' : 'POST', headers: { 'Accept': 'application/vnd.github+json', 'Authorization': `Bearer ${token}`, 'X-GitHub-Api-Version': '2022-11-28' },
-                    body: JSON.stringify({ description: "TextManagerPro Sync", public: false, files: { "textManagerData.json": { content: JSON.stringify(dataObj, null, 2) } } })
+                    method: currentGistId ? 'PATCH' : 'POST',
+                    headers: {
+                        'Accept': 'application/vnd.github+json',
+                        'Authorization': `Bearer ${token}`,
+                        'X-GitHub-Api-Version': '2022-11-28'
+                    },
+                    body: JSON.stringify(payload)
                 });
+
                 if(!res.ok) {
                     let errMsg = '';
-                    try { const errJson = await res.json(); errMsg = errJson.message; } catch(e) {}
-                    throw new Error("API Error " + res.status + " " + errMsg);
+                    try { 
+                        const errJson = await res.json(); 
+                        errMsg = errJson.message || '';
+                    } catch(e) {}
+                    if (res.status === 413 || errMsg.includes('too large')) {
+                        throw new Error("文件即便压缩后依然超出 GitHub 限制，请检查 Token 权限或拆分库");
+                    }
+                    throw new Error("API 错误 (" + res.status + "): " + errMsg);
                 }
-                const resData = await res.json(); localStorage.setItem('TMP_GistId', resData.id); document.getElementById('gistIdInput').value = resData.id; showToast("云端同步推送成功");
-            } catch(e) { showToast("推送失败: " + e.message); }
+
+                const resData = await res.json(); 
+                localStorage.setItem('TMP_GistId', resData.id); 
+                document.getElementById('gistIdInput').value = resData.id; 
+                showToast(isCompressed ? "云端高密压缩推送成功！" : "云端同步推送成功");
+            } catch(e) { 
+                showToast("推送失败: " + e.message); 
+            }
         }, 50);
     }
     
     async function pullFromGist() {
-        const token = localStorage.getItem('TMP_GithubToken'); const currentGistId = localStorage.getItem('TMP_GistId');
+        const token = localStorage.getItem('TMP_GithubToken'); 
+        const currentGistId = localStorage.getItem('TMP_GistId');
         if(!currentGistId) return showToast("需要提供 Gist ID");
         showToast("正在拉取云端数据...");
+
         setTimeout(async () => {
             try {
-                const res = await fetch(`https://api.github.com/gists/${currentGistId}`, { headers: token ? { 'Authorization': `Bearer ${token}` } : {} });
-                if(!res.ok) throw new Error("获取失败 " + res.status);
+                const res = await fetch(`https://api.github.com/gists/${currentGistId}`, { 
+                    headers: token ? { 'Authorization': `Bearer ${token}` } : {} 
+                });
+                if(!res.ok) throw new Error("获取失败 (" + res.status + ")");
                 const data = await res.json();
                 const file = data.files["textManagerData.json"];
                 if(!file) throw new Error("找不到目标文件 textManagerData.json");
                 
                 let content = file.content;
-                if(file.truncated) {
+                if(file.truncated || !content) {
                     const rawRes = await fetch(file.raw_url);
                     content = await rawRes.text();
                 }
                 
+                // 智能解压：如果检测到 Gzip 标识则动态解码
+                content = await decompressBase64ToString(content);
+
                 const parsed = JSON.parse(content);
                 projectData.data = parsed.data || []; 
                 projectData.config = { ...defaultData.config, ...(parsed.config || {}) };
@@ -2829,22 +3028,24 @@
                 renderTree();
                 syncUIToConfig();
                 showToast("拉取覆盖成功");
-            } catch(e) { showToast("拉取失败: " + e.message); }
+            } catch(e) { 
+                showToast("拉取失败: " + e.message); 
+            }
         }, 50);
     }
 
     function exportJson() {
-    const exportData = JSON.parse(JSON.stringify(projectData));
-    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(exportData, null, 2)], {type: 'application/json;charset=utf-8'}));
-    
-    const now = new Date();
-    const yyyy = now.getFullYear();
-    const mm = String(now.getMonth() + 1).padStart(2, '0');
-    const dd = String(now.getDate()).padStart(2, '0');
-    const dateStr = `${yyyy}${mm}${dd}`;
-    
-    a.download = `TextManager_${dateStr}.json`; a.click(); showToast('导出完成');
-}
+        const exportData = JSON.parse(JSON.stringify(projectData));
+        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(exportData, null, 2)], {type: 'application/json;charset=utf-8'}));
+        
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const dateStr = `${yyyy}${mm}${dd}`;
+        
+        a.download = `TextManager_${dateStr}.json`; a.click(); showToast('导出完成');
+    }
     
     function regenerateIds(node) {
         node.id = 'd_' + Math.random().toString(36).substr(2, 9);
@@ -2932,28 +3133,28 @@
     }
 
     function checkMobileScrollToTop(el) {
-    if (window.innerWidth > 768) return;
-    const btn = document.getElementById('mobileUndoBtn');
-    const contentArea = document.getElementById('editor-content');
-    
-    const isNonEditing = isLockedNode(currentNode) || contentArea.readOnly || (document.activeElement !== contentArea);
-    
-    if (isNonEditing) {
-        if (el.scrollTop > 30) {
-            btn.innerText = '⬆ 回顶';
+        if (window.innerWidth > 768) return;
+        const btn = document.getElementById('mobileUndoBtn');
+        const contentArea = document.getElementById('editor-content');
+        
+        const isNonEditing = isLockedNode(currentNode) || contentArea.readOnly || (document.activeElement !== contentArea);
+        
+        if (isNonEditing) {
+            if (el.scrollTop > 30) {
+                btn.innerText = '⬆ 回顶';
+            } else {
+                btn.innerText = '↩ 撤销';
+            }
         } else {
             btn.innerText = '↩ 撤销';
         }
-    } else {
-        btn.innerText = '↩ 撤销';
     }
-}
 
-document.getElementById('editor-content').addEventListener('scroll', function() { checkMobileScrollToTop(this); });
-document.getElementById('editorContainer').addEventListener('scroll', function() { checkMobileScrollToTop(this); });
+    document.getElementById('editor-content').addEventListener('scroll', function() { checkMobileScrollToTop(this); });
+    document.getElementById('editorContainer').addEventListener('scroll', function() { checkMobileScrollToTop(this); });
 
-document.getElementById('editor-content').addEventListener('focus', function() { checkMobileScrollToTop(this); });
-document.getElementById('editor-content').addEventListener('blur', function() { checkMobileScrollToTop(this); });
+    document.getElementById('editor-content').addEventListener('focus', function() { checkMobileScrollToTop(this); });
+    document.getElementById('editor-content').addEventListener('blur', function() { checkMobileScrollToTop(this); });
 
     async function startApp() {
         try {
@@ -2983,10 +3184,10 @@ document.getElementById('editor-content').addEventListener('blur', function() { 
                 collapseAllFolders(projectData.data);
 
                 projectData.config = { ...defaultData.config, ...(savedData.config || {}) };
-            
-            selectedIds = new Set(projectData.config.selectedIds || []);
-            
-            if(!projectData.config.shortcuts) projectData.config.shortcuts = JSON.parse(JSON.stringify(defaultData.config.shortcuts));
+                
+                selectedIds = new Set(projectData.config.selectedIds || []);
+                
+                if(!projectData.config.shortcuts) projectData.config.shortcuts = JSON.parse(JSON.stringify(defaultData.config.shortcuts));
                 const hasU = projectData.config.shortcuts.some(s => s.display === 'U');
                 const hasC = projectData.config.shortcuts.some(s => s.display === 'C');
                 if (!hasU) projectData.config.shortcuts.push({ display: 'U', text: '{{user}}' });
@@ -3026,38 +3227,31 @@ document.getElementById('editor-content').addEventListener('blur', function() { 
         updateQuickNavVisibility();
         initToolFolds();
 
-        if (projectData.data.length === 0) {
+        let allItems = getAllItems(projectData.data);
+        let validItems = allItems.filter(item => !isIgnoredNodeOrAncestor(item.id));
+
+        if (validItems.length > 0) {
+            let rItem = validItems[Math.floor(Math.random() * validItems.length)];
+            
+            const expandP = (list, tid) => { 
+                for(let node of list) { 
+                    if (node.id === tid) return true; 
+                    if (node.children && expandP(node.children, tid)) { node._collapsed = false; return true; } 
+                } return false; 
+            };
+            expandP(projectData.data, rItem.id);
+            
+            selectNode(rItem, true);
+        } else {
+            currentNode = null;
             document.getElementById('editorContainer').style.visibility = 'hidden';
             document.getElementById('emptyState').style.display = 'flex';
             document.getElementById('pathDisplay').innerText = '欢迎使用';
-        } else {
-            if (projectData.config.quickRandom !== false) {
-                let allItems = getAllItems(projectData.data);
-                let ignored = projectData.config.ignoredIds || [];
-                allItems = allItems.filter(item => !ignored.includes(item.id));
-
-                if (allItems.length > 0) {
-                    let rItem = allItems[Math.floor(Math.random() * allItems.length)];
-                    
-                    const expandP = (list, tid) => { 
-                        for(let node of list) { 
-                            if (node.id === tid) return true; 
-                            if (node.children && expandP(node.children, tid)) { node._collapsed = false; return true; } 
-                        } return false; 
-                    };
-                    expandP(projectData.data, rItem.id);
-                    
-                    selectNode(rItem, true);
-                } else {
-                    document.getElementById('editorContainer').style.visibility = 'hidden';
-                    document.getElementById('emptyState').style.display = 'flex';
-                }
-            }
         }
     }
 
     startApp();
-	
+    
     function applySendButtonText() {
         if (window.self !== window.top) {
             document.querySelectorAll('button').forEach(btn => {
@@ -3130,7 +3324,7 @@ document.getElementById('editor-content').addEventListener('blur', function() { 
             closeModal();
         };
     }
-	
+    
     const quickNewBtn = document.getElementById('mobileQuickNewFloat');
     let isDraggingNewBtn = false;
     let hasMovedNewBtn = false;
@@ -3187,8 +3381,8 @@ document.getElementById('editor-content').addEventListener('blur', function() { 
     quickNewBtn.addEventListener('mousedown', startDragNewBtn);
     document.addEventListener('mousemove', doDragNewBtn);
     document.addEventListener('mouseup', endDragNewBtn);
-	
-	if (window.self !== window.top) {
+    
+    if (window.self !== window.top) {
         const stModalFixStyle = document.createElement('style');
         stModalFixStyle.innerHTML = `
             .modal-card {
@@ -3222,7 +3416,7 @@ document.getElementById('editor-content').addEventListener('blur', function() { 
         document.head.appendChild(stModalFixStyle);
     }
 
-	function preventAutoKeyboard() {
+    function preventAutoKeyboard() {
         if (window.self !== window.top || window.innerWidth <= 768) {
             if (document.activeElement && typeof document.activeElement.blur === 'function') {
                 document.activeElement.blur();
@@ -3231,7 +3425,6 @@ document.getElementById('editor-content').addEventListener('blur', function() { 
     }
     document.addEventListener('DOMContentLoaded', preventAutoKeyboard);
     setTimeout(preventAutoKeyboard, 300);
-	
 </script>
 </body>
 </html>
