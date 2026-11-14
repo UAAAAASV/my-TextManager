@@ -8,32 +8,74 @@
     <style>
         :root {
             --bg-main: #ffffff;
-            --bg-side: #f9f9fb;
-            --border-color: #edeef0;
+            --bg-side: #f6f7f9;
+            --bg-input: #edeff3;
+            --border-color: #e6e8ec;
             --accent-color: #2563eb;
-            --text-primary: #1a1c1e;
+            --accent-hover: #1d4ed8;
+            --accent-soft: rgba(37, 99, 235, 0.09);
+            --item-active: rgba(37, 99, 235, 0.11);
+            --text-primary: #181a1f;
             --text-secondary: #64748b;
-            --hover-bg: #f1f5f9;
-            --item-active: #eff6ff;
-            --radius: 6px;
-            --sidebar-w: 300px;
-            --toolbar-h: 56px;
+            --text-muted: #94a3b8;
+            --hover-bg: #ebedf2;
+            --editor-text: #2c3e50;
+            --title-text: #181a1f;
+            --flash-color: #fef08a;
+            --radius: 4px;
+            --card-radius: 6px;
+            --font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+            --fs-editor: 15.5px;
+            --lh-editor: 1.8;
+            --fs-title: 24px;
+            --fs-tree: 13.5px;
+            --fs-ui: 13px;
+            --sidebar-w: 296px;
+            --toolbar-h: 52px;
         }
 
-        * { box-sizing: border-box; outline: none; }
+        * {
+            box-sizing: border-box;
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        *::-webkit-scrollbar {
+            display: none;
+            width: 0;
+            height: 0;
+        }
+
         body, html {
             margin: 0; padding: 0; height: 100%;
-            font-family: "Inter", -apple-system, system-ui, sans-serif;
+            font-family: var(--font-family);
             color: var(--text-primary);
             background: var(--bg-main);
             overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+        input, textarea, button, select { font-family: inherit; }
+
+        @keyframes fadeSlideDown {
+            from { opacity: 0; transform: translateY(-4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes modalPopIn {
+            from { opacity: 0; transform: scale(0.96) translateY(4px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .svg-icon {
+            width: 15px; height: 15px;
+            display: inline-block; vertical-align: middle; flex-shrink: 0;
         }
 
         .foldable-area {
-            max-height: 300px;
+            max-height: 320px;
             opacity: 1;
             overflow: hidden;
-            transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: max-height 0.22s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.18s ease;
         }
         .foldable-area.is-folded {
             max-height: 0;
@@ -41,136 +83,205 @@
         }
 
         .btn {
-            height: 36px; padding: 0 16px;
+            height: 34px; padding: 0 14px;
             border: 1px solid var(--border-color);
             background: var(--bg-main);
             border-radius: var(--radius);
-            font-size: 14px; cursor: pointer;
-            display: inline-flex; align-items: center; justify-content: center;
-            transition: all 0.2s; color: var(--text-primary);
-            min-width: 80px; flex-shrink: 0;
+            font-size: var(--fs-ui); font-weight: 500; cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+            transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+            color: var(--text-primary);
+            min-width: 72px; flex-shrink: 0;
         }
-        .btn:hover { background: var(--hover-bg); border-color: #cbd5e1; }
-        .btn.primary { background: var(--text-primary); color: white; border: none; }
-        .btn.primary:hover { background: #000; }
-        .btn.danger { color: #ef4444; }
+        .btn:hover { background: var(--hover-bg); border-color: var(--text-muted); }
+        .btn:active { transform: scale(0.97); }
+        .btn.primary { background: var(--accent-color); color: #fff; border-color: var(--accent-color); }
+        .btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+        .btn.accent-text { background: var(--bg-main); color: var(--accent-color); border-color: var(--border-color); }
+        .btn.accent-text:hover { background: var(--accent-soft); border-color: var(--accent-color); }
+        .btn.danger { color: var(--text-secondary); }
+        .btn.danger:hover { color: #ef4444; background: rgba(239, 68, 68, 0.08); border-color: rgba(239, 68, 68, 0.35); }
+        .modal-card .btn.danger, #dupActionBtns .btn.danger, #inlineReplaceUndoBtn { color: #ef4444; }
 
         .btn.active-mode { 
-            background: #f1f5f9; 
+            background: rgba(239, 68, 68, 0.1); 
             color: #ef4444; 
-            border: 1px solid #cbd5e1; 
+            border: 1px solid rgba(239, 68, 68, 0.45); 
         }
-        .btn.active-mode:hover { 
-            background: #e2e8f0; 
-        }
+        .btn.active-mode:hover { background: rgba(239, 68, 68, 0.16); }
 
         .app-layout {
             display: grid;
-            grid-template-columns: var(--sidebar-w) 1fr 320px;
+            grid-template-columns: var(--sidebar-w) 1fr 312px;
             height: 100vh;
         }
 
+        /* 左侧目录栏 */
         .sidebar {
             background: var(--bg-side);
             border-right: 1px solid var(--border-color);
             display: flex; flex-direction: column;
             overflow: hidden;
+            position: relative;
         }
 
         .side-header {
-            padding: 20px 20px 0px 20px; 
+            padding: 14px 14px 6px 14px; 
             position: relative; 
             z-index: 50; 
             background: var(--bg-side);
-            box-shadow: 0 10px 0 var(--bg-side), 0 11px 0 var(--border-color);
+            border-bottom: 1px solid var(--border-color);
         }
 
         .side-header .btn {
-            height: 36px !important;
-            padding: 0 4px !important;
-            font-size: 13px !important;
+            height: 31px !important;
+            padding: 0 6px !important;
+            font-size: calc(var(--fs-ui) - 0.5px) !important;
             flex: 1 1 0 !important;
             width: 0 !important;
             min-width: 0 !important;
-            box-sizing: border-box !important;
             white-space: nowrap !important;
+            border-color: transparent;
+            background: var(--bg-main);
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
         }
+        .side-header .btn:hover { background: var(--hover-bg); border-color: var(--border-color); }
+        .side-header .btn.primary { background: var(--accent-color); color: #ffffff; }
+        .side-header .btn.primary:hover { background: var(--accent-hover); }
+        .side-header .btn.accent-text { background: var(--bg-main); color: var(--accent-color); }
+        .side-header .btn.accent-text:hover { background: var(--accent-soft); }
+
+        #topActions {
+            margin-bottom: 8px;
+            transition: max-height 0.22s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.18s ease, margin-bottom 0.22s ease;
+        }
+        #topActions.is-folded { margin-bottom: 0; }
+        #topActions .btn {
+            height: 28px !important;
+            font-size: calc(var(--fs-ui) - 1px) !important;
+            color: var(--text-secondary);
+            background: var(--bg-input);
+            box-shadow: none;
+        }
+        #topActions .btn:hover { color: var(--text-primary); background: var(--hover-bg); }
 
         .search-box {
-            width: 100%; padding: 0 16px; height: 36px; box-sizing: border-box;
-            border: 1px solid var(--border-color);
+            width: 100%; padding: 0 12px; height: 34px;
+            border: 1px solid transparent;
+            background: var(--bg-input);
             border-radius: var(--radius);
-            margin-top: 12px; font-size: 13px; text-align: center;
+            font-size: var(--fs-ui); text-align: center;
+            color: var(--text-primary);
+            transition: background-color 0.15s, border-color 0.15s;
         }
+        .search-box:focus { background: var(--bg-main); border-color: var(--accent-color); }
+        .search-box::placeholder { color: var(--text-muted); }
 
-        .tree-view {
-            flex: 1; overflow: auto; padding: 0 10px 10px 10px; width: 100%; position: relative;
+        .modal-card .search-box {
+            padding: 0 12px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-side);
+            text-align: left;
         }
-        .tree-view::before {
-            content: ''; display: block; height: 24px; flex-shrink: 0;
+        .modal-card .search-box:focus { background: var(--bg-main); border-color: var(--accent-color); }
+
+        .side-fold-btn {
+            display: flex; align-items: center; justify-content: center;
+            height: 22px; margin-top: 6px; border-radius: var(--radius);
+            cursor: pointer; color: var(--text-muted);
+            transition: background-color 0.15s, color 0.15s;
+        }
+        .side-fold-btn:hover { background: var(--hover-bg); color: var(--text-primary); }
+
+        /* 修复冻结露底：顶部 padding 设为 0，防止 sticky 计算留出天花板空隙 */
+        .tree-view {
+            flex: 1; overflow: auto; padding: 0 10px 16px 10px; width: 100%; position: relative;
         }
 
         .tree-item { margin-bottom: 0; min-width: max-content; }
         .item-row {
             display: flex; align-items: center;
-            height: 38px;
-            padding: 0 10px; border-radius: var(--radius);
+            height: 36px;
+            padding: 0 8px; border-radius: var(--radius);
             border-bottom: 2px solid var(--bg-side);
             background-clip: padding-box;
-            box-sizing: border-box;
-            cursor: pointer; font-size: 14px; gap: 8px; position: relative;
+            cursor: pointer; font-size: var(--fs-tree); gap: 6px; position: relative;
+            transition: background-color 0.14s ease, color 0.14s ease;
         }
         .item-row:hover { background: var(--hover-bg); }
         .item-row.active { background: var(--item-active); color: var(--accent-color); font-weight: 500; }
         
+        /* 严密遮挡粘性背景，彻底解决露底缝隙 */
         .sticky-folder { 
-            position: sticky; 
-            background: var(--bg-side); 
-            box-shadow: -1000px 0 0 var(--bg-side), 1000px 0 0 var(--bg-side);
-        }
-        .sticky-folder.active {
-            background: var(--item-active);
-            box-shadow: -1000px 0 0 var(--item-active), 1000px 0 0 var(--item-active);
-        }
+    position: sticky; 
+    background: var(--bg-side); 
+    box-shadow: -1000px 0 0 var(--bg-side), 1000px 0 0 var(--bg-side);
+    border-radius: 0 !important;   /* 1. 冻结项坚决不能有圆角，四个角必须是纯直角，彻底封死缝隙 */
+    border-bottom: none !important; /* 2. 移除底部缝隙边框，防止漏出 2px 线条 */
+    margin-bottom: 2px;            /* 用外边距代替内切边框 */
+}
+
+.sticky-folder:hover {
+    background: var(--hover-bg);
+    box-shadow: -1000px 0 0 var(--hover-bg), 1000px 0 0 var(--hover-bg);
+}
+
+.sticky-folder.active {
+    background: var(--item-active) !important;
+    box-shadow: -1000px 0 0 var(--item-active), 1000px 0 0 var(--item-active) !important;
+    border-radius: 0 !important;
+}
+		
         
-        .node-cb { margin: 0; cursor: pointer; width: 15px; height: 15px; flex-shrink: 0; }
+        .node-cb {
+            margin: 0; cursor: pointer; width: 14px; height: 14px; flex-shrink: 0;
+            accent-color: var(--accent-color);
+        }
 
         .node-cb.is-ignored-node {
-            appearance: none;
-            -webkit-appearance: none;
-            width: 15px;
-            height: 15px;
-            border: 1px solid #94a3b8;
-            background-color: #cbd5e1 !important;
-            border-radius: 3px;
-            cursor: pointer;
-            position: relative;
+            appearance: none; -webkit-appearance: none;
+            width: 14px; height: 14px;
+            border: 1px solid var(--text-muted);
+            background-color: var(--border-color) !important;
+            border-radius: 3px; cursor: pointer; position: relative;
         }
         .node-cb.is-ignored-node:checked::after {
-            content: '';
-            position: absolute;
-            left: 4px;
-            top: 1px;
-            width: 4px;
-            height: 8px;
-            border: solid #0f172a;
-            border-width: 0 2px 2px 0;
-            transform: rotate(45deg);
+            content: ''; position: absolute; left: 4px; top: 1px;
+            width: 4px; height: 7px; border: solid var(--text-primary);
+            border-width: 0 2px 2px 0; transform: rotate(45deg);
         }
 
-        .index-badge { font-size: 11px; color: var(--text-secondary); margin-right: 2px; flex-shrink: 0; }
-        .fold-icon { width: 16px; text-align: center; color: var(--text-secondary); display: inline-block; cursor: pointer; margin-left: -4px; flex-shrink: 0; }
+        .index-badge {
+            font-size: 11px; color: var(--text-muted);
+            font-variant-numeric: tabular-nums; flex-shrink: 0; min-width: 16px;
+        }
+        .fold-icon {
+            width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center;
+            color: var(--text-muted); cursor: pointer; margin-left: -2px; flex-shrink: 0;
+            border-radius: var(--radius);
+            transition: background-color 0.15s, color 0.15s;
+        }
+        .fold-icon:hover { background: rgba(128,128,128,0.12); color: var(--text-primary); }
+        .node-type-icon { display: inline-flex; align-items: center; flex-shrink: 0; color: var(--text-secondary); }
+        .node-type-icon.is-folder { color: #d97706; }
+        .node-type-icon.is-locked { color: #ef4444; }
+        .item-row.active .node-type-icon:not(.is-locked) { color: var(--accent-color); }
 
-        .folder-content { margin-left: 20px; border-left: 1px solid var(--border-color); }
+        .folder-content {
+            margin-left: 16px; padding-left: 4px;
+            border-left: 1px solid var(--border-color);
+            animation: fadeSlideDown 0.16s ease-out;
+        }
 
+        /* 中间编辑画布 */
         .editor-main {
             display: flex; flex-direction: column;
-            background: #fff; border-right: 1px solid var(--border-color);
+            background: var(--bg-main); border-right: 1px solid var(--border-color);
             height: 100%; overflow: hidden;
         }
 
         .editor-header {
-            height: var(--toolbar-h); padding: 0 24px;
+            height: var(--toolbar-h); padding: 0 28px;
             border-bottom: 1px solid var(--border-color);
             display: flex; align-items: center; justify-content: space-between;
             flex-shrink: 0; overflow: hidden;
@@ -178,164 +289,292 @@
 
         .breadcrumb { 
             font-size: 13px; color: var(--text-secondary); white-space: nowrap; 
-            overflow-x: auto; overflow-y: hidden; text-overflow: clip; scrollbar-width: none;
+            overflow-x: auto; overflow-y: hidden; text-overflow: clip;
             width: 100%;
         }
-        .breadcrumb::-webkit-scrollbar { display: none; }
 
         .editor-body {
-            flex: 1; padding: 20px 40px;
-            max-width: 900px; width: 100%; margin: 0 auto;
-            display: flex; flex-direction: column; gap: 16px;
+            flex: 1; padding: 28px 44px;
+            max-width: 860px; width: 100%; margin: 0 auto;
+            display: flex; flex-direction: column; gap: 14px;
             overflow-y: auto;
         }
 
         #editor-title {
-            font-size: 24px; font-weight: 700; border: none; width: 100%; outline: none;
-            color: var(--text-primary); flex-shrink: 0;
+            font-size: var(--fs-title); font-weight: 700; border: none; width: 100%; outline: none;
+            color: var(--title-text); flex-shrink: 0; background: transparent;
+            padding: 4px 0; border-bottom: 1px solid transparent;
+            transition: border-color 0.2s;
         }
+        #editor-title:focus { border-bottom-color: var(--border-color); }
+        #editor-title::placeholder { color: var(--text-muted); opacity: 0.6; font-weight: 600; }
 
         #editor-content {
-            flex: 1; font-size: 16px; line-height: 1.8;
-            border: none; resize: none; color: #334155; outline: none;
-            min-height: 300px;
+            flex: 1; font-size: var(--fs-editor); line-height: var(--lh-editor);
+            border: none; resize: none; color: var(--editor-text); outline: none;
+            min-height: 300px; background: transparent;
+            border-radius: var(--radius); padding: 4px 0;
+            transition: background-color 0.2s;
         }
+        #editor-content::placeholder { color: var(--text-muted); opacity: 0.6; }
 
+        /* 右侧工具栏 */
         .toolbox {
-            background: #fff; padding: 20px;
-            display: flex; flex-direction: column; gap: 24px;
-            overflow-y: auto;
+            background: var(--bg-side); padding: 14px;
+            display: flex; flex-direction: column; gap: 10px;
+            overflow-y: auto; position: relative;
         }
 
         .tool-section { 
+            background: var(--bg-main);
             border: 1px solid var(--border-color); 
-            border-radius: var(--radius); 
-            padding: 16px; 
-            transition: padding 0.3s;
+            border-radius: var(--card-radius); 
+            padding: 14px; 
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+            transition: padding 0.2s ease;
         }
         .tool-section h4 { 
             margin: 0 0 12px 0; 
-            font-size: 13px; 
-            text-transform: uppercase; 
-            letter-spacing: 0.05em; 
+            font-size: calc(var(--fs-ui) - 0.5px); 
+            font-weight: 600;
+            letter-spacing: 0.02em; 
             color: var(--text-secondary); 
             display: flex; 
             justify-content: space-between; 
             align-items: center; 
             cursor: pointer; 
             user-select: none; 
-            transition: margin 0.3s;
+            transition: margin 0.2s ease;
+            min-height: 22px;
         }
+        .tool-section.is-folded .h4-extra { display: none !important; }
+        .tool-section:not(.is-folded) > :not(h4) { animation: fadeSlideDown 0.18s ease-out; }
 
-        .shortcuts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .shortcuts-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+        .shortcuts-grid .btn {
+            height: 30px; min-width: 0; padding: 0 6px; font-size: calc(var(--fs-ui) - 0.5px);
+            background: var(--bg-side); border-color: transparent;
+            user-select: none;
+        }
+        .shortcuts-grid .btn:hover { background: var(--accent-soft); color: var(--accent-color); }
 
         .stat-item { 
             display: flex; 
             justify-content: space-between; 
             align-items: center; 
-            font-size: 13px; 
-            height: 26px; 
-            margin-bottom: 6px; 
-            box-sizing: border-box;
-            transition: opacity 0.2s; 
+            font-size: var(--fs-ui); 
+            height: 28px; 
+            margin-bottom: 4px; 
+            transition: opacity 0.2s ease; 
+            color: var(--text-primary);
         }
-        .stat-item:has(input[type="checkbox"]:not(:checked)) { opacity: 0.5; }
+        .stat-item:has(input[type="checkbox"]:not(:checked)) { opacity: 0.42; }
 
-        .stat-divider {
-            border-top: 1px dashed var(--border-color);
-            margin: 10px 0;
+        .stat-item input[type="checkbox"],
+        .switch-toggle {
+            appearance: none; -webkit-appearance: none;
+            width: 32px; height: 18px;
+            background: var(--text-muted);
+            opacity: 0.55;
+            border-radius: 99px;
+            position: relative;
+            cursor: pointer;
+            transition: background-color 0.2s ease, opacity 0.2s ease;
+            flex-shrink: 0; margin: 0;
         }
+        .stat-item input[type="checkbox"]::after,
+        .switch-toggle::after {
+            content: '';
+            position: absolute; top: 2px; left: 2px;
+            width: 14px; height: 14px;
+            background: #ffffff;
+            border-radius: 50%;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.18);
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .stat-item input[type="checkbox"]:checked,
+        .switch-toggle:checked { background: var(--accent-color); opacity: 1; }
+        .stat-item input[type="checkbox"]:checked::after,
+        .switch-toggle:checked::after { transform: translateX(14px); }
+
+        .stat-divider { border-top: 1px dashed var(--border-color); margin: 10px 0; }
 
         #groupSettingsUI {
-            display: none;
-            background: var(--hover-bg);
-            padding: 8px 12px;
-            border-radius: 4px;
-            margin-top: 8px;
-            box-sizing: border-box;
-            gap: 8px;
-            align-items: center;
+            display: none; background: var(--bg-side); padding: 8px 10px; border-radius: var(--radius); margin-top: 8px; gap: 8px; align-items: center;
         }
-        #groupSettingsUI.show-group {
-            display: grid !important;
-            grid-template-columns: 1fr 1fr !important;
+        #groupSettingsUI.show-group { display: grid !important; grid-template-columns: 1fr 1fr !important; animation: fadeSlideDown 0.16s ease-out; }
+
+        .find-panel { background: var(--bg-side); padding: 10px; border-radius: var(--card-radius); margin-top: 2px; }
+        .input-group { display: flex; flex-direction: column; gap: 6px; }
+        .toolbox input[type="text"], .toolbox input[type="number"] {
+            border: 1px solid var(--border-color);
+            background: var(--bg-main);
+            border-radius: var(--radius); padding: 6px 10px; font-size: var(--fs-ui);
+            color: var(--text-primary);
+            transition: border-color 0.15s;
         }
-
-        .find-panel { background: var(--bg-side); padding: 12px; border-radius: var(--radius); margin-top: 10px; }
-        .input-group { display: flex; flex-direction: column; gap: 8px; }
-        input[type="text"], input[type="number"], input[type="password"] { border: 1px solid var(--border-color); border-radius: 4px; padding: 6px 10px; font-size: 13px; }
-
-        .duplicate-item { padding: 10px; border-radius: 4px; background: #fff5f5; border: 1px solid #fee2e2; margin-bottom: 8px; font-size: 12px; }
+        .toolbox input[type="text"]:focus, .toolbox input[type="number"]:focus { border-color: var(--accent-color); }
+        input[type="text"], input[type="number"], input[type="password"], select {
+            border: 1px solid var(--border-color); border-radius: var(--radius); padding: 6px 10px; font-size: var(--fs-ui);
+            background: var(--bg-main); color: var(--text-primary);
+        }
 
         .modal-overlay {
             position: fixed; top:0; left:0; width:100%; height:100%;
-            background: rgba(0,0,0,0.25); z-index: 2000;
+            background: rgba(15, 23, 42, 0.36); z-index: 2000;
             display: flex; align-items: center; justify-content: center;
         }
         .modal-card {
-            background: var(--bg-main); padding: 24px; border-radius: var(--radius);
-            width: 380px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); max-height: 90vh; overflow-y: auto;
+            background: var(--bg-main); padding: 22px; border-radius: var(--card-radius);
+            width: 400px; max-width: 94vw; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.18); max-height: 90vh; overflow-y: auto;
+            border: 1px solid var(--border-color);
+            animation: modalPopIn 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
 
         .toast-msg {
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(26, 28, 30, 0.7); color: #fff;
-            padding: 12px 24px; border-radius: 8px; font-size: 14px; text-align: center;
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.96);
+            background: rgba(24, 26, 31, 0.78); color: #fff;
+            padding: 10px 20px; border-radius: var(--card-radius); font-size: 13.5px; text-align: center;
             z-index: 5000; opacity: 0; visibility: hidden; pointer-events: none;
-            transition: opacity 0.2s ease, transform 0.2s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: opacity 0.16s ease, transform 0.16s ease; box-shadow: 0 6px 18px rgba(0,0,0,0.15);
         }
-        .toast-msg.show {
-            opacity: 1; visibility: visible; transform: translate(-50%, -50%) scale(1.05);
+        .toast-msg.show { opacity: 1; visibility: visible; transform: translate(-50%, -50%) scale(1); }
+
+        .quick-nav-edge {
+            display: none; position: fixed; top: 50%; transform: translateY(-50%); z-index: 900;
+            width: 30px; height: 46px; align-items: center; justify-content: center;
+            background: rgba(241, 245, 249, 0.48);
+            border: 1px solid rgba(15, 23, 42, 0.08); color: rgba(24, 26, 31, 0.55);
+            cursor: pointer; transition: background-color 0.15s, color 0.15s;
         }
+        .quick-nav-edge:active { background: var(--accent-soft); color: var(--accent-color); }
+        #quickNavLeft { left: 0; border-left: none; border-radius: 0 var(--card-radius) var(--card-radius) 0; }
+        #quickNavRight { right: 0; border-right: none; border-radius: var(--card-radius) 0 0 var(--card-radius); }
+
+        #mobileRandomFloat {
+            display: none; position: fixed; bottom: 68px; left: 50%; transform: translateX(-50%);
+            z-index: 900; align-items: center;
+            background: rgba(255, 255, 255, 0.62);
+            padding: 5px 14px; border-radius: 99px;
+            box-shadow: 0 2px 10px rgba(15, 23, 42, 0.07); border: 1px solid rgba(15, 23, 42, 0.1);
+        }
+
+        #mobileQuickNewFloat {
+            display: none; position: fixed; bottom: 72px; right: 16px; z-index: 900;
+            width: 42px; height: 42px; border-radius: 50%;
+            align-items: center; justify-content: center;
+            background: rgba(255, 255, 255, 0.62);
+            border: 1px solid rgba(15, 23, 42, 0.1);
+            box-shadow: 0 2px 10px rgba(15, 23, 42, 0.07);
+            color: rgba(24, 26, 31, 0.68); cursor: pointer; touch-action: none; user-select: none;
+            transition: transform 0.12s;
+        }
+        #mobileQuickNewFloat:active { transform: scale(0.94); }
+
+        /* 外观预设 */
+        .theme-preset-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px; }
+        .theme-preset-chip {
+            position: relative;
+            border: 1px solid var(--border-color); background: var(--bg-side);
+            border-radius: var(--radius); padding: 7px 4px; font-size: 11.5px;
+            cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 5px;
+            color: var(--text-primary); transition: border-color 0.15s, background-color 0.15s;
+            min-width: 0;
+        }
+        .theme-preset-chip.active-preset { border-color: var(--accent-color); background: var(--accent-soft); }
+        .theme-preset-chip span:last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .theme-preset-chip:hover { border-color: var(--accent-color); }
+        .theme-preset-chip.is-add { border-style: dashed; color: var(--text-secondary); background: transparent; }
+        .theme-preset-chip.is-add:hover { color: var(--accent-color); border-color: var(--accent-color); }
+        .theme-preset-dot {
+            width: 26px; height: 14px; border-radius: calc(var(--radius) * 0.75);
+            border: 1px solid rgba(0,0,0,0.12);
+            display: inline-block; flex-shrink: 0;
+        }
+        .theme-preset-del {
+            position: absolute; top: 1px; right: 2px;
+            width: 14px; height: 14px; line-height: 13px; text-align: center;
+            font-size: 11px; color: var(--text-muted); border-radius: 3px;
+            display: inline-flex; align-items: center; justify-content: center;
+        }
+        .theme-preset-del:hover { color: #ef4444; background: rgba(239, 68, 68, 0.12); }
+
+        .theme-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 5px 0; font-size: 12.5px; border-bottom: 1px dashed var(--border-color);
+        }
+        .theme-color-ctrl { display: flex; align-items: center; gap: 6px; }
+        .theme-color-ctrl input[type="color"] {
+            width: 26px; height: 26px; padding: 0; border: 1px solid var(--border-color);
+            border-radius: var(--radius); background: transparent; cursor: pointer;
+        }
+        .theme-color-ctrl input[type="text"] { width: 74px; padding: 3px 6px; font-size: 12px; text-align: center; }
+        .theme-range-ctrl { display: flex; align-items: center; gap: 8px; }
+        .theme-range-ctrl input[type="range"] { width: 96px; accent-color: var(--accent-color); cursor: pointer; }
+        .theme-range-val { font-size: 12px; color: var(--text-secondary); min-width: 36px; text-align: right; font-variant-numeric: tabular-nums; }
 
         .mobile-tabbar { display: none; }
 
         @media (max-width: 768px) {
             .app-layout { display: block; }
             .sidebar {
-                position: fixed; left: -100%; top: 0; bottom: 50px; width: 85%;
-                z-index: 1000; transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                box-shadow: 2px 0 8px rgba(0,0,0,0.1);
+                position: fixed; left: -100%; top: 0; bottom: 54px; width: 74%; max-width: 290px;
+                z-index: 1000; transition: left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: 4px 0 16px rgba(15, 23, 42, 0.12);
             }
             .sidebar.show { left: 0; }
             .toolbox {
-                position: fixed; right: -100%; top: 0; bottom: 50px; width: 85%;
-                z-index: 1000; transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                box-shadow: -2px 0 8px rgba(0,0,0,0.1); border-left: 1px solid var(--border-color);
+                position: fixed; right: -100%; top: 0; bottom: 54px; width: 74%; max-width: 290px;
+                z-index: 1000; transition: right 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: -4px 0 16px rgba(15, 23, 42, 0.12); border-left: 1px solid var(--border-color);
             }
             .toolbox.show { right: 0; }
-            .editor-main { height: calc(100vh - 50px); }
-            .editor-body { padding: 16px 20px; }
+            .editor-main { height: calc(100vh - 54px); border-right: none; }
+            .editor-header { padding: 0 18px; height: 46px; }
+            .editor-body { padding: 18px 20px; gap: 10px; }
+            #editor-title { font-size: calc(var(--fs-title) * 0.88); }
 
             .mobile-tabbar {
-                display: flex; position: fixed; bottom: 0; left: 0; right: 0; height: 50px;
-                background: var(--bg-main); border-top: 1px solid var(--border-color); z-index: 1100;
+                display: flex; position: fixed; bottom: 0; left: 0; right: 0; height: 54px;
+                background: var(--bg-main);
+                border-top: 1px solid var(--border-color); z-index: 1100;
+                padding-bottom: env(safe-area-inset-bottom);
             }
             .mobile-tabbar button {
                 flex: 1; border: none; background: transparent;
-                border-right: 1px solid var(--border-color); font-size: 13px;
-                color: var(--text-primary); cursor: pointer;
+                display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+                font-size: 11px; color: var(--text-secondary); cursor: pointer;
+                padding: 4px 0; transition: color 0.15s;
             }
-            .mobile-tabbar button:last-child { border-right: none; }
+            .mobile-tabbar button .tab-icon svg { width: 18px; height: 18px; }
+            .mobile-tabbar button:active { color: var(--text-primary); }
+            .mobile-tabbar button.tab-active { color: var(--accent-color); font-weight: 600; }
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/drag-drop-touch@1.3.1/DragDropTouch.min.js"></script>
 </head>
 <body>
 
-<div id="quickNavLeft" style="display:none; position:fixed; left:0; top:50%; transform:translateY(-50%); z-index:1100; font-size:30px; color:rgba(0,0,0,0.25); padding:20px 10px; cursor:pointer;" onclick="doQuickNav(-1)">&#10094;</div>
-<div id="quickNavRight" style="display:none; position:fixed; right:0; top:50%; transform:translateY(-50%); z-index:1100; font-size:30px; color:rgba(0,0,0,0.25); padding:20px 10px; cursor:pointer;" onclick="doQuickNav(1)">&#10095;</div>
-
-<div id="mobileRandomFloat" style="display:none; position:fixed; bottom: 65px; left: 50%; transform: translateX(-50%); z-index:1100; align-items:center; background: rgba(255,255,255,0.35); padding:8px 16px; border-radius:20px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border:1px solid var(--border-color);">
-    <button style="border:none; background:transparent; font-size:13px; font-weight:bold; color:var(--text-primary); cursor:pointer;" onclick="doRandom('local')">当前</button>
-    <div style="width:1px; height:14px; background:var(--border-color); margin:0 12px;"></div>
-    <button style="border:none; background:transparent; font-size:13px; font-weight:bold; color:var(--text-primary); cursor:pointer;" onclick="doRandom('global')">全局</button>
+<div id="quickNavLeft" class="quick-nav-edge" onclick="doQuickNav(-1)" title="上一篇">
+    <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+</div>
+<div id="quickNavRight" class="quick-nav-edge" onclick="doQuickNav(1)" title="下一篇">
+    <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
 </div>
 
-<div id="mobileQuickNewFloat" style="display:none; position:fixed; bottom: 85px; right: 20px; z-index:1100; font-size:36px; font-weight:300; color:var(--text-primary); cursor:pointer; touch-action: none; user-select: none;">+</div>
+<div id="mobileRandomFloat">
+    <button style="border:none; background:transparent; font-size:13px; font-weight:600; color:rgba(24,26,31,0.78); cursor:pointer; padding:2px 6px;" onclick="doRandom('local')">当前</button>
+    <div style="width:1px; height:14px; background:rgba(15,23,42,0.14); margin:0 8px;"></div>
+    <button style="border:none; background:transparent; font-size:13px; font-weight:600; color:rgba(24,26,31,0.78); cursor:pointer; padding:2px 6px;" onclick="doRandom('global')">全局</button>
+</div>
 
-<div id="dupMinimizeFloat" style="display:none; position:fixed; right:20px; bottom:140px; background:var(--accent-color); color:white; padding:10px 16px; border-radius:30px; cursor:pointer; z-index:5000; box-shadow:0 4px 12px rgba(0,0,0,0.2); font-size:13px; font-weight:bold;" onclick="restoreDupModal()">
-    🔍 回到查重
+<div id="mobileQuickNewFloat" title="快捷新建">
+    <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+</div>
+
+<div id="dupMinimizeFloat" style="display:none; position:fixed; right:20px; bottom:140px; background:rgba(37,99,235,0.88); color:white; padding:9px 15px; border-radius:99px; cursor:pointer; z-index:5000; box-shadow:0 4px 12px rgba(37,99,235,0.25); font-size:13px; font-weight:600; align-items:center; gap:6px;" onclick="restoreDupModal()">
+    <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <span>回到查重</span>
 </div>
 
 <div class="app-layout" id="mainLayout">
@@ -343,34 +582,67 @@
         <div id="resizerLeft" style="position: absolute; right: 0; top: 0; bottom: 0; width: 5px; cursor: col-resize; z-index: 999; background: transparent;"></div>
 
         <div class="side-header">
-            <div id="topActions" class="foldable-area" style="display: flex; gap: 8px;">
-                <button class="btn" onclick="importJson()">导入</button>
-                <button class="btn" onclick="exportJson()">导出</button>
+            <div id="topActions" class="foldable-area" style="display: flex; gap: 6px;">
+                <button class="btn" onclick="importJson()">
+                    <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <span>导入</span>
+                </button>
+                <button class="btn" onclick="exportJson()">
+                    <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <span>导出</span>
+                </button>
             </div>
             
-            <input type="text" class="search-box" id="searchTree" placeholder="...搜索目录..." oninput="clearTimeout(searchDebounceTimer); searchDebounceTimer=setTimeout(renderTree, 300)">
+            <input type="text" class="search-box" id="searchTree" placeholder="搜索目录" oninput="clearTimeout(searchDebounceTimer); searchDebounceTimer=setTimeout(renderTree, 300)">
             
+            <div style="margin-top: 8px; display: flex; gap: 6px;">
+                <button class="btn" onclick="addNew('folder')">
+                    <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    <span>文件夹</span>
+                </button>
+                <button class="btn accent-text" onclick="addNew('item')">
+                    <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    <span>文本</span>
+                </button>
+            </div>
+
             <div id="sideHeaderActions" class="foldable-area">
-                <div style="margin-top: 12px; display: flex; gap: 8px;">
-                    <button class="btn" onclick="addNew('folder')">+ 文件夹</button>
-                    <button class="btn" onclick="addNew('item')">+ 文本</button>
+                <div style="margin-top: 6px; display: flex; gap: 6px;">
+                    <button class="btn" onclick="copyCurrentText()">
+                        <span class="btn-icon" style="display:inline-flex;"><svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></span>
+                        <span class="btn-text">复制内容</span>
+                    </button>
+                    <button class="btn danger" id="deleteModeBtn" onclick="confirmDeleteCurrent()">
+                        <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        <span class="btn-text">删除文本</span>
+                    </button>
                 </div>
-                <div style="margin-top: 8px; display: flex; gap: 8px;">
-                    <button class="btn" onclick="copyCurrentText()">复制内容</button>
-                    <button class="btn danger" id="deleteModeBtn" onclick="confirmDeleteCurrent()">删除文本</button>
+                <div style="margin-top: 6px; display: flex; gap: 6px;">
+                    <button class="btn" onclick="openBatchModal()">
+                        <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+                        <span>批量管理</span>
+                    </button>
+                    <button class="btn" onclick="doRangeSelect()">
+                        <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><polyline points="3 6 4 7 6 5"/><polyline points="3 12 4 13 6 11"/><polyline points="3 18 4 19 6 17"/></svg>
+                        <span>区间连选</span>
+                    </button>
                 </div>
-                <div style="margin-top: 8px; display: flex; gap: 8px;">
-                    <button class="btn" onclick="openBatchModal()">批量管理</button>
-                    <button class="btn" onclick="doRangeSelect()">区间连选</button>
-                </div>
-                <div style="margin-top: 8px; display: flex; gap: 8px;">
-                    <button class="btn" id="starFilterBtn" onclick="handleFilterBtnClick()">收藏筛选</button>
-                    <button class="btn" onclick="toggleStarSelected()">收藏选中</button>
+                <div style="margin-top: 6px; display: flex; gap: 6px;">
+                    <button class="btn" id="starFilterBtn" onclick="handleFilterBtnClick()">
+                        <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                        <span class="btn-text">收藏筛选</span>
+                    </button>
+                    <button class="btn" onclick="toggleStarSelected()">
+                        <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        <span>收藏选中</span>
+                    </button>
                 </div>
             </div>
             
-            <div style="text-align:center; margin-top:12px; cursor:pointer; color:var(--text-secondary); font-size:12px;" onclick="toggleSideActions()">
-                <span id="sideActionsFoldIcon">▲</span>
+            <div class="side-fold-btn" onclick="toggleSideActions()" title="折叠/展开操作区">
+                <span id="sideActionsFoldIcon" style="display:inline-flex;">
+                    <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+                </span>
             </div>
         </div>
         <div id="tree" class="tree-view"></div>
@@ -380,17 +652,19 @@
         <div class="editor-header">
             <div class="breadcrumb" id="pathDisplay">请选择一个条目</div>
         </div>
-        <div id="emptyState" style="display:none; flex:1; flex-direction:column; align-items:center; justify-content:center; gap:20px; height:100%;">
-            <div style="font-size:30px; color:var(--border-color); margin-bottom:5px;">🍽️</div>
-            <div style="display:flex; gap:12px;">
-                <button class="btn" style="height:44px; padding:0 24px; font-size:16px; border-radius:22px; background:#ffffff; color:#000000; border:1px solid var(--border-color);" onclick="addNew('item')">➕ 新建文本 ➕</button>
-                <button class="btn" style="height:44px; padding:0 24px; font-size:16px; border-radius:22px; background:#ffffff; color:#000000; border:1px solid var(--border-color);" onclick="addNew('folder')">➕ 新建文件夹 ➕</button>
+        <div id="emptyState" style="display:none; flex:1; flex-direction:column; align-items:center; justify-content:center; gap:18px; height:100%;">
+            <div style="width:52px;height:52px;border-radius:12px;background:var(--bg-side);display:flex;align-items:center;justify-content:center;color:var(--text-muted);">
+                <div style="font-size:30px; color:var(--border-color); margin-bottom:5px;">🍽️</div>
             </div>
-            <button class="btn" style="border:none; background:transparent; color:var(--text-secondary); margin-top:10px;" onclick="importJson()">📄 导入json数据 📄</button>
+            <div style="display:flex; gap:10px;">
+                <button class="btn" style="height:38px; padding:0 20px;" onclick="addNew('folder')">➕ 新文本 ➕</button>
+                <button class="btn" style="height:38px; padding:0 20px;" onclick="addNew('folder')">➕ 新文件夹 ➕</button>
+            </div>
+            <button class="btn" style="border:none; background:transparent; color:var(--text-secondary);" onclick="importJson()">导入 JSON 数据</button>
         </div>
         <div class="editor-body" id="editorContainer" style="visibility: hidden;">
-            <input type="text" id="editor-title" placeholder="输入标题...">
-            <textarea id="editor-content" placeholder="开始你的创作..."></textarea>
+            <input type="text" id="editor-title" placeholder="新建文本">
+            <textarea id="editor-content" placeholder="开始创作..."></textarea>
         </div>
     </div>
 
@@ -400,7 +674,7 @@
         <div class="tool-section">
             <h4>
                 <span>快速插入</span>
-                <button class="btn" style="height:20px; min-width:30px; font-size:14px; padding:0 8px; line-height:1;" onclick="addShortcut()">+</button>
+                <button class="btn h4-extra" style="height:22px; min-width:26px; font-size:14px; padding:0 6px; line-height:1;" onclick="addShortcut()" title="添加快捷词（长按/右键已有词可编辑或删除）">+</button>
             </h4>
             <div class="shortcuts-grid" id="shortcutGrid"></div>
         </div>
@@ -408,9 +682,11 @@
         <div class="tool-section">
             <h4>
                 <span>查找与替换</span>
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <button class="btn danger" id="inlineReplaceUndoBtn" style="display:none; height:20px; min-width:40px; font-size:12px; padding:0 6px; line-height:1;" onclick="revertLastReplace()">撤回</button>
-                    <input type="checkbox" id="doubleReplaceSwitch" onchange="toggleDoubleReplace()" style="margin:0; cursor:pointer;" title="双项替换">
+                <div class="h4-extra" style="display:flex; align-items:center; gap:8px;">
+                    <button class="btn danger" id="inlineReplaceUndoBtn" style="display:none; height:22px; min-width:40px; font-size:12px; padding:0 6px; line-height:1;" onclick="revertLastReplace()">撤回</button>
+                    <label style="display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:500; color:var(--text-secondary); cursor:pointer;" title="开启双项同时替换">
+                        <input type="checkbox" class="switch-toggle" id="doubleReplaceSwitch" onchange="toggleDoubleReplace()" style="transform:scale(0.85);">
+                    </label>
                 </div>
             </h4>
             <div class="find-panel">
@@ -424,58 +700,63 @@
                         <input type="text" id="replaceInput2" placeholder="替换为 2" style="width: 100%;">
                     </div>
                 </div>
-                <div style="display:flex; gap:8px; margin-top:12px;">
-                    <button class="btn" style="flex:1" onclick="doFind()">查找</button>
-                    <button class="btn primary" style="flex:1" onclick="doReplace()">替换</button>
+                <div style="display:flex; gap:8px; margin-top:10px;">
+                    <button class="btn" style="flex:1; height:32px;" onclick="doFind()">查找</button>
+                    <button class="btn primary" style="flex:1; height:32px;" onclick="doReplace()">替换</button>
                 </div>
             </div>
         </div>
 
         <div class="tool-section">
-            <h4>占位符互换</h4>
+            <h4><span>占位符互换</span></h4>
             <div class="find-panel" style="text-align: center;">
-                <div class="input-group" style="margin-bottom: 12px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span style="font-size:13px; color:var(--text-secondary)">&lt;Q7Fr&gt; :</span>
-                        <input type="text" id="frDisplay" style="width:120px;" onchange="updatePlaceholderConfig()">
+                <div class="input-group" style="margin-bottom: 10px;">
+                    <div style="display:flex; justify-content:center; align-items:center; gap:10px;">
+                        <span style="font-size:12.5px; color:var(--text-secondary); width:62px; text-align:right;">&lt;Q7Fr&gt; :</span>
+                        <input type="text" id="frDisplay" style="width:120px; text-align:center;" onchange="updatePlaceholderConfig()">
                     </div>
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span style="font-size:13px; color:var(--text-secondary)">&lt;Q7Sc&gt; :</span>
-                        <input type="text" id="scDisplay" style="width:120px;" onchange="updatePlaceholderConfig()">
+                    <div style="display:flex; justify-content:center; align-items:center; gap:10px;">
+                        <span style="font-size:12.5px; color:var(--text-secondary); width:62px; text-align:right;">&lt;Q7Sc&gt; :</span>
+                        <input type="text" id="scDisplay" style="width:120px; text-align:center;" onchange="updatePlaceholderConfig()">
                     </div>
                 </div>
-                <p id="swapStatusText" style="font-size:13px; color:var(--text-secondary); margin-bottom:12px; line-height: 1.6; cursor:pointer;" onclick="toggleRawPlaceholder()"></p>
-                <button class="btn primary" style="width:100%;" onclick="toggleRoleSwap()">交替</button>
+                <p id="swapStatusText" style="font-size:12.5px; color:var(--text-secondary); margin: 2px 0 10px 0; line-height: 1.6; cursor:pointer;" onclick="toggleRawPlaceholder()" title="点击切换显示原始占位符"></p>
+                <button class="btn primary" style="width:100%; height:32px;" onclick="toggleRoleSwap()">交替</button>
             </div>
         </div>
 
         <div class="tool-section">
-            <h4>全库查重检测</h4>
+            <h4><span>全库查重检测</span></h4>
             <div class="find-panel">
-                <div class="input-group" style="margin-bottom:12px;">
+                <div class="input-group" style="margin-bottom:10px;">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span style="font-size:13px; color:var(--text-secondary)" title="相似内容比例">文本相似度(%) ></span>
-                        <input type="number" id="simThreshold" value="80" style="width:60px;">
+                        <span style="font-size:12.5px; color:var(--text-secondary)" title="相似内容比例">文本相似度(%) &gt;</span>
+                        <input type="number" id="simThreshold" value="80" style="width:64px; text-align:center;">
                     </div>
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span style="font-size:13px; color:var(--text-secondary)">标题相似度(%) ></span>
-                        <input type="number" id="titleSimThreshold" value="0" style="width:60px;">
+                        <span style="font-size:12.5px; color:var(--text-secondary)">标题相似度(%) &gt;</span>
+                        <input type="number" id="titleSimThreshold" value="0" style="width:64px; text-align:center;">
                     </div>
                 </div>
                 <div style="display:flex; gap:8px;">
-                    <button class="btn" style="flex:1;" onclick="openDupSettings()">设置</button>
-                    <button class="btn primary" style="flex:1;" onclick="doGlobalCheckDuplicate()">查重</button>
+                    <button class="btn" style="flex:1; height:32px;" onclick="openDupSettings()">设置</button>
+                    <button class="btn primary" style="flex:1; height:32px;" onclick="doGlobalCheckDuplicate()">查重</button>
                 </div>
             </div>
         </div>
 
         <div class="tool-section" id="statsPanel">
-            <h4>设置与操作</h4>
+            <h4><span>设置与操作</span></h4>
             <div class="stats-collapsible-wrapper">
+                <div class="stat-item">
+                    <span>界面设置</span>
+                    <button class="btn" style="height:24px; min-width:44px; padding:0 8px; font-size:12px;" onclick="openThemeSettingsModal()">管理</button>
+                </div>
                 <div class="stat-item" id="stInternalSettingsRow" style="display:none;">
                     <span>酒馆内部设置</span>
-                    <button class="btn" style="height:24px; min-width:40px; padding:0 8px; font-size:12px;" onclick="openStSettingsModal()">管理</button>
+                    <button class="btn" style="height:24px; min-width:44px; padding:0 8px; font-size:12px;" onclick="openStSettingsModal()">管理</button>
                 </div>
+                <div class="stat-divider"></div>
                 <div class="stat-item">
                     <span>删除二次确认</span>
                     <input type="checkbox" id="confirmSwitch" onchange="saveConfig()">
@@ -526,7 +807,7 @@
                 </div>
                 <div class="stat-item">
                     <span>文本复制附加</span>
-                    <button class="btn" style="height:24px; min-width:40px; padding:0 8px; font-size:12px;" onclick="openCopyAddonModal()">管理</button>
+                    <button class="btn" style="height:24px; min-width:44px; padding:0 8px; font-size:12px;" onclick="openCopyAddonModal()">管理</button>
                 </div>
 
                 <div class="stat-divider"></div>
@@ -542,7 +823,7 @@
                 </div>
                 <div class="stat-item">
                     <span>文本快捷新建</span>
-                    <button id="quickNewToggleBtn" class="btn" style="height:24px; min-width:40px; padding:0 8px; font-size:12px;" onclick="toggleQuickNewMaster()">禁用</button>
+                    <input type="checkbox" id="quickNewToggleBtn" onchange="toggleQuickNewMaster()">
                 </div>
 
                 <div class="stat-divider"></div>
@@ -557,8 +838,7 @@
                         <button class="btn" style="height:24px; min-width:40px; padding:0 8px; font-size:12px;" onclick="doRandom('global')">全局</button>
                     </div>
                 </div>
-                <div id="randomSelectedFoldersUI" style="display:none; flex-direction:column; background:var(--hover-bg); padding:8px; border-radius:4px; max-height:150px; overflow-y:auto; font-size:12px; color:var(--text-secondary); line-height: 1.5; margin-bottom: 6px;">
-                </div>
+                <div id="randomSelectedFoldersUI" style="display:none; flex-direction:column; background:var(--bg-side); padding:8px; border-radius:var(--radius); max-height:150px; overflow-y:auto; font-size:12px; color:var(--text-secondary); line-height: 1.5; margin-bottom: 6px;"></div>
 
                 <div class="stat-divider"></div>
                 <div class="stat-item">
@@ -569,11 +849,11 @@
                 <div id="groupSettingsUI">
                     <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap;">
                         <span style="font-size: 12px; color: var(--text-secondary);">小分类:</span>
-                        <input type="number" id="groupSmallInput" value="10" style="width: 100%; min-width: 0; padding: 2px 4px; font-size: 12px; border: 1px solid var(--border-color); border-radius: 4px;" onchange="updateGroupConfig()">
+                        <input type="number" id="groupSmallInput" value="10" style="width: 100%; min-width: 0; padding: 3px 6px; font-size: 12px;" onchange="updateGroupConfig()">
                     </div>
                     <div style="display: flex; align-items: center; gap: 4px; white-space: nowrap;">
                         <span style="font-size: 12px; color: var(--text-secondary);">大分类:</span>
-                        <input type="number" id="groupLargeInput" value="50" style="width: 100%; min-width: 0; padding: 2px 4px; font-size: 12px; border: 1px solid var(--border-color); border-radius: 4px;" onchange="updateGroupConfig()">
+                        <input type="number" id="groupLargeInput" value="50" style="width: 100%; min-width: 0; padding: 3px 6px; font-size: 12px;" onchange="updateGroupConfig()">
                     </div>
                 </div>
             </div>
@@ -582,16 +862,31 @@
 </div>
 
 <div class="mobile-tabbar">
-    <button onclick="togglePanel('sidebar')">☰ 目录</button>
-    <button onclick="copyCurrentText()">📋 复制</button>
-    <button onclick="toggleRoleSwap()">➰ 交替</button>
-    <button onclick="togglePanel('toolbox')">🛠 工具</button>
-    <button id="mobileUndoBtn" onclick="handleMobileUndo()">↩ 撤销</button>
+    <button id="tabBtnSidebar" onclick="togglePanel('sidebar')">
+        <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></span>
+        <span class="tab-label">目录</span>
+    </button>
+    <button id="tabBtnCopy" onclick="copyCurrentText()">
+        <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></span>
+        <span class="tab-label">复制</span>
+    </button>
+    <button id="tabBtnSwap" onclick="toggleRoleSwap()">
+        <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></span>
+        <span class="tab-label">交替</span>
+    </button>
+    <button id="tabBtnToolbox" onclick="togglePanel('toolbox')">
+        <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span>
+        <span class="tab-label">工具</span>
+    </button>
+    <button id="mobileUndoBtn" onclick="handleMobileUndo()">
+        <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg></span>
+        <span class="tab-label">撤销</span>
+    </button>
 </div>
 
 <div id="sysModal" class="modal-overlay" style="display:none;">
     <div class="modal-card" id="sysModalCard">
-        <h3 id="sysModalTitle" style="margin-top:0;">提示</h3>
+        <h3 id="sysModalTitle" style="margin-top:0; font-size:17px;">提示</h3>
         
         <div id="sysModalTabs" style="display:none; gap:6px; margin-top:12px; margin-bottom:12px;">
             <button class="btn primary" id="tabImportBtn" style="flex:1; height:32px; font-size:12px; padding:0 2px;" onclick="switchBatchTab('import')">导入文本</button>
@@ -607,7 +902,7 @@
             <input type="text" id="sysModalInput2" class="search-box" style="margin-top:0" placeholder="插入内容">
         </div>
         
-        <textarea id="sysModalTextarea" class="search-box" style="margin-top:10px; display:none; height:240px; resize:none; font-family:inherit; line-height:1.5; font-size:13px; text-align:left;" placeholder="在此粘贴文本..."></textarea>
+        <textarea id="sysModalTextarea" class="search-box" style="margin-top:10px; display:none; height:240px; padding:10px 12px; resize:none; line-height:1.5; font-size:13px; text-align:left;" placeholder="在此粘贴文本..."></textarea>
         
         <div id="sysModalSyncPanel" style="display:none; flex-direction:column; gap:12px; margin-top:10px;">
             <div>
@@ -627,9 +922,9 @@
 
         <div id="sysModalDynamicPanel" style="display:none; flex-direction:column; margin-top:10px;"></div>
 
-        <div style="margin-top:24px; display:flex; gap:10px; justify-content:flex-end; align-items:center;" id="sysModalActionBox">
-            <button class="btn danger" id="sysModalRevokeBtn" style="display:none;" onclick="handleGlobalRevoke()">撤销</button>
-            <input type="text" id="sysModalSearch" class="search-box" style="display:none; margin:0; width:120px; flex:1; text-align:center;" placeholder="搜索..." oninput="renderSysModalSearch()">
+        <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end; align-items:center;" id="sysModalActionBox">
+            <button class="btn danger" id="sysModalRevokeBtn" style="display:none; margin-right:auto;" onclick="handleGlobalRevoke()">撤销</button>
+            <input type="text" id="sysModalSearch" class="search-box" style="display:none; margin:0; width:120px; flex:1; text-align:center;" placeholder="搜索" oninput="renderSysModalSearch()">
             <button class="btn" id="sysModalClearBtn" onclick="document.getElementById('sysModalTextarea').value=''" style="display:none;">清空</button>
             <button class="btn" id="sysModalCancelBtn" onclick="closeModal()">关闭</button>
             <button class="btn primary" id="sysModalConfirmBtn">确认</button>
@@ -638,12 +933,14 @@
 </div>
 
 <div id="dupModal" class="modal-overlay" style="display:none; align-items:center; justify-content:center; position:fixed; z-index:4000;">
-    <div style="background:var(--bg-main); width:90%; max-width:800px; height:80vh; border-radius:var(--radius); display:flex; flex-direction:column; padding:20px; box-shadow:0 10px 25px -3px rgba(0,0,0,0.5); position:relative;">
-        <button class="btn" onclick="minimizeDupModal()" style="position:absolute; top:15px; right:15px; border:none; background:transparent; font-size:18px; width:30px; height:30px; padding:0;" title="缩小悬浮">➖</button>
+    <div style="background:var(--bg-main); width:90%; max-width:800px; height:80vh; border-radius:var(--card-radius); display:flex; flex-direction:column; padding:20px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.25); position:relative; border:1px solid var(--border-color); animation: modalPopIn 0.18s ease-out;">
+        <button class="btn" onclick="minimizeDupModal()" style="position:absolute; top:15px; right:15px; border:none; background:transparent; width:30px; min-width:30px; height:30px; padding:0; color:var(--text-secondary);" title="缩小悬浮">
+            <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
         
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding-right:30px;">
-            <h3 id="dupTitle" style="margin:0;">发现重复 (<span id="dupProgress">1/1</span>)</h3>
-            <label style="font-size:13px; display:flex; align-items:center; gap:4px; cursor:pointer;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding-right:34px;">
+            <h3 id="dupTitle" style="margin:0; font-size:17px;">发现重复 (<span id="dupProgress">1/1</span>)</h3>
+            <label style="font-size:13px; display:flex; align-items:center; gap:6px; cursor:pointer;">
                 <input type="checkbox" id="dupApplyAll" style="margin:0;">
                 应用到剩余全部
             </label>
@@ -651,30 +948,132 @@
         
         <div style="display:flex; gap:16px; flex:1; overflow:hidden; min-height:0;">
             <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
-                <div style="font-size:13px; font-weight:bold; color:#d97706; margin-bottom:4px;" id="dupOldLabel">旧文本/文本1</div>
+                <div style="font-size:13px; font-weight:600; color:#d97706; margin-bottom:4px;" id="dupOldLabel">旧文本/文本1</div>
                 <div style="display:flex; gap:8px; margin-bottom:8px;">
-                    <input type="text" id="dupOldTitle" readonly style="flex:1; min-width:0; border:1px solid var(--border-color); padding:8px; border-radius:4px; font-size:13px; outline:none; background:#f8fafc;">
-                    <button class="btn primary" id="dupOldLocateBtn" style="padding:0 10px; font-size:12px;">定位</button>
+                    <input type="text" id="dupOldTitle" readonly style="flex:1; min-width:0; border:1px solid var(--border-color); padding:7px 10px; border-radius:var(--radius); font-size:13px; outline:none; background:var(--bg-side);">
+                    <button class="btn primary" id="dupOldLocateBtn" style="padding:0 10px; font-size:12px; min-width:54px;">定位</button>
                 </div>
-                <div id="dupOldText" style="flex:1; border:1px solid var(--border-color); padding:8px; font-size:13px; line-height:1.6; border-radius:4px; overflow-y:auto; background:#f8fafc; white-space:pre-wrap; word-break:break-all;"></div>
+                <div id="dupOldText" style="flex:1; border:1px solid var(--border-color); padding:10px; font-size:13px; line-height:1.65; border-radius:var(--radius); overflow-y:auto; background:var(--bg-side); white-space:pre-wrap; word-break:break-all;"></div>
             </div>
             <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
-                <div style="font-size:13px; font-weight:bold; color:#16a34a; margin-bottom:4px;" id="dupNewLabel">新导入/文本2</div>
+                <div style="font-size:13px; font-weight:600; color:#16a34a; margin-bottom:4px;" id="dupNewLabel">新导入/文本2</div>
                 <div style="display:flex; gap:8px; margin-bottom:8px;">
-                    <input type="text" id="dupNewTitle" readonly style="flex:1; min-width:0; border:1px solid var(--border-color); padding:8px; border-radius:4px; font-size:13px; outline:none; background:#f0fdf4;">
-                    <button class="btn primary" id="dupNewLocateBtn" style="padding:0 10px; font-size:12px; display:none;">定位</button>
+                    <input type="text" id="dupNewTitle" readonly style="flex:1; min-width:0; border:1px solid var(--border-color); padding:7px 10px; border-radius:var(--radius); font-size:13px; outline:none; background:var(--bg-side);">
+                    <button class="btn primary" id="dupNewLocateBtn" style="padding:0 10px; font-size:12px; min-width:54px; display:none;">定位</button>
                 </div>
-                <div id="dupNewText" style="flex:1; border:1px solid var(--border-color); padding:8px; font-size:13px; line-height:1.6; border-radius:4px; overflow-y:auto; background:#f0fdf4; white-space:pre-wrap; word-break:break-all;"></div>
+                <div id="dupNewText" style="flex:1; border:1px solid var(--border-color); padding:10px; font-size:13px; line-height:1.65; border-radius:var(--radius); overflow-y:auto; background:var(--bg-side); white-space:pre-wrap; word-break:break-all;"></div>
             </div>
         </div>
-        <div style="margin-top:16px; display:flex; gap:12px; justify-content:flex-end; overflow-x:auto; white-space:nowrap; padding-bottom:4px;" id="dupActionBtns">
-        </div>
+        <div style="margin-top:16px; display:flex; gap:10px; justify-content:flex-end; overflow-x:auto; white-space:nowrap; padding-bottom:4px;" id="dupActionBtns"></div>
     </div>
 </div>
 
 <div id="toast" class="toast-msg">操作成功</div>
 
 <script>
+    const ICONS = {
+        chevronRight: '<svg class="svg-icon" style="width:13px;height:13px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>',
+        chevronDown: '<svg class="svg-icon" style="width:13px;height:13px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>',
+        chevronUp: '<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>',
+        folder: '<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>',
+        file: '<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
+        lock: '<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
+        star: '<svg class="svg-icon" style="width:12px;height:12px;" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+        layers: '<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>',
+        box: '<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>',
+        send: '<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>',
+        undo: '<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>',
+        arrowUp: '<svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>'
+    };
+
+    /* 统一三字名称 */
+    const defaultUiTheme = {
+        accentColor: '#2563eb',
+        flashColor: '#fef08a',
+        bgMain: '#ffffff',
+        bgSide: '#f6f7f9',
+        textPrimary: '#181a1f',
+        titleText: '#181a1f',
+        editorText: '#2c3e50',
+        fsEditor: 15.5,
+        lhEditor: 1.8,
+        fsTitle: 24,
+        fsTree: 13.5,
+        fsUi: 13,
+        radius: 4
+    };
+
+    const THEME_PRESETS = [
+        { name: '蓝白蓝', accentColor: '#2563eb', flashColor: '#fef08a', bgMain: '#ffffff', bgSide: '#f6f7f9', textPrimary: '#181a1f', titleText: '#181a1f', editorText: '#2c3e50' },
+        { name: '红白红', accentColor: '#e11d48', flashColor: '#fecdd3', bgMain: '#ffffff', bgSide: '#fdf5f7', textPrimary: '#28151b', titleText: '#28151b', editorText: '#3f232c' },
+        { name: '蓝黑蓝', accentColor: '#3b82f6', flashColor: '#854d0e', bgMain: '#16181d', bgSide: '#1e2129', textPrimary: '#e2e8f0', titleText: '#f8fafc', editorText: '#cbd5e1' }
+    ];
+
+    function hexToRgb(hex) {
+        let h = String(hex || '').replace('#', '').trim();
+        if (h.length === 3) h = h.split('').map(c => c + c).join('');
+        if (!/^[0-9a-fA-F]{6}$/.test(h)) return null;
+        return {
+            r: parseInt(h.slice(0, 2), 16),
+            g: parseInt(h.slice(2, 4), 16),
+            b: parseInt(h.slice(4, 6), 16)
+        };
+    }
+
+    function applyUiTheme(themeObj) {
+        const t = { ...defaultUiTheme, ...(themeObj || {}) };
+        const root = document.documentElement.style;
+
+        root.setProperty('--accent-color', t.accentColor);
+        const accRgb = hexToRgb(t.accentColor) || { r: 37, g: 99, b: 235 };
+        const dr = Math.max(0, Math.round(accRgb.r * 0.85));
+        const dg = Math.max(0, Math.round(accRgb.g * 0.85));
+        const db = Math.max(0, Math.round(accRgb.b * 0.85));
+        root.setProperty('--accent-hover', `rgb(${dr}, ${dg}, ${db})`);
+        root.setProperty('--accent-soft', `rgba(${accRgb.r}, ${accRgb.g}, ${accRgb.b}, 0.09)`);
+        root.setProperty('--item-active', `rgba(${accRgb.r}, ${accRgb.g}, ${accRgb.b}, 0.12)`);
+
+        root.setProperty('--bg-main', t.bgMain);
+        root.setProperty('--bg-side', t.bgSide);
+        root.setProperty('--text-primary', t.textPrimary);
+        root.setProperty('--title-text', t.titleText);
+        root.setProperty('--editor-text', t.editorText);
+        root.setProperty('--flash-color', t.flashColor);
+
+        const mainRgb = hexToRgb(t.bgMain) || { r: 255, g: 255, b: 255 };
+        const lum = (0.299 * mainRgb.r + 0.587 * mainRgb.g + 0.114 * mainRgb.b) / 255;
+        if (lum < 0.45) {
+            root.setProperty('--border-color', '#2d313d');
+            root.setProperty('--bg-input', '#272a34');
+            root.setProperty('--hover-bg', '#2a2e39');
+            root.setProperty('--text-secondary', '#94a3b8');
+            root.setProperty('--text-muted', '#64748b');
+        } else {
+            root.setProperty('--border-color', '#e6e8ec');
+            root.setProperty('--bg-input', '#edeff3');
+            root.setProperty('--hover-bg', '#ebedf2');
+            root.setProperty('--text-secondary', '#64748b');
+            root.setProperty('--text-muted', '#94a3b8');
+        }
+
+        const rVal = parseInt(t.radius);
+        const rad = isNaN(rVal) ? 4 : rVal;
+        root.setProperty('--radius', rad + 'px');
+        root.setProperty('--card-radius', Math.min(14, rad + 2) + 'px');
+
+        root.setProperty('--fs-editor', (parseFloat(t.fsEditor) || 15.5) + 'px');
+        root.setProperty('--lh-editor', String(parseFloat(t.lhEditor) || 1.8));
+        root.setProperty('--fs-title', (parseFloat(t.fsTitle) || 24) + 'px');
+        root.setProperty('--fs-tree', (parseFloat(t.fsTree) || 13.5) + 'px');
+        root.setProperty('--fs-ui', (parseFloat(t.fsUi) || 13) + 'px');
+    }
+
+    function getNodeDisplayName(node) {
+        if (!node) return '';
+        if (node.name && node.name.trim() !== '') return node.name;
+        return node.type === 'folder' ? '新建文件夹' : '新建文本';
+    }
+
     const DB_NAME = 'TextManagerDB';
     const STORE_NAME = 'textManagerStore';
     let dbInstance = null;
@@ -724,7 +1123,6 @@
                                 .replace(/'/g, '&#039;');
     }
 
-    /* 原生高效流式压缩工具（把超大文本转为安全 Base64，避开 GitHub 单文件尺寸上限） */
     async function compressStringToBase64(str) {
         if ('CompressionStream' in window) {
             const stream = new Blob([new TextEncoder().encode(str)]).stream();
@@ -739,7 +1137,7 @@
             }
             return 'GZIP:' + btoa(binary);
         }
-        return str; // 回退
+        return str;
     }
 
     async function decompressBase64ToString(str) {
@@ -760,6 +1158,10 @@
     const defaultData = { 
         data: [], 
         config: { 
+            uiTheme: JSON.parse(JSON.stringify(defaultUiTheme)),
+            customThemePresets: [],
+            activePresetType: 'builtin',
+            activePresetIndex: 0,
             autoUnlockOnNew: false, 
             autoUnlockOnSwap: false, 
             selectedIds: [], 
@@ -813,6 +1215,7 @@
     let hasShownLockToast = false;
     let vgCollapseStates = {};
     let modalCallback = null;
+    let modalCancelCallback = null;
     let isStarFilterMode = false;
     let isLockFilterMode = false;
     let isIgnoreFilterMode = false;
@@ -822,8 +1225,6 @@
     let saveDebounceTimer = null;
     let titleSaveTimer = null;
     let searchDebounceTimer = null;
-    let textHistoryStack = [];
-
     let replaceHistoryStack = [];
 
     function updateInlineUndoBtnUI() {
@@ -846,15 +1247,16 @@
             if (!h4.dataset.bound) {
                 h4.title = '点击折叠/展开';
                 h4.onclick = (e) => {
-                    if(e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
+                    if (e.target.closest('button, input, label')) return;
                     const isFolded = contentEls[0].style.display === 'none';
-                    
                     if (isFolded) { 
-                        section.style.paddingBottom = '16px';
+                        section.classList.remove('is-folded');
+                        section.style.paddingBottom = '14px';
                         h4.style.marginBottom = '12px';
                         contentEls.forEach(el => el.style.display = '');
                         projectData.config.toolFoldStates[idx] = false;
                     } else { 
+                        section.classList.add('is-folded');
                         section.style.paddingBottom = '12px';
                         h4.style.marginBottom = '0';
                         contentEls.forEach(el => el.style.display = 'none');
@@ -866,11 +1268,13 @@
             }
             
             if (projectData.config.toolFoldStates[idx]) {
+                section.classList.add('is-folded');
                 section.style.paddingBottom = '12px';
                 h4.style.marginBottom = '0';
                 contentEls.forEach(el => el.style.display = 'none');
             } else {
-                section.style.paddingBottom = '16px';
+                section.classList.remove('is-folded');
+                section.style.paddingBottom = '14px';
                 h4.style.marginBottom = '12px';
                 contentEls.forEach(el => el.style.display = '');
             }
@@ -905,9 +1309,9 @@
     document.addEventListener('mousemove', (e) => {
         if (!isResizingLeft && !isResizingRight) return;
         if (window.innerWidth <= 768) { isResizingLeft = isResizingRight = false; mainLayout.style.gridTemplateColumns = ''; return; }
-        let parts = (mainLayout.style.gridTemplateColumns || '300px 1fr 320px').split(' ');
-        if (isResizingLeft) { let newW = Math.max(200, Math.min(e.clientX, 600)); mainLayout.style.gridTemplateColumns = `${newW}px 1fr ${parts[2] || '320px'}`; }
-        if (isResizingRight) { let newW = Math.max(200, Math.min(window.innerWidth - e.clientX, 600)); mainLayout.style.gridTemplateColumns = `${parts[0] || '300px'} 1fr ${newW}px`; }
+        let parts = (mainLayout.style.gridTemplateColumns || '296px 1fr 312px').split(' ');
+        if (isResizingLeft) { let newW = Math.max(220, Math.min(e.clientX, 600)); mainLayout.style.gridTemplateColumns = `${newW}px 1fr ${parts[2] || '312px'}`; }
+        if (isResizingRight) { let newW = Math.max(220, Math.min(window.innerWidth - e.clientX, 600)); mainLayout.style.gridTemplateColumns = `${parts[0] || '296px'} 1fr ${newW}px`; }
     });
     document.addEventListener('mouseup', () => { isResizingLeft = isResizingRight = false; });
 
@@ -917,7 +1321,7 @@
         const icon = document.getElementById('sideActionsFoldIcon');
         topEl.classList.toggle('is-folded');
         const isFolded = bottomEl.classList.toggle('is-folded');
-        icon.innerText = isFolded ? '▼' : '▲';
+        icon.innerHTML = isFolded ? ICONS.chevronDown : ICONS.chevronUp;
     }
 
     let isSaving = false;
@@ -930,8 +1334,8 @@
             const dataToSave = JSON.parse(JSON.stringify(projectData));
             await setDBData('textManagerPro', dataToSave);
         } catch (e) {
-            console.error("数据存储失败:", e);
-            showToast("存储失败，请检查浏览器是否处于无痕模式或禁用本地存储");
+            console.error("存储失败:", e);
+            showToast("存储失败，请检查浏览器配置");
         } finally {
             isSaving = false;
             if (pendingSave) { pendingSave = false; saveData(); }
@@ -948,12 +1352,9 @@
         projectData.config.autoScrollTop = document.getElementById('autoScrollTopSwitch').checked;
         projectData.config.quickNav = document.getElementById('quickNavSwitch').checked;
         projectData.config.quickRandom = document.getElementById('quickRandomSwitch').checked;
-        
         projectData.config.quickNewMode = document.getElementById('quickNewAfterSwitch').checked ? 'after' : 'bottom';
-        
         projectData.config.autoUnlockOnNew = document.getElementById('autoUnlockOnNewSwitch').checked;
         projectData.config.autoUnlockOnSwap = document.getElementById('autoUnlockOnSwapSwitch').checked;
-        
         saveData(); updateQuickNavVisibility();
     }
 
@@ -967,21 +1368,12 @@
         document.getElementById('autoScrollTopSwitch').checked = projectData.config.autoScrollTop;
         document.getElementById('quickNavSwitch').checked = projectData.config.quickNav;
         document.getElementById('quickRandomSwitch').checked = projectData.config.quickRandom;
-        
         document.getElementById('autoUnlockOnNewSwitch').checked = !!projectData.config.autoUnlockOnNew;
         document.getElementById('autoUnlockOnSwapSwitch').checked = !!projectData.config.autoUnlockOnSwap;
         
         const isQuickNew = projectData.config.quickNew || false;
         const toggleBtn = document.getElementById('quickNewToggleBtn');
-        if (toggleBtn) {
-            toggleBtn.innerText = isQuickNew ? '启用' : '禁用';
-        }
-        
-        const subOptions = document.getElementById('quickNewSubOptions');
-        if (subOptions) {
-            subOptions.style.opacity = '1';
-            subOptions.style.pointerEvents = 'auto';
-        }
+        if (toggleBtn) toggleBtn.checked = isQuickNew;
         
         let qMode = projectData.config.quickNewMode || 'after';
         document.getElementById('quickNewAfterSwitch').checked = (qMode === 'after');
@@ -996,11 +1388,10 @@
         updateSwapStatusUI();
         
         const groupUI = document.getElementById('groupSettingsUI');
-        if (projectData.config.autoGroup) {
-            groupUI.classList.add('show-group');
-        } else {
-            groupUI.classList.remove('show-group');
-        }
+        if (projectData.config.autoGroup) groupUI.classList.add('show-group');
+        else groupUI.classList.remove('show-group');
+
+        applyUiTheme(projectData.config.uiTheme);
     };
 
     function confirmAction(msg, actionFn) {
@@ -1009,9 +1400,9 @@
         overlay.className = 'modal-overlay'; overlay.style.zIndex = '9999'; 
         overlay.innerHTML = `
             <div class="modal-card">
-                <h3 style="margin-top:0;">操作确认</h3>
-                <p style="font-size:13px; color:var(--text-secondary); line-height:1.6; white-space:pre-wrap;">${msg}</p>
-                <div style="margin-top:24px; display:flex; gap:10px; justify-content:flex-end;">
+                <h3 style="margin-top:0; font-size:17px;">操作确认</h3>
+                <p style="font-size:13px; color:var(--text-secondary); line-height:1.6; white-space:pre-wrap;">${escapeHTML(msg)}</p>
+                <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
                     <button class="btn" id="confirmCancelBtn">取消</button>
                     <button class="btn primary" id="confirmOkBtn">确认</button>
                 </div>
@@ -1031,11 +1422,8 @@
     function toggleAutoGroup() {
         projectData.config.autoGroup = document.getElementById('autoGroupSwitch').checked;
         const groupUI = document.getElementById('groupSettingsUI');
-        if (projectData.config.autoGroup) {
-            groupUI.classList.add('show-group');
-        } else {
-            groupUI.classList.remove('show-group');
-        }
+        if (projectData.config.autoGroup) groupUI.classList.add('show-group');
+        else groupUI.classList.remove('show-group');
         saveData(); renderTree();
     }
     function updateGroupConfig() {
@@ -1069,7 +1457,6 @@
     function isIgnoredNodeOrAncestor(targetId) {
         const ignored = projectData.config.ignoredIds || [];
         if (ignored.includes(targetId)) return true;
-        
         let foundIgnoredParent = false;
         function walk(list, parentIgnored) {
             for (let n of list) {
@@ -1089,14 +1476,15 @@
     function updateFilterBtnUI() {
         const starBtn = document.getElementById('starFilterBtn');
         if (!starBtn) return;
+        const labelSpan = starBtn.querySelector('.btn-text') || starBtn;
         if (window.currentCheckboxMode === 'ignore' || window.currentCheckboxMode === 'lock') {
-            starBtn.innerText = '锁定筛选';
+            labelSpan.innerText = '锁定筛选';
             starBtn.style.color = '#ef4444';
             const isActive = (window.currentCheckboxMode === 'ignore' && isIgnoreFilterMode) || (window.currentCheckboxMode === 'lock' && isLockFilterMode);
-            if (isActive) starBtn.classList.add('primary');
+            if (isActive) { starBtn.classList.add('primary'); starBtn.style.color = '#fff'; }
             else starBtn.classList.remove('primary');
         } else {
-            starBtn.innerText = '收藏筛选';
+            labelSpan.innerText = '收藏筛选';
             starBtn.style.color = '';
             if (isStarFilterMode) starBtn.classList.add('primary');
             else starBtn.classList.remove('primary');
@@ -1108,11 +1496,11 @@
         if (lockSwitch.checked) {
             window.currentCheckboxMode = 'lock';
             isIgnoreFilterMode = false;
-            showToast("已进入锁定模式\n左侧勾选即可锁定/解锁\n点击【锁定筛选】可查看锁定项");
+            showToast("已进入锁定模式\n左侧勾选即可锁定/解锁");
         } else {
             window.currentCheckboxMode = 'normal';
             isLockFilterMode = false;
-            showToast("已退出锁定分配模式");
+            showToast("已退出锁定模式");
         }
         updateFilterBtnUI();
         renderTree();
@@ -1123,7 +1511,7 @@
         if (ignoreCheckbox.checked) {
             window.currentCheckboxMode = 'ignore';
             isLockFilterMode = false;
-            showToast("已进入忽略文本模式\n左侧勾选加入/移出忽略名单\n点击【锁定筛选】可查看忽略项");
+            showToast("已进入忽略文本模式\n左侧勾选加入/移出忽略名单");
         } else {
             window.currentCheckboxMode = 'normal';
             isIgnoreFilterMode = false;
@@ -1137,13 +1525,13 @@
         const btn = document.getElementById('starFilterBtn');
         if (window.currentCheckboxMode === 'ignore') {
             isIgnoreFilterMode = !isIgnoreFilterMode;
-            if (isIgnoreFilterMode) btn.classList.add('primary');
-            else btn.classList.remove('primary');
+            btn.classList.toggle('primary', isIgnoreFilterMode);
+            updateFilterBtnUI();
             renderTree();
         } else if (window.currentCheckboxMode === 'lock') {
             isLockFilterMode = !isLockFilterMode;
-            if (isLockFilterMode) btn.classList.add('primary');
-            else btn.classList.remove('primary');
+            btn.classList.toggle('primary', isLockFilterMode);
+            updateFilterBtnUI();
             renderTree();
         } else {
             toggleStarFilter();
@@ -1163,10 +1551,8 @@
             saveData();
             renderTree();
         }
-
         projectData.config.isSwapActive = true;
         projectData.config.isSwapped = !projectData.config.isSwapped;
-
         saveData(); 
         updateSwapStatusUI(); 
         refreshEditorContent();
@@ -1186,7 +1572,7 @@
         let displayFr = projectData.config.showRawPlaceholder ? '&lt;Q7Fr&gt;' : (projectData.config.isSwapped ? scVal : frVal);
         let displaySc = projectData.config.showRawPlaceholder ? '&lt;Q7Sc&gt;' : (projectData.config.isSwapped ? frVal : scVal);
 
-        p.innerHTML = `当前显示状态: <br><strong style="color:var(--text-primary)">&lt;Q7Fr&gt; = ${displayFr}</strong><br><strong style="color:var(--text-primary)">&lt;Q7Sc&gt; = ${displaySc}</strong>`;
+        p.innerHTML = `<span style="font-size:11.5px; color:var(--text-muted);">当前状态（点击切换原码）</span><br><strong style="color:var(--text-primary)">&lt;Q7Fr&gt; = ${displayFr}</strong><br><strong style="color:var(--text-primary)">&lt;Q7Sc&gt; = ${displaySc}</strong>`;
     }
 
     function refreshEditorContent() {
@@ -1201,32 +1587,26 @@
         if (projectData.config.showRawPlaceholder) {
             if (frV) text = text.split(frV).join('<Q7Fr>');
             if (scV) text = text.split(scV).join('<Q7Sc>');
-            
             currentNode.text = text;
             saveData();
-
             el.value = text;
         } else {
             if (frV) text = text.split(frV).join('<Q7Fr>');
             if (scV) text = text.split(scV).join('<Q7Sc>');
-            
             const isText1 = !projectData.config.isSwapped;
             const targetFr = isText1 ? frV : scV;
             const targetSc = isText1 ? scV : frV;
-
             text = text.split('<Q7Fr>').join(targetFr).split('<Q7Sc>').join(targetSc);
             el.value = text;
         }
 
         el.readOnly = isLocked;
-        el.style.backgroundColor = isLocked ? '#f8fafc' : '#ffffff';
+        el.style.backgroundColor = isLocked ? 'var(--hover-bg)' : 'transparent';
     }
 
     function toggleStarFilter() {
         isStarFilterMode = !isStarFilterMode;
-        const btn = document.getElementById('starFilterBtn');
-        if(isStarFilterMode) btn.classList.add('primary');
-        else btn.classList.remove('primary');
+        document.getElementById('starFilterBtn').classList.toggle('primary', isStarFilterMode);
         renderTree();
     }
 
@@ -1254,16 +1634,14 @@
 
     function hasStarredDescendant(list) {
         for (let c of list) {
-            if (c.isStarred) return true;
-            if (c.children && hasStarredDescendant(c.children)) return true;
+            if (c.isStarred || (c.children && hasStarredDescendant(c.children))) return true;
         }
         return false;
     }
 
     function hasLockedDescendant(list) {
         for (let c of list) {
-            if (c.isLocked) return true;
-            if (c.children && hasLockedDescendant(c.children)) return true;
+            if (c.isLocked || (c.children && hasLockedDescendant(c.children))) return true;
         }
         return false;
     }
@@ -1271,8 +1649,7 @@
     function hasIgnoredDescendant(list) {
         const ignored = projectData.config.ignoredIds || [];
         for (let c of list) {
-            if (ignored.includes(c.id)) return true;
-            if (c.children && hasIgnoredDescendant(c.children)) return true;
+            if (ignored.includes(c.id) || (c.children && hasIgnoredDescendant(c.children))) return true;
         }
         return false;
     }
@@ -1281,8 +1658,7 @@
         if (!currentNode) return false;
         const find = (arr) => {
             for(let n of arr) {
-                if (n.id === currentNode.id) return true;
-                if (n.children && find(n.children)) return true;
+                if (n.id === currentNode.id || (n.children && find(n.children))) return true;
             }
             return false;
         }
@@ -1290,8 +1666,10 @@
     }
 
     function renderTree() {
-        const treeContainer = document.getElementById('tree'); const filter = document.getElementById('searchTree').value.toLowerCase();
-        treeContainer.innerHTML = ''; currentVisibleIds = []; 
+        const treeContainer = document.getElementById('tree'); 
+        const filter = document.getElementById('searchTree').value.toLowerCase();
+        treeContainer.innerHTML = ''; 
+        currentVisibleIds = []; 
         renderLevel(projectData.data, treeContainer, filter, 1, 0);
         if(typeof updateRandomFoldersUI === 'function') updateRandomFoldersUI();
     }
@@ -1299,14 +1677,15 @@
 
     function hasMatchingDescendant(node, filter) {
         if (!filter) return true;
-        if (node.name.toLowerCase().includes(filter)) return true;
+        if (getNodeDisplayName(node).toLowerCase().includes(filter)) return true;
         if (node.children) { for (let c of node.children) { if (hasMatchingDescendant(c, filter)) return true; } }
         return false;
     }
 
     function renderLevel(nodes, container, filter, baseIndex, depth = 0) {
         if (projectData.config.autoGroup && !filter && !isStarFilterMode && !isLockFilterMode && !isIgnoreFilterMode) {
-            let large = parseInt(projectData.config.groupLarge) || 0; let small = parseInt(projectData.config.groupSmall) || 0;
+            let large = parseInt(projectData.config.groupLarge) || 0; 
+            let small = parseInt(projectData.config.groupSmall) || 0;
             if (large > 0 && nodes.length > large) { return renderVirtualGroups(nodes, container, filter, baseIndex, large, small, false, depth); } 
             else if (small > 0 && nodes.length > small) { return renderVirtualGroups(nodes, container, filter, baseIndex, small, 0, true, depth); }
         }
@@ -1321,18 +1700,18 @@
             if (vgCollapseStates[vId] === undefined) vgCollapseStates[vId] = true; 
             
             const row = document.createElement('div'); row.className = 'tree-item';
-            
             const isVgCollapsedAndContainsCurrent = vgCollapseStates[vId] && containsCurrentNode(chunk);
             const content = document.createElement('div'); 
             content.className = 'item-row sticky-folder' + (isVgCollapsedAndContainsCurrent ? ' active' : '');
             
-            content.style.top = (11 + depth * 38) + 'px';
+            /* 修正粘性顶端紧贴 0px */
+            content.style.top = (depth * 36) + 'px';
             content.style.zIndex = 40 - depth;
 
-            const foldIcon = `<span class="fold-icon" style="font-size:10px; transform:scale(0.8);" onclick="toggleVirtualGroup(event, '${vId}')">${vgCollapseStates[vId] ? '▶' : '▼'}</span>`;
-            const boxIcon = isSmallGroup ? '📑' : '📦';
+            const foldIcon = `<span class="fold-icon" onclick="toggleVirtualGroup(event, '${vId}')">${vgCollapseStates[vId] ? ICONS.chevronRight : ICONS.chevronDown}</span>`;
+            const boxIcon = `<span class="node-type-icon">${isSmallGroup ? ICONS.layers : ICONS.box}</span>`;
 
-            content.innerHTML = `<span class="index-badge">${startIdx}.</span>${foldIcon} <span style="flex-shrink:0;">${boxIcon}</span><span style="flex:1; color:var(--text-secondary); font-size:13px; margin-left:4px;">${startIdx} - ${endIdx}</span>`;
+            content.innerHTML = `<span class="index-badge">${startIdx}.</span>${foldIcon}${boxIcon}<span style="flex:1; color:var(--text-secondary); font-size:calc(var(--fs-tree) - 0.5px); margin-left:2px;">${startIdx} - ${endIdx}</span>`;
             content.onclick = (e) => toggleVirtualGroup(e, vId); row.appendChild(content);
 
             if (!vgCollapseStates[vId]) {
@@ -1396,7 +1775,8 @@
         const ignoredList = projectData.config.ignoredIds || [];
 
         nodes.forEach((node) => {
-            const isMatch = filter && node.name.toLowerCase().includes(filter);
+            const dispName = getNodeDisplayName(node);
+            const isMatch = filter && dispName.toLowerCase().includes(filter);
             const childMatch = filter && node.children && hasMatchingDescendant(node, filter);
             
             const isStarMatch = !isStarFilterMode || node.isStarred;
@@ -1414,10 +1794,9 @@
             if (isLockFilterMode && !isLockMatch && !childLockMatch) return;
             if (isIgnoreFilterMode && !isIgnoreMatch && !childIgnoreMatch) return;
 
-            if (childMatch) node._collapsed = false;
-            if (childStarMatch && isStarFilterMode) node._collapsed = false;
-            if (childLockMatch && isLockFilterMode) node._collapsed = false;
-            if (childIgnoreMatch && isIgnoreFilterMode) node._collapsed = false;
+            if (childMatch || (childStarMatch && isStarFilterMode) || (childLockMatch && isLockFilterMode) || (childIgnoreMatch && isIgnoreFilterMode)) {
+                node._collapsed = false;
+            }
 
             if (node._collapsed === undefined) node._collapsed = false;
             currentVisibleIds.push(node.id);
@@ -1427,40 +1806,42 @@
             
             const isFolderCollapsedAndContainsCurrent = node.type === 'folder' && node._collapsed && node.children && containsCurrentNode(node.children);
             let rowClass = 'item-row';
-            if (currentNode && currentNode.id === node.id) rowClass += ' active';
-            else if (isFolderCollapsedAndContainsCurrent) rowClass += ' active';
+            if ((currentNode && currentNode.id === node.id) || isFolderCollapsedAndContainsCurrent) {
+                rowClass += ' active';
+            }
             
             content.className = rowClass;
             if (node.type === 'folder') {
                 content.classList.add('sticky-folder');
-                content.style.top = (11 + depth * 38) + 'px';
+                /* 修复顶部粘性无缝隙 */
+                content.style.top = (depth * 36) + 'px';
                 content.style.zIndex = 40 - depth;
             }
             
             const dragSortEnabled = projectData.config.dragSortEnabled !== false;
             content.draggable = dragSortEnabled;
             
-            const foldIcon = node.type === 'folder' ? `<span class="fold-icon" onclick="toggleFold(event, '${node.id}')">${node._collapsed ? '▶' : '▼'}</span>` : `<span class="fold-icon"></span>`;
-            const typeIcon = node.type === 'folder' ? (node.isLocked ? '🔒' : '📁') : (node.isLocked ? '🔒' : '📄');
+            const foldIcon = node.type === 'folder'
+                ? `<span class="fold-icon" onclick="toggleFold(event, '${node.id}')">${node._collapsed ? ICONS.chevronRight : ICONS.chevronDown}</span>`
+                : `<span class="fold-icon" style="pointer-events:none;opacity:0;"></span>`;
+            
+            const iconClass = node.isLocked ? 'node-type-icon is-locked' : (node.type === 'folder' ? 'node-type-icon is-folder' : 'node-type-icon');
+            const typeSvg = node.isLocked ? ICONS.lock : (node.type === 'folder' ? ICONS.folder : ICONS.file);
+            const typeIcon = `<span class="${iconClass}">${typeSvg}</span>`;
             
             let isChecked = false;
-            if (window.currentCheckboxMode === 'lock') {
-                isChecked = node.isLocked === true;
-            } else if (window.currentCheckboxMode === 'ignore') {
-                isChecked = ignoredList.includes(node.id);
-            } else {
-                isChecked = selectedIds.has(node.id);
-            }
-            const checkedAttr = isChecked ? 'checked' : '';
+            if (window.currentCheckboxMode === 'lock') isChecked = node.isLocked === true;
+            else if (window.currentCheckboxMode === 'ignore') isChecked = ignoredList.includes(node.id);
+            else isChecked = selectedIds.has(node.id);
 
+            const checkedAttr = isChecked ? 'checked' : '';
             const cbClass = isIgnored ? 'node-cb is-ignored-node' : 'node-cb';
-            const starIcon = node.isStarred ? '<span style="color:#eab308;margin-left:4px;font-size:12px;">★</span>' : '';
+            const starIcon = node.isStarred ? `<span style="display:inline-flex;vertical-align:middle;margin-left:5px;">${ICONS.star}</span>` : '';
 
             content.innerHTML = `<input type="checkbox" class="${cbClass}" onclick="toggleCheck(event, '${node.id}')" ${checkedAttr}>
             <span class="index-badge">${currentIndex}.</span>
-            ${foldIcon} 
-            <span style="flex-shrink:0;">${typeIcon}</span>
-            <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-left:4px;">${escapeHTML(node.name || '未命名')}${starIcon}</span>`;
+            ${foldIcon}${typeIcon}
+            <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-left:2px;">${escapeHTML(dispName)}${starIcon}</span>`;
             
             content.onclick = (e) => { if(e.target.tagName !== 'INPUT') selectNode(node); };
             
@@ -1473,7 +1854,7 @@
                     if (node.type === 'folder') {
                         if (y < rect.height * 0.25) { dragPos = 'before'; content.style.borderTop = '2px solid var(--accent-color)'; }
                         else if (y > rect.height * 0.75) { dragPos = 'after'; content.style.borderBottom = '2px solid var(--accent-color)'; }
-                        else { dragPos = 'in'; content.style.background = '#e2e8f0'; }
+                        else { dragPos = 'in'; content.style.background = 'var(--hover-bg)'; }
                     } else {
                         if (y < rect.height / 2) { dragPos = 'before'; content.style.borderTop = '2px solid var(--accent-color)'; }
                         else { dragPos = 'after'; content.style.borderBottom = '2px solid var(--accent-color)'; }
@@ -1496,7 +1877,6 @@
 
     function toggleCheck(e, id) {
         e.stopPropagation();
-        
         if (window.currentCheckboxMode === 'ignore') {
             if (!projectData.config.ignoredIds) projectData.config.ignoredIds = [];
             if (!projectData.config.ignoredIds.includes(id)) {
@@ -1537,7 +1917,9 @@
         saveData();
         
         if (window.currentCheckboxMode === 'delete') {
-            document.getElementById('deleteModeBtn').innerText = `确认删除(${selectedIds.size})`;
+            const btn = document.getElementById('deleteModeBtn');
+            const label = btn.querySelector('.btn-text') || btn;
+            label.innerText = `确认删除(${selectedIds.size})`;
         }
     }
     
@@ -1565,7 +1947,9 @@
             for (let i = start; i <= end; i++) selectedIds.add(currentVisibleIds[i]);
             projectData.config.selectedIds = Array.from(selectedIds);
             if(window.currentCheckboxMode === 'delete') {
-                document.getElementById('deleteModeBtn').innerText = `确认删除(${selectedIds.size})`;
+                const btn = document.getElementById('deleteModeBtn');
+                const label = btn.querySelector('.btn-text') || btn;
+                label.innerText = `确认删除(${selectedIds.size})`;
             }
         }
         saveData();
@@ -1573,7 +1957,7 @@
     }
 
     function toggleQuickNewMaster() {
-        projectData.config.quickNew = !projectData.config.quickNew;
+        projectData.config.quickNew = document.getElementById('quickNewToggleBtn').checked;
         saveConfig();
         syncUIToConfig();
     }
@@ -1585,9 +1969,7 @@
         if (clickedMode === 'after' && afterSwitch.checked) bottomSwitch.checked = false;
         else if (clickedMode === 'bottom' && bottomSwitch.checked) afterSwitch.checked = false;
         
-        if (!afterSwitch.checked && !bottomSwitch.checked) {
-            afterSwitch.checked = true; 
-        }
+        if (!afterSwitch.checked && !bottomSwitch.checked) afterSwitch.checked = true;
         projectData.config.quickNewMode = afterSwitch.checked ? 'after' : 'bottom';
         saveConfig();
     }
@@ -1601,11 +1983,11 @@
         if (ignoredCount > 0) {
             htmlContent += `<div style="text-align:center;">目前已有 ${ignoredCount} 项被设定为永远忽略</div>`;
         } else {
-            htmlContent += `<div style="color:#999; text-align:center;">暂无任何忽略项</div>`;
+            htmlContent += `<div style="color:var(--text-muted); text-align:center;">暂无任何忽略项</div>`;
         }
         
-        htmlContent += `<div style="margin-top:6px; padding-top:6px; border-top:1px solid #cbd5e1; font-size:11px; color:#94a3b8;">
-            注：开启此模式时，勾选即为添加忽略。包含文件夹的整个分支及其子项将永久排除在局部/全局与开局随机外。
+        htmlContent += `<div style="margin-top:6px; padding-top:6px; border-top:1px solid var(--border-color); font-size:11px; color:var(--text-muted);">
+            注：开启此模式时，勾选即为添加忽略。包含文件夹的整个分支及其子项将永久排除在随机抽取之外。
         </div>`;
         
         ui.style.display = 'flex';
@@ -1639,23 +2021,29 @@
         currentNode = node; lastFindIndex = 0; 
         document.getElementById('emptyState').style.display = 'none';
         document.getElementById('editorContainer').style.visibility = 'visible';
-        document.getElementById('editor-title').value = node.name;
+
+        const titleEl = document.getElementById('editor-title');
+        titleEl.value = node.name || '';
+        titleEl.placeholder = node.type === 'folder' ? '新建文件夹' : '新建文本';
         
         const contentArea = document.getElementById('editor-content');
         if (node.type === 'item') { contentArea.style.display = 'block'; refreshEditorContent(); } else { contentArea.style.display = 'none'; }
 
-        textHistoryStack = [contentArea.value || ''];
-
         const pathArr = getPath(projectData.data, node.id);
-        document.getElementById('pathDisplay').innerText = pathArr ? pathArr.join(' > ') : node.name;
+        document.getElementById('pathDisplay').innerText = pathArr ? pathArr.join(' > ') : getNodeDisplayName(node);
         
-        document.getElementById('editor-title').oninput = (e) => { 
+        titleEl.oninput = (e) => { 
             if (isLockedNode(currentNode)) return;
             const editingNode = currentNode;
             const val = e.target.value;
             clearTimeout(titleSaveTimer);
             titleSaveTimer = setTimeout(() => {
-                if (editingNode) { editingNode.name = val; saveData(); renderTree(); }
+                if (editingNode) {
+                    editingNode.name = val;
+                    const pArr = getPath(projectData.data, editingNode.id);
+                    document.getElementById('pathDisplay').innerText = pArr ? pArr.join(' > ') : getNodeDisplayName(editingNode);
+                    saveData(); renderTree();
+                }
             }, 800);
         };
 
@@ -1665,25 +2053,16 @@
                 if (!tempEditToastTimer) { showToast("当前为临时修改，不保存内容"); tempEditToastTimer = setTimeout(() => { tempEditToastTimer = null; }, 3000); }
                 return; 
             }
-            
             const editingNode = currentNode;
             const val = e.target.value;
-
-            if (textHistoryStack[textHistoryStack.length - 1] !== val) {
-                textHistoryStack.push(val);
-                if (textHistoryStack.length > 50) textHistoryStack.shift();
-            }
-
             clearTimeout(saveDebounceTimer);
             saveDebounceTimer = setTimeout(() => {
                 if(editingNode) { 
                     let valToSave = val;
                     const frV = projectData.config.displayOptions.fr || '{{user}}';
                     const scV = projectData.config.displayOptions.sc || '{{char}}';
-
                     if (frV) valToSave = valToSave.split(frV).join('<Q7Fr>');
                     if (scV) valToSave = valToSave.split(scV).join('<Q7Sc>');
-
                     editingNode.text = valToSave; 
                     saveData(); 
                 }
@@ -1694,10 +2073,7 @@
         contentArea.onfocus = () => { if (!isLockedNode(currentNode)) updateQuickNavVisibility(true); };
         contentArea.onblur = () => setTimeout(()=>updateQuickNavVisibility(false), 200);
 
-        if (projectData.config.autoScrollTop) {
-            contentArea.scrollTop = 0;
-        }
-
+        if (projectData.config.autoScrollTop) contentArea.scrollTop = 0;
         if (window.innerWidth <= 768 && !isSilent) closePanelsOnMobile();
         renderTree(); updateQuickNavVisibility();
 
@@ -1705,9 +2081,11 @@
             const row = document.querySelector(`input[onclick*="${node.id}"]`)?.parentElement;
             if (row) {
                 row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                const flashHex = (projectData.config.uiTheme && projectData.config.uiTheme.flashColor) || '#fef08a';
+                const fRgb = hexToRgb(flashHex) || { r: 254, g: 240, b: 138 };
                 row.animate([
-                    { backgroundColor: '#fef08a' },
-                    { backgroundColor: 'rgba(254, 240, 138, 0)' }
+                    { backgroundColor: `rgba(${fRgb.r}, ${fRgb.g}, ${fRgb.b}, 0.95)` },
+                    { backgroundColor: `rgba(${fRgb.r}, ${fRgb.g}, ${fRgb.b}, 0)` }
                 ], { duration: 1200, easing: 'ease-out' });
             }
         }, 100);
@@ -1715,22 +2093,17 @@
 
     function updateQuickNavVisibility(forceHide = false) {
         const left = document.getElementById('quickNavLeft'); const right = document.getElementById('quickNavRight');
-        if (forceHide || window.innerWidth > 768 || !projectData.config.quickNav || !currentNode || currentNode.type !== 'item') {
+        const isDrawerOpen = document.getElementById('sidebar').classList.contains('show') || document.getElementById('toolbox').classList.contains('show');
+        const hideAll = forceHide || isDrawerOpen || window.innerWidth > 768;
+
+        if (hideAll || !projectData.config.quickNav || !currentNode || currentNode.type !== 'item') {
             left.style.display = 'none'; right.style.display = 'none';
-        } else { left.style.display = 'block'; right.style.display = 'block'; }
+        } else { left.style.display = 'flex'; right.style.display = 'flex'; }
         
         const randFloat = document.getElementById('mobileRandomFloat');
         const newFloat = document.getElementById('mobileQuickNewFloat');
-        if (window.innerWidth <= 768 && projectData.config.quickRandom && !forceHide) {
-            randFloat.style.display = 'flex';
-        } else {
-            randFloat.style.display = 'none';
-        }
-        if (window.innerWidth <= 768 && projectData.config.quickNew && !forceHide) {
-            newFloat.style.display = 'block';
-        } else {
-            newFloat.style.display = 'none';
-        }
+        randFloat.style.display = (!hideAll && projectData.config.quickRandom) ? 'flex' : 'none';
+        newFloat.style.display = (!hideAll && projectData.config.quickNew) ? 'flex' : 'none';
     }
     
     function doQuickNav(dir) {
@@ -1748,7 +2121,7 @@
 
     function getPath(list, id, currentPath = []) {
         for (let n of list) {
-            const p = [...currentPath, n.name];
+            const p = [...currentPath, getNodeDisplayName(n)];
             if (n.id === id) return p;
             if (n.children) { const r = getPath(n.children, id, p); if (r) return r; }
         }
@@ -1758,7 +2131,7 @@
     function addNew(type) {
         const newNode = {
             id: 'd_' + Math.random().toString(36).substr(2, 9),
-            name: type === 'folder' ? '新建文件夹' : '新建文本',
+            name: type === 'folder' ? '新建文件夹' : '',
             type: type, _collapsed: false, text: type === 'item' ? '' : undefined, children: type === 'folder' ? [] : undefined, isStarred: false, isLocked: false
         };
         
@@ -1790,11 +2163,18 @@
         } else { projectData.data.push(newNode); }
         
         saveData(); renderTree(); selectNode(newNode); showToast('新建成功');
-        setTimeout(() => { const tEl = document.getElementById('editor-title'); if (tEl) { tEl.focus(); tEl.select(); } }, 100);
+        setTimeout(() => {
+            const tEl = document.getElementById('editor-title');
+            if (tEl) {
+                tEl.focus();
+                if (type === 'folder') tEl.select();
+            }
+        }, 100);
     }
 
     function confirmDeleteCurrent() {
         const btn = document.getElementById('deleteModeBtn');
+        const label = btn.querySelector('.btn-text') || btn;
 
         if (window.currentCheckboxMode !== 'delete') {
             selectedIds.clear();
@@ -1803,14 +2183,14 @@
             saveData();
 
             window.currentCheckboxMode = 'delete';
-            btn.innerText = '确认删除(0)';
+            label.innerText = '确认删除(0)';
             btn.classList.add('active-mode');
             showToast("已清空勾选并进入删除模式\n请勾选需要删除的项目");
             renderTree();
         } else {
             if (selectedIds.size === 0) {
                 window.currentCheckboxMode = 'normal';
-                btn.innerText = '删除文本';
+                label.innerText = '删除文本';
                 btn.classList.remove('active-mode');
                 renderTree();
                 showToast("已退出删除模式");
@@ -1826,7 +2206,6 @@
             let lockedFound = false;
             
             const checkLocked = (list, targetId) => {
-                let locked = false;
                 const findAndCheck = (arr) => {
                     for(let n of arr) {
                         if (n.id === targetId) {
@@ -1870,7 +2249,11 @@
             saveData(); 
             window.currentCheckboxMode = 'normal';
             const btn = document.getElementById('deleteModeBtn');
-            if(btn) { btn.innerText = '删除文本'; btn.classList.remove('active-mode'); }
+            if(btn) {
+                const label = btn.querySelector('.btn-text') || btn;
+                label.innerText = '删除文本';
+                btn.classList.remove('active-mode');
+            }
             renderTree(); 
             showToast(`成功删除 ${count} 项`);
         });
@@ -1884,13 +2267,10 @@
 
         document.getElementById('sysModalInputs').style.display = 'none';
         document.getElementById('sysModalDynamicPanel').style.display = 'none';
-        document.getElementById('sysModalSearch').style.display = 'none'; document.getElementById('sysModalSearch').value = '';
+        document.getElementById('sysModalSearch').style.display = 'none'; 
+        document.getElementById('sysModalSearch').value = '';
         document.getElementById('sysModalRevokeBtn').style.display = 'none';
         
-        const ta = document.getElementById('sysModalTextarea');
-        ta.value = '';
-        delete ta._cacheExport;
-
         document.getElementById('sysModal').style.display = 'flex';
         switchBatchTab('import');
     }
@@ -1906,19 +2286,15 @@
         ta.style.display = 'none'; syncPanel.style.display = 'none'; btn.style.display = 'none'; clearBtn.style.display = 'none'; dynPanel.style.display = 'none';
         msg.style.display = 'block';
 
-        ta.value = '';
-        delete ta._cacheExport;
-
         if (mode === 'import') {
             tImport.classList.add('primary');
-            let autoMsg = projectData.config.autoDupCheckOnImport ? "⭐导入时会自动触发查重检测" : "⭐导入自动查重已关闭";
+            let autoMsg = projectData.config.autoDupCheckOnImport ? "导入时会自动触发查重检测" : "导入自动查重已关闭";
             msg.innerText = `${autoMsg}\n\n说明：\n1. > 文件夹 > 子目录 表示路径 (无则在根目录)\n2. = 文本 作为标题\n3. 标题下的多行内容为文本内容`;
-            ta.style.display = 'block'; ta.readOnly = false; ta.placeholder = "在此粘贴需要批量导入的文本...";
+            ta.style.display = 'block'; ta.readOnly = false; ta.value = ''; ta.placeholder = "在此粘贴需要批量导入的文本...";
             btn.style.display = 'inline-flex'; btn.innerText = '确认导入'; clearBtn.style.display = 'inline-flex';
             modalCallback = processBatchText;
         } else if (mode === 'export') {
             tExport.classList.add('primary');
-            
             let checkedNodes = [];
             const findCheckedNodes = (list) => {
                 for(let n of list) {
@@ -1928,14 +2304,15 @@
             };
             findCheckedNodes(projectData.data);
 
+            /* 保持大文本框不变，高度界面完全统一 */
+            ta.style.display = 'block';
+            ta.readOnly = true;
+
             if (checkedNodes.length > 0) {
-                let names = checkedNodes.map(n => n.name).join('、');
+                let names = checkedNodes.map(n => getNodeDisplayName(n)).join('、');
                 if (names.length > 30) names = names.substring(0, 30) + "...";
-                msg.innerText = `⭐已生成【${names}】数据：\n\n说明：\n1. 导出已勾选项及其子目录\n2. 点击下方按钮一键复制\n3. 占位`;
-                const exportText = getBatchExportTextByChecked(checkedNodes);
-                ta.style.display = 'block'; 
-                ta.value = exportText; 
-                ta.readOnly = true;
+                msg.innerText = `已生成【${names}】数据：\n\n1. 导出已勾选项及其子目录\n2. 点击下方按钮一键复制`;
+                ta.value = getBatchExportTextByChecked(checkedNodes);
                 btn.style.display = 'inline-flex'; 
                 btn.innerText = '复制关闭'; 
                 clearBtn.style.display = 'inline-flex';
@@ -1944,23 +2321,22 @@
                     closeModal(); 
                 };
             } else {
-                msg.innerText = `⭐未勾选内容。\n\n请在目录中勾选想要导出的文件夹或文本后，再次点击导出。`;
-                ta.style.display = 'none';
+                msg.innerText = `说明：\n1. 在目录中勾选需要导出的文件夹或文本后即可在此导出\n2. 格式与批量导入规范完全互通`;
                 ta.value = '';
+                ta.placeholder = "请在目录中勾选想要导出的文件夹或文本后，再次点击导出。";
                 btn.style.display = 'none';
                 clearBtn.style.display = 'none';
                 modalCallback = null;
             }
         } else if (mode === 'sync') {
             tSync.classList.add('primary');
-            msg.innerHTML = `GitHub Gist 云端数据同步：\n<div style="font-size:12px; color:#999; margin-bottom:15px; margin-top:8px; line-height:1.5;">👉 <a href="https://github.com/settings/tokens/new" target="_blank" style="color:var(--accent-color);">点击前往 GitHub 免费生成 Token (须勾选 gist 权限)</a></div>`;
-            syncPanel.style.display = 'flex'; btn.style.display = 'none'; 
+            msg.innerHTML = `GitHub Gist 云端数据同步：<div style="font-size:12px; color:var(--text-secondary); margin-bottom:10px; margin-top:6px; line-height:1.5;"><a href="https://github.com/settings/tokens/new" target="_blank" style="color:var(--accent-color); text-decoration:none;">前往 GitHub 生成 Token (须勾选 gist 权限) →</a></div>`;
+            syncPanel.style.display = 'flex'; 
             modalCallback = null;
         } else if (mode === 'stats') {
             tStats.classList.add('primary');
             msg.style.display = 'none';
             dynPanel.style.display = 'flex';
-            btn.style.display = 'none'; 
             modalCallback = null;
             renderStatsPanel(dynPanel);
         }
@@ -1985,31 +2361,30 @@
         traverse(projectData.data);
 
         let emptyHtml = emptyItems.map(item => `
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed #e2e8f0; font-size:12px;">
-                <span style="color:#ef4444; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:220px;">📄 ${escapeHTML(item.name)}</span>
-                <button class="btn" style="height:22px; min-width:40px; padding:0 6px; font-size:12px;" onclick="locateNode('${item.id}')">定位</button>
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed var(--border-color); font-size:12px;">
+                <span style="color:#ef4444; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:220px; display:inline-flex; align-items:center; gap:5px;">${ICONS.file} ${escapeHTML(getNodeDisplayName(item))}</span>
+                <button class="btn" style="height:24px; min-width:44px; padding:0 8px; font-size:12px;" onclick="locateNode('${item.id}')">定位</button>
             </div>
         `).join('');
 
         container.innerHTML = `
-            <div style="display:flex; flex-direction:column; gap:12px; margin-top:10px;">
+            <div style="display:flex; flex-direction:column; gap:10px; margin-top:6px;">
                 <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--border-color); padding-bottom:8px;">
-                    <span style="color:var(--text-secondary); font-size:13px;">📁 文件夹</span>
+                    <span style="color:var(--text-secondary); font-size:13px;">文件夹数量</span>
                     <strong style="font-size:14px;">${folders}</strong>
                 </div>
                 <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--border-color); padding-bottom:8px;">
-                    <span style="color:var(--text-secondary); font-size:13px;">📄 文本数</span>
+                    <span style="color:var(--text-secondary); font-size:13px;">文本数量</span>
                     <strong style="font-size:14px;">${items}</strong>
                 </div>
                 <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--border-color); padding-bottom:8px;">
-                    <span style="color:var(--text-secondary); font-size:13px;">🔤 总字数</span>
+                    <span style="color:var(--text-secondary); font-size:13px;">总字数</span>
                     <strong style="font-size:14px;">${chars}</strong>
                 </div>
-                
-                <div style="margin-top:8px;">
-                    <div style="font-size:13px; color:var(--text-secondary); margin-bottom:8px;">🈳 空白文本查找 (${emptyItems.length})</div>
-                    <div style="max-height:160px; overflow-y:auto; background:var(--hover-bg); border-radius:4px; padding:0 8px;">
-                        ${emptyHtml || '<div style="padding:16px 0; text-align:center; color:#999; font-size:12px;">未发现空白文本</div>'}
+                <div style="margin-top:4px;">
+                    <div style="font-size:13px; color:var(--text-secondary); margin-bottom:8px;">空白文本 (${emptyItems.length})</div>
+                    <div style="max-height:160px; overflow-y:auto; background:var(--bg-side); border-radius:var(--radius); padding:0 10px;">
+                        ${emptyHtml || '<div style="padding:16px 0; text-align:center; color:var(--text-muted); font-size:12px;">未发现空白文本</div>'}
                     </div>
                 </div>
             </div>
@@ -2020,25 +2395,23 @@
         let result = ""; let lastPathStr = null;
         function walk(list, basePath) {
             for (let n of list) {
-                if (n.type === 'folder') walk(n.children || [], [...basePath, n.name]);
+                if (n.type === 'folder') walk(n.children || [], [...basePath, getNodeDisplayName(n)]);
                 else if (n.type === 'item') {
                     let currentPathStr = basePath.join(" > ");
                     if (currentPathStr !== lastPathStr) { result += `> ${currentPathStr}\n`; lastPathStr = currentPathStr; }
-                    result += `= ${n.name}\n${n.text || ''}\n\n`;
+                    result += `= ${getNodeDisplayName(n)}\n${n.text || ''}\n\n`;
                 }
             }
         }
 
-        if (!checkedNodes || checkedNodes.length === 0) {
-            return '';
-        } else {
+        if (checkedNodes && checkedNodes.length > 0) {
             checkedNodes.forEach(node => {
                 let p = getPath(projectData.data, node.id) || [];
                 if (node.type === 'item') {
                     p.pop();
                     let currentPathStr = p.join(" > ");
                     if (currentPathStr !== lastPathStr) { result += `> ${currentPathStr}\n`; lastPathStr = currentPathStr; }
-                    result += `= ${node.name}\n${node.text || ''}\n\n`;
+                    result += `= ${getNodeDisplayName(node)}\n${node.text || ''}\n\n`;
                 } else if (node.type === 'folder') {
                     walk(node.children || [], p);
                 }
@@ -2158,7 +2531,7 @@
                 let bestMatch = null;
                 for(let exist of allExisting) {
                     let pureOldText = filterSkipPhrases(exist.text);
-                    let tSim = titleT > 0 ? getSimilarity(exist.name, item.name, 2) : 0; 
+                    let tSim = titleT > 0 ? getSimilarity(getNodeDisplayName(exist), item.name, 2) : 0; 
                     let contentSim = simT > 0 ? getSimilarity(pureOldText, pureNewText, 3) : 0;
                     if((simT > 0 && contentSim >= simT) || (titleT > 0 && tSim >= titleT)) { bestMatch = exist; break; }
                 }
@@ -2171,7 +2544,7 @@
 
     function minimizeDupModal() {
         document.getElementById('dupModal').style.display = 'none';
-        document.getElementById('dupMinimizeFloat').style.display = 'block';
+        document.getElementById('dupMinimizeFloat').style.display = 'inline-flex';
     }
 
     function restoreDupModal() {
@@ -2190,12 +2563,12 @@
         let cur = dupQueue[0];
         if(dupActionAll) { applyDupAction(dupActionAll); return; }
         
-        if (document.getElementById('dupMinimizeFloat').style.display !== 'block') {
+        if (document.getElementById('dupMinimizeFloat').style.display !== 'inline-flex') {
             document.getElementById('dupModal').style.display = 'flex';
         }
         document.getElementById('dupProgress').innerText = `${dupQueue.length} 剩余`;
         
-        document.getElementById('dupOldTitle').value = cur.oldItem.name || '';
+        document.getElementById('dupOldTitle').value = getNodeDisplayName(cur.oldItem);
         document.getElementById('dupOldLocateBtn').onclick = () => { locateNode(cur.oldItem.id); minimizeDupModal(); };
         let newTextForHl = dupContext === 'import' ? cur.newItem._newText : cur.newItem.text;
         
@@ -2214,7 +2587,7 @@
                 <button class="btn primary" onclick="applyDupAction('replace')">替换源文本</button>
             `;
         } else {
-            document.getElementById('dupNewTitle').value = cur.newItem.name || '';
+            document.getElementById('dupNewTitle').value = getNodeDisplayName(cur.newItem);
             document.getElementById('dupNewLocateBtn').style.display = 'inline-flex';
             document.getElementById('dupNewLocateBtn').onclick = () => { locateNode(cur.newItem.id); minimizeDupModal(); };
             document.getElementById('dupOldLabel').innerText = "相似：库内文本 1";
@@ -2241,7 +2614,7 @@
             else if(action === 'skip') {
                 projectData.config.dupSkipPairs.push({
                     id1: cur.oldItem.id, id2: cur.newItem.id,
-                    title1: cur.oldItem.name, title2: cur.newItem.name,
+                    title1: getNodeDisplayName(cur.oldItem), title2: getNodeDisplayName(cur.newItem),
                     txt1: (cur.oldItem.text||"").substring(0,50), txt2: (cur.newItem.text||"").substring(0,50),
                     txt1_full: cur.oldItem.text||"", txt2_full: cur.newItem.text||""
                 });
@@ -2276,7 +2649,7 @@
 
         let prepMap = new Map();
         const getPrep = (item) => {
-            if(!prepMap.has(item.id)) prepMap.set(item.id, { pTitle: item.name, pText: filterSkipPhrases(item.text) });
+            if(!prepMap.has(item.id)) prepMap.set(item.id, { pTitle: getNodeDisplayName(item), pText: filterSkipPhrases(item.text) });
             return prepMap.get(item.id);
         };
 
@@ -2375,9 +2748,9 @@
     function renderDupSettingsMain(container) {
         let isAuto = projectData.config.autoDupCheckOnImport !== false;
         container.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; background:var(--hover-bg); padding:8px; border-radius:4px;">
-                <span style="font-size:13px; font-weight:bold;">导入时自动查重</span>
-                <input type="checkbox" style="margin:0;cursor:pointer;" onchange="toggleAutoDupImport(this.checked)" ${isAuto?'checked':''}>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; background:var(--bg-side); padding:8px 10px; border-radius:var(--radius);">
+                <span style="font-size:13px; font-weight:600;">导入时自动查重</span>
+                <input type="checkbox" class="switch-toggle" onchange="toggleAutoDupImport(this.checked)" ${isAuto?'checked':''}>
             </div>
             <div style="display:flex; gap:8px; margin-bottom:12px;">
                 <button class="btn ${dupSettingsTab==='pairs'?'primary':''}" style="flex:1" onclick="switchDupTab('pairs')">已跳过记录</button>
@@ -2437,27 +2810,28 @@
             
             if(pairs.length === 0) { 
                 currentActivePairIdx = -1; revokeBtn.style.display = 'none';
-                c.innerHTML = '<div style="text-align:center;color:#999;padding:30px;">暂无对应记录</div>'; return; 
+                c.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:30px;">暂无对应记录</div>'; return; 
             }
             if (dupPairPage < 1) dupPairPage = 1; if (dupPairPage > pairs.length) dupPairPage = pairs.length;
             
             let p = pairs[dupPairPage - 1];
             currentActivePairIdx = p._idx;
             revokeBtn.style.display = 'inline-flex';
+            revokeBtn.innerText = '撤销';
 
             c.innerHTML = `
                 <div style="display:flex; flex-direction:column; height:45vh; min-height:300px; gap:8px; margin-bottom:12px;">
-                    <div style="flex:1; display:flex; flex-direction:column; min-height:0; border:1px solid var(--border-color); border-radius:4px; padding:8px; background:#f8fafc;">
+                    <div style="flex:1; display:flex; flex-direction:column; min-height:0; border:1px solid var(--border-color); border-radius:var(--radius); padding:8px; background:var(--bg-side);">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
                             <strong style="font-size:13px; color:#d97706; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">1. ${escapeHTML(p.title1)}</strong>
-                            <button class="btn primary" style="height:24px; padding:0 8px; font-size:12px;" onclick="locateNode('${p.id1}')">定位 1</button>
+                            <button class="btn primary" style="height:24px; min-width:52px; padding:0 8px; font-size:12px;" onclick="locateNode('${p.id1}')">定位 1</button>
                         </div>
                         <div style="flex:1; overflow-y:auto; border:none; outline:none; font-size:13px; background:transparent; line-height:1.5; white-space:pre-wrap; word-break:break-all;">${escapeHTML(p.txt1_full || p.txt1)}</div>
                     </div>
-                    <div style="flex:1; display:flex; flex-direction:column; min-height:0; border:1px solid var(--border-color); border-radius:4px; padding:8px; background:#f0fdf4;">
+                    <div style="flex:1; display:flex; flex-direction:column; min-height:0; border:1px solid var(--border-color); border-radius:var(--radius); padding:8px; background:var(--bg-side);">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
                             <strong style="font-size:13px; color:#16a34a; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">2. ${escapeHTML(p.title2)}</strong>
-                            <button class="btn primary" style="height:24px; padding:0 8px; font-size:12px;" onclick="locateNode('${p.id2}')">定位 2</button>
+                            <button class="btn primary" style="height:24px; min-width:52px; padding:0 8px; font-size:12px;" onclick="locateNode('${p.id2}')">定位 2</button>
                         </div>
                         <div style="flex:1; overflow-y:auto; border:none; outline:none; font-size:13px; background:transparent; line-height:1.5; white-space:pre-wrap; word-break:break-all;">${escapeHTML(p.txt2_full || p.txt2)}</div>
                     </div>
@@ -2482,26 +2856,26 @@
                 let realIdx = item._idx; let displayIdx = start + idx + 1;
                 return `
                 <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:13px;">
-                    <span style="color:#999; width:24px; text-align:right; font-size:12px;">${displayIdx}.</span>
+                    <span style="color:var(--text-muted); width:24px; text-align:right; font-size:12px;">${displayIdx}.</span>
                     <input type="checkbox" style="margin:0;cursor:pointer;" ${item.active?'checked':''} onchange="togglePhraseActive(${realIdx}, this.checked)">
-                    <input type="text" value="${escapeHTML(item.text)}" onchange="updatePhraseText(${realIdx}, this.value)" style="flex:1; border:1px solid var(--border-color); border-radius:4px; padding:4px 8px; font-size:12px; background:#f8fafc;">
-                    <button class="btn danger" style="height:26px; min-width:42px; padding:0 8px; font-size:12px;" onclick="removePhrase(${realIdx})">删除</button>
+                    <input type="text" value="${escapeHTML(item.text)}" onchange="updatePhraseText(${realIdx}, this.value)" style="flex:1; border:1px solid var(--border-color); border-radius:var(--radius); padding:5px 8px; font-size:12px; background:var(--bg-side);">
+                    <button class="btn danger" style="height:26px; min-width:44px; padding:0 8px; font-size:12px;" onclick="removePhrase(${realIdx})">删除</button>
                 </div>
                 `;
             }).join('');
             
             c.innerHTML = `
                 <div style="display:flex; gap:6px; margin-bottom:12px;">
-                    <input type="text" id="newPhraseInput" style="flex:1; border:1px solid var(--border-color); border-radius:4px; padding:6px 10px; font-size:13px;" placeholder="输入新的过滤短语...">
-                    <button class="btn primary" style="height:32px; padding:0 12px; font-size:13px;" onclick="addPhrase()">添加</button>
+                    <input type="text" id="newPhraseInput" style="flex:1; border:1px solid var(--border-color); border-radius:var(--radius); padding:6px 10px; font-size:13px;" placeholder="输入新的过滤短语...">
+                    <button class="btn primary" style="height:32px; min-width:54px; padding:0 12px; font-size:13px;" onclick="addPhrase()">添加</button>
                 </div>
                 <div style="min-height:280px; max-height:280px; overflow-y:auto; margin-bottom:12px; padding-right:4px;">
-                    ${listHtml || '<div style="text-align:center;color:#999;padding:20px;">暂无过滤短语</div>'}
+                    ${listHtml || '<div style="text-align:center;color:var(--text-muted);padding:20px;">暂无过滤短语</div>'}
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <button class="btn" style="padding:0 8px;" onclick="dupPhrasePage--; renderDupTabContent();" ${dupPhrasePage<=1?'disabled':''}>上一页</button>
                     <div style="font-size:13px; display:flex; align-items:center; gap:4px; color:var(--text-secondary);">
-                        转到 <input type="number" value="${dupPhrasePage}" style="width:40px; padding:2px; text-align:center; border:1px solid var(--border-color); border-radius:4px;" 
+                        转到 <input type="number" value="${dupPhrasePage}" style="width:44px; padding:2px; text-align:center; border:1px solid var(--border-color); border-radius:var(--radius);" 
                         onchange="dupPhrasePage=parseInt(this.value); renderDupTabContent();" min="1" max="${totalPages}"> / ${totalPages} 页
                     </div>
                     <button class="btn" style="padding:0 8px;" onclick="dupPhrasePage++; renderDupTabContent();" ${dupPhrasePage>=totalPages?'disabled':''}>下一页</button>
@@ -2548,9 +2922,7 @@
         }
     }
 
-    window.doAddAddon = function() {
-        addAddonItem(currentAddonMode);
-    }
+    window.doAddAddon = function() { addAddonItem(currentAddonMode); }
 
     window.addAddonItem = function(mode) {
         let textInput = document.getElementById('newAddonInput').value; 
@@ -2606,14 +2978,14 @@
         let arr = isPrefix ? conf.prefixes : conf.suffixes; let isEnabled = isPrefix ? conf.prefixEnabled : conf.suffixEnabled;
         
         let listHtml = arr.map((item, i) => {
-            let pathHtml = item.path ? `<div style="font-size:11px; color:#2563eb; font-weight:bold; margin-bottom:4px;">📍 专属路径：${escapeHTML(item.path)}</div>` : '';
+            let pathHtml = item.path ? `<div style="font-size:11px; color:var(--accent-color); font-weight:600; margin-bottom:4px;">专属路径：${escapeHTML(item.path)}</div>` : '';
             let opacityStyle = item.active ? '1' : '0.4';
 
             return `
             <div style="display:flex; align-items:stretch; gap:8px; margin-bottom:12px; padding-bottom:12px; border-bottom:1px dashed var(--border-color); opacity:${opacityStyle}; transition: opacity 0.2s;">
                 <div style="flex:1; display:flex; flex-direction:column;">
                     ${pathHtml}
-                    <textarea onchange="updateAddonItemText(${i}, this.value)" style="flex:1; width:100%; border:1px solid var(--border-color); border-radius:4px; padding:6px 8px; font-size:13px; background:#f8fafc; font-family:inherit; resize:vertical; min-height:40px;">${escapeHTML(item.text)}</textarea>
+                    <textarea onchange="updateAddonItemText(${i}, this.value)" style="flex:1; width:100%; border:1px solid var(--border-color); border-radius:var(--radius); padding:6px 8px; font-size:13px; background:var(--bg-side); resize:vertical; min-height:40px;">${escapeHTML(item.text)}</textarea>
                 </div>
                 <div style="display:flex; flex-direction:column; justify-content:flex-end; align-items:center; width:48px; gap:8px; flex-shrink:0;">
                     <input type="checkbox" style="margin:0;cursor:pointer;width:16px;height:16px;flex-shrink:0;" title="${item.path?'专属规则':'全局规则'}" ${item.active?'checked':''} onchange="toggleAddonItemSelection(${i}, this.checked)">
@@ -2624,39 +2996,254 @@
         }).join('');
 
         c.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding:8px; background:var(--hover-bg); border-radius:4px;">
-                <span style="font-size:13px; font-weight:bold;">启用自动附加</span>
-                <label style="font-size:13px; display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" style="margin:0;" ${isEnabled?'checked':''} onchange="toggleAddonSwitch(this.checked)"></label>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding:8px 10px; background:var(--bg-side); border-radius:var(--radius);">
+                <span style="font-size:13px; font-weight:600;">启用自动附加</span>
+                <input type="checkbox" class="switch-toggle" ${isEnabled?'checked':''} onchange="toggleAddonSwitch(this.checked)">
             </div>
 
             <div id="copyAddonSubContainer" style="opacity: ${isEnabled ? '1' : '0.4'}; pointer-events: ${isEnabled ? 'auto' : 'none'}; transition: opacity 0.3s; display: flex; flex-direction: column; gap: 12px;">
-                <div style="display:flex; flex-direction:column; gap:6px; padding:8px; background:#f1f5f9; border-radius:4px; border:1px solid #cbd5e1;">
+                <div style="display:flex; flex-direction:column; gap:6px; padding:8px; background:var(--bg-side); border-radius:var(--card-radius); border:1px solid var(--border-color);">
                     <div style="display:flex; gap:8px; margin-bottom:4px;">
                         <button class="btn ${currentAddonMode === 'global' ? 'primary' : ''}" id="addonModeGlobalBtn" style="flex:1; height:28px; font-size:12px; padding:0;" onclick="switchAddonMode('global')">全局</button>
                         <button class="btn ${currentAddonMode === 'path' ? 'primary' : ''}" id="addonModePathBtn" style="flex:1; height:28px; font-size:12px; padding:0;" onclick="switchAddonMode('path')">路径</button>
                     </div>
 
-                    <input type="text" id="newAddonPathInput" style="display:${currentAddonMode === 'path' ? 'block' : 'none'}; border:1px solid var(--border-color); border-radius:4px; padding:6px 10px; font-size:12px;" placeholder="输入专属路径 (例如: 设定 > 主角)">
+                    <input type="text" id="newAddonPathInput" style="display:${currentAddonMode === 'path' ? 'block' : 'none'}; border:1px solid var(--border-color); border-radius:var(--radius); padding:6px 10px; font-size:12px;" placeholder="输入专属路径 (例如: 设定 > 主角)">
                     
                     <div style="display:flex; gap:6px; align-items:stretch;">
-                        <textarea id="newAddonInput" style="flex:1; border:1px solid var(--border-color); border-radius:4px; padding:6px 10px; font-size:13px; font-family:inherit; resize:vertical; min-height:40px;" placeholder="在此输入新的前/后缀..."></textarea>
+                        <textarea id="newAddonInput" style="flex:1; border:1px solid var(--border-color); border-radius:var(--radius); padding:6px 10px; font-size:13px; resize:vertical; min-height:40px;" placeholder="在此输入新的前/后缀..."></textarea>
                         <div style="display:flex; flex-direction:column; justify-content:center; width:48px; flex-shrink:0;">
                             <button class="btn primary" style="width:100%; min-width:48px; height:100%; font-size:12px; padding:0;" onclick="doAddAddon()">添加</button>
                         </div>
                     </div>
                 </div>
 
-                <div style="max-height:240px; overflow-y:auto; padding-right:4px;">${listHtml || '<div style="text-align:center;color:#999;padding:20px;">暂无数据</div>'}</div>
+                <div style="max-height:240px; overflow-y:auto; padding-right:4px;">${listHtml || '<div style="text-align:center;color:var(--text-muted);padding:20px;">暂无数据</div>'}</div>
             </div>
         `;
     }
+
+    /* 界面设置：移除恢复默认按钮，默认三套预设不可调颜色 */
+    let draftTheme = null;
+    let selectedPresetType = 'builtin'; // 'builtin' | 'custom'
+
+    function openThemeSettingsModal() {
+        if (!Array.isArray(projectData.config.customThemePresets)) projectData.config.customThemePresets = [];
+        draftTheme = { ...defaultUiTheme, ...(projectData.config.uiTheme || {}) };
+        selectedPresetType = projectData.config.activePresetType || 'builtin';
+
+        showModalClear("界面设置", "");
+        const panel = document.getElementById('sysModalDynamicPanel');
+        panel.style.display = 'flex';
+
+        const confirmBtn = document.getElementById('sysModalConfirmBtn');
+        confirmBtn.style.display = 'inline-flex';
+        confirmBtn.innerText = '保存';
+
+        /* 彻底移除恢复默认按钮 */
+        const revokeBtn = document.getElementById('sysModalRevokeBtn');
+        if (revokeBtn) revokeBtn.style.display = 'none';
+
+        modalCallback = () => {
+            projectData.config.uiTheme = JSON.parse(JSON.stringify(draftTheme));
+            projectData.config.activePresetType = selectedPresetType;
+            applyUiTheme(projectData.config.uiTheme);
+            saveData();
+            showToast('外观设置已保存');
+        };
+
+        modalCancelCallback = () => {
+            applyUiTheme(projectData.config.uiTheme);
+        };
+
+        renderThemeSettingsUI(panel);
+    }
+
+    function renderThemeSettingsUI(panel) {
+        const customList = projectData.config.customThemePresets || [];
+        const isBuiltinLocked = (selectedPresetType === 'builtin');
+
+        const builtinHtml = THEME_PRESETS.map((p, idx) => {
+            const isActive = selectedPresetType === 'builtin' && (projectData.config.activePresetIndex === idx || (!projectData.config.activePresetIndex && idx === 0));
+            return `
+            <button type="button" class="theme-preset-chip ${isActive ? 'active-preset' : ''}" onclick="applyThemePreset('builtin', ${idx})">
+                <span class="theme-preset-dot" style="background:linear-gradient(135deg, ${p.bgMain} 48%, ${p.accentColor} 48%);"></span>
+                <span>${p.name}</span>
+            </button>
+            `;
+        }).join('');
+
+        const customHtml = customList.map((p, idx) => {
+            const isActive = selectedPresetType === 'custom' && projectData.config.activePresetIndex === idx;
+            return `
+            <button type="button" class="theme-preset-chip ${isActive ? 'active-preset' : ''}" onclick="applyThemePreset('custom', ${idx})" title="点击套用">
+                <span class="theme-preset-del" onclick="deleteCustomThemePreset(event, ${idx})" title="删除此预设">×</span>
+                <span class="theme-preset-dot" style="background:linear-gradient(135deg, ${escapeHTML(p.bgMain)} 48%, ${escapeHTML(p.accentColor)} 48%);"></span>
+                <span>${escapeHTML(p.name)}</span>
+            </button>
+            `;
+        }).join('');
+
+        const addHtml = `
+            <button type="button" class="theme-preset-chip is-add" onclick="toggleAddPresetBox()">
+                <span class="theme-preset-dot" style="background:transparent;border-style:dashed;display:inline-flex;align-items:center;justify-content:center;font-size:13px;line-height:1;">+</span>
+                <span>新建</span>
+            </button>
+        `;
+
+        const colorRow = (label, key) => `
+            <div class="theme-row" style="${isBuiltinLocked ? 'opacity: 0.55;' : ''}">
+                <span>${label}</span>
+                <div class="theme-color-ctrl">
+                    <input type="color" value="${escapeHTML(draftTheme[key])}" ${isBuiltinLocked ? 'disabled style="cursor:not-allowed;"' : ''} oninput="updateDraftThemeColor('${key}', this.value, true)">
+                    <input type="text" id="themeHex_${key}" value="${escapeHTML(draftTheme[key])}" ${isBuiltinLocked ? 'readonly style="cursor:not-allowed; background:var(--bg-input);"' : ''} onchange="updateDraftThemeColor('${key}', this.value, false)">
+                </div>
+            </div>
+        `;
+
+        const rangeRow = (label, key, min, max, step, unit) => `
+            <div class="theme-row">
+                <span>${label}</span>
+                <div class="theme-range-ctrl">
+                    <input type="range" min="${min}" max="${max}" step="${step}" value="${draftTheme[key]}" oninput="updateDraftThemeRange('${key}', this.value, '${unit}')">
+                    <span class="theme-range-val" id="themeVal_${key}">${draftTheme[key]}${unit}</span>
+                </div>
+            </div>
+        `;
+
+        panel.innerHTML = `
+            <div style="max-height:58vh; overflow-y:auto; padding-right:2px;">
+                <div style="font-size:12px; font-weight:600; color:var(--text-secondary); margin-bottom:6px;">配色预设</div>
+                <div class="theme-preset-grid">${builtinHtml}${customHtml}${addHtml}</div>
+
+                <div id="addPresetInlineBox" style="display:none; gap:6px; margin-bottom:10px; padding:8px; background:var(--bg-side); border-radius:var(--radius); border:1px solid var(--border-color);">
+                    <input type="text" id="newPresetNameInput" placeholder="输入新预设名称..." style="flex:1; min-width:0; padding:4px 8px; font-size:12.5px;">
+                    <button type="button" class="btn primary" style="height:28px; min-width:56px; padding:0 10px; font-size:12px;" onclick="saveCurrentAsCustomPreset()">存为预设</button>
+                </div>
+
+                <div style="display:flex; justify-content:space-between; align-items:center; margin:10px 0 4px;">
+                    <span style="font-size:12px; font-weight:600; color:var(--text-secondary);">颜色调节</span>
+                    ${isBuiltinLocked ? '<span style="font-size:11px; color:var(--text-muted);">预设不可调色</span>' : ''}
+                </div>
+                ${colorRow('重点主色调', 'accentColor')}
+                ${colorRow('定位闪烁高亮', 'flashColor')}
+                ${colorRow('主背景颜色', 'bgMain')}
+                ${colorRow('侧栏背景颜色', 'bgSide')}
+                ${colorRow('界面文字颜色', 'textPrimary')}
+                ${colorRow('标题文字颜色', 'titleText')}
+                ${colorRow('正文文字颜色', 'editorText')}
+
+                <div style="font-size:12px; font-weight:600; color:var(--text-secondary); margin:12px 0 4px;">大小与圆角</div>
+                ${rangeRow('正文大小', 'fsEditor', 12, 24, 0.5, 'px')}
+                ${rangeRow('正文行高', 'lhEditor', 1.3, 2.4, 0.05, '')}
+                ${rangeRow('标题大小', 'fsTitle', 16, 32, 1, 'px')}
+                ${rangeRow('目录字号', 'fsTree', 11, 18, 0.5, 'px')}
+                ${rangeRow('按钮字号', 'fsUi', 11, 16, 0.5, 'px')}
+                ${rangeRow('圆角弧度', 'radius', 0, 12, 1, 'px')}
+            </div>
+        `;
+    }
+
+    window.toggleAddPresetBox = function() {
+        const box = document.getElementById('addPresetInlineBox');
+        if (!box) return;
+        const isShow = box.style.display === 'flex';
+        box.style.display = isShow ? 'none' : 'flex';
+        if (!isShow) {
+            const inp = document.getElementById('newPresetNameInput');
+            const nextNum = (projectData.config.customThemePresets || []).length + 1;
+            inp.value = `预设 ${nextNum}`;
+            inp.focus();
+            inp.select();
+        }
+    };
+
+    window.saveCurrentAsCustomPreset = function() {
+        if (!Array.isArray(projectData.config.customThemePresets)) projectData.config.customThemePresets = [];
+        const inp = document.getElementById('newPresetNameInput');
+        const name = (inp ? inp.value.trim() : '') || `预设 ${projectData.config.customThemePresets.length + 1}`;
+        projectData.config.customThemePresets.push({
+            name,
+            accentColor: draftTheme.accentColor,
+            flashColor: draftTheme.flashColor,
+            bgMain: draftTheme.bgMain,
+            bgSide: draftTheme.bgSide,
+            textPrimary: draftTheme.textPrimary,
+            titleText: draftTheme.titleText,
+            editorText: draftTheme.editorText
+        });
+        selectedPresetType = 'custom';
+        projectData.config.activePresetType = 'custom';
+        projectData.config.activePresetIndex = projectData.config.customThemePresets.length - 1;
+        saveData();
+        renderThemeSettingsUI(document.getElementById('sysModalDynamicPanel'));
+        showToast(`已创建并解锁调色「${name}」`);
+    };
+
+    window.deleteCustomThemePreset = function(e, idx) {
+        e.stopPropagation();
+        const item = projectData.config.customThemePresets[idx];
+        if (!item) return;
+        projectData.config.customThemePresets.splice(idx, 1);
+        if (selectedPresetType === 'custom' && projectData.config.activePresetIndex === idx) {
+            selectedPresetType = 'builtin';
+            projectData.config.activePresetType = 'builtin';
+            projectData.config.activePresetIndex = 0;
+            applyThemePreset('builtin', 0);
+        }
+        saveData();
+        renderThemeSettingsUI(document.getElementById('sysModalDynamicPanel'));
+        showToast(`已删除预设「${item.name}」`);
+    };
+
+    window.applyThemePreset = function(type, idx) {
+        selectedPresetType = type;
+        projectData.config.activePresetType = type;
+        projectData.config.activePresetIndex = idx;
+
+        const p = type === 'custom' ? (projectData.config.customThemePresets || [])[idx] : THEME_PRESETS[idx];
+        if (!p) return;
+        draftTheme = {
+            ...draftTheme,
+            accentColor: p.accentColor,
+            flashColor: p.flashColor,
+            bgMain: p.bgMain,
+            bgSide: p.bgSide,
+            textPrimary: p.textPrimary,
+            titleText: p.titleText,
+            editorText: p.editorText
+        };
+        applyUiTheme(draftTheme);
+        renderThemeSettingsUI(document.getElementById('sysModalDynamicPanel'));
+    };
+
+    window.updateDraftThemeColor = function(key, val, fromPicker) {
+        if (selectedPresetType === 'builtin') return; // 内置预设锁定调色
+        let v = String(val || '').trim();
+        if (!v.startsWith('#')) v = '#' + v;
+        if (!/^#[0-9a-fA-F]{6}$/.test(v)) return;
+        draftTheme[key] = v;
+        if (fromPicker) {
+            const hexEl = document.getElementById('themeHex_' + key);
+            if (hexEl) hexEl.value = v;
+        } else {
+            renderThemeSettingsUI(document.getElementById('sysModalDynamicPanel'));
+        }
+        applyUiTheme(draftTheme);
+    };
+
+    window.updateDraftThemeRange = function(key, val, unit) {
+        draftTheme[key] = parseFloat(val);
+        const lbl = document.getElementById('themeVal_' + key);
+        if (lbl) lbl.innerText = val + unit;
+        applyUiTheme(draftTheme);
+    };
 
     function copyCurrentText() {
         if (!currentNode) { showToast('请先选择一个文本条目'); return; }
         if (currentNode.type !== 'item') { showToast('仅支持复制文本'); return; }
         
         const el = document.getElementById('editor-content'); let text = el ? el.value : (currentNode.text || '');
-        
         let pathArr = getPath(projectData.data, currentNode.id) || [];
         pathArr.pop(); 
         let currentPathStr = pathArr.join(' > ');
@@ -2685,11 +3272,8 @@
         const isInSillyTavern = window.self !== window.top;
 
         if (isInSillyTavern) {
-            window.top.postMessage({
-                type: 'SEND_TO_ST_CHAT',
-                text: finalText
-            }, '*');
-            showToast('🚀已发送');
+            window.top.postMessage({ type: 'SEND_TO_ST_CHAT', text: finalText }, '*');
+            showToast('已发送');
         } else {
             navigator.clipboard.writeText(finalText).then(() => { 
                 if(prefixStr || suffixStr) showToast('已附加前/后缀并复制'); else showToast('已复制到剪贴板');
@@ -2699,16 +3283,42 @@
 
     function renderShortcuts() {
         const grid = document.getElementById('shortcutGrid'); grid.innerHTML = '';
-        projectData.config.shortcuts.forEach(sc => {
-            const btn = document.createElement('button'); btn.className = 'btn'; btn.innerText = sc.display;
+        projectData.config.shortcuts.forEach((sc, idx) => {
+            const btn = document.createElement('button');
+            btn.className = 'btn';
+            btn.innerText = sc.display;
+            btn.title = '点击插入 · 长按或右键编辑/删除';
+
+            let pressTimer = null;
+            let longPressTriggered = false;
+
+            btn.onpointerdown = (e) => {
+                if (e.button === 2) return;
+                longPressTriggered = false;
+                pressTimer = setTimeout(() => {
+                    longPressTriggered = true;
+                    openEditShortcutModal(idx);
+                }, 480);
+            };
+            btn.onpointerup = btn.onpointerleave = btn.onpointercancel = () => {
+                clearTimeout(pressTimer);
+            };
+            btn.oncontextmenu = (e) => {
+                e.preventDefault();
+                clearTimeout(pressTimer);
+                openEditShortcutModal(idx);
+            };
+
             btn.onclick = () => {
+                if (longPressTriggered) { longPressTriggered = false; return; }
                 if (isLockedNode(currentNode)) { showToast('该文本处于锁定状态，无法插入内容'); return; }
                 const el = lastFocusedElement || document.getElementById('editor-content');
                 if (el && typeof el.selectionStart === 'number' && !el.readOnly) {
                     const start = el.selectionStart; el.setRangeText(sc.text, start, el.selectionEnd, 'end'); el.focus(); el.dispatchEvent(new Event('input')); 
                     if (window.innerWidth <= 768 && projectData.config.autoCloseToolbox) togglePanel('toolbox');
                 }
-            }; grid.appendChild(btn);
+            };
+            grid.appendChild(btn);
         });
     }
 
@@ -2722,6 +3332,36 @@
         document.getElementById('sysModalInput1').style.display = 'block'; 
         document.getElementById('sysModalInput2').style.display = 'block'; 
         document.getElementById('sysModalInput1').value = ''; document.getElementById('sysModalInput2').value = '';
+    }
+
+    function openEditShortcutModal(idx) {
+        const sc = projectData.config.shortcuts[idx];
+        if (!sc) return;
+        showModalClear('编辑快捷词', '修改名称或插入内容，也可直接删除：', () => {
+            const n = document.getElementById('sysModalInput1').value.trim();
+            const t = document.getElementById('sysModalInput2').value;
+            if (n && t) {
+                projectData.config.shortcuts[idx] = { display: n, text: t };
+                saveData(); renderShortcuts(); showToast('已更新快捷词');
+            }
+        });
+        document.getElementById('sysModalSearch').style.display = 'none';
+        document.getElementById('sysModalInputs').style.display = 'flex';
+        document.getElementById('sysModalInput1').style.display = 'block';
+        document.getElementById('sysModalInput2').style.display = 'block';
+        document.getElementById('sysModalInput1').value = sc.display;
+        document.getElementById('sysModalInput2').value = sc.text;
+
+        const delBtn = document.getElementById('sysModalRevokeBtn');
+        delBtn.style.display = 'inline-flex';
+        delBtn.innerText = '删除';
+        delBtn.onclick = () => {
+            closeModal();
+            confirmAction(`确定删除快捷词「${sc.display}」吗？`, () => {
+                projectData.config.shortcuts.splice(idx, 1);
+                saveData(); renderShortcuts(); showToast('已删除快捷词');
+            });
+        };
     }
 
     function toggleDoubleReplace() {
@@ -2739,7 +3379,7 @@
                 const allItems = getAllItems(projectData.data); const currentListIndex = allItems.findIndex(x => x.id === currentNode.id);
                 if (currentListIndex !== -1) {
                     for (let i = currentListIndex + 1; i < allItems.length; i++) {
-                        if ((allItems[i].text || '').includes(f)) { selectNode(allItems[i]); showToast(`找到并跳至: ${allItems[i].name}`); setTimeout(doFind, 50); return; }
+                        if ((allItems[i].text || '').includes(f)) { selectNode(allItems[i]); showToast(`找到并跳至: ${getNodeDisplayName(allItems[i])}`); setTimeout(doFind, 50); return; }
                     }
                 }
                 lastFindIndex = 0; showToast('已找到末尾，没有更多匹配');
@@ -2766,11 +3406,7 @@
             if(replaceCount > 0) { 
                 saveData(); 
                 if(currentNode && currentNode.type === 'item') refreshEditorContent(); 
-
-                replaceHistoryStack.push({
-                    type: 'global',
-                    backup: backupData
-                });
+                replaceHistoryStack.push({ type: 'global', backup: backupData });
                 updateInlineUndoBtnUI();
                 showToast(`全局替换成功，共修改 ${replaceCount} 篇`);
             } else { 
@@ -2787,12 +3423,7 @@
                 currentNode.text = text; 
                 document.getElementById('editor-content').value = currentNode.text;
                 saveData(); 
-
-                replaceHistoryStack.push({
-                    type: 'local',
-                    nodeId: currentNode.id,
-                    backupText: backupText
-                });
+                replaceHistoryStack.push({ type: 'local', nodeId: currentNode.id, backupText: backupText });
                 updateInlineUndoBtnUI();
                 showToast("本文替换成功");
             } else { 
@@ -2807,10 +3438,7 @@
 
         if (lastAction.type === 'global') {
             projectData.data = lastAction.backup;
-            saveData(); 
-            renderTree(); 
-            refreshEditorContent(); 
-            showToast('已撤回全局替换');
+            saveData(); renderTree(); refreshEditorContent(); showToast('已撤回全局替换');
         } else if (lastAction.type === 'local') {
             const findNodeById = (list, tid) => {
                 for(let n of list) {
@@ -2825,8 +3453,7 @@
                 if (currentNode && currentNode.id === targetNode.id) {
                     document.getElementById('editor-content').value = targetNode.text;
                 }
-                saveData();
-                showToast('已撤回本文替换');
+                saveData(); showToast('已撤回本文替换');
             }
         }
         updateInlineUndoBtnUI();
@@ -2859,15 +3486,10 @@
             for (let n of list) {
                 let curBranchIgnored = branchIgnored || ignored.includes(n.id);
                 let curInLocalTree = inLocalTree || (n.id === targetParentId);
-                
                 if (curBranchIgnored) continue; 
-
                 if (n.type === 'item') {
-                    if (scope === 'global') {
-                        pool.push(n);
-                    } else {
-                        if (parentId === targetParentId) pool.push(n);
-                    }
+                    if (scope === 'global') pool.push(n);
+                    else if (parentId === targetParentId) pool.push(n);
                 } else if (n.children) {
                     traverse(n.children, n.id, curInLocalTree, curBranchIgnored);
                 }
@@ -2882,7 +3504,6 @@
                 for (let n of list) {
                     let curBranchIgnored = branchIgnored || ignored.includes(n.id);
                     if (curBranchIgnored) continue;
-
                     if (n.type === 'item' && parentId === targetParentId) pool.push(n);
                     else if (n.children) fallbackTraverse(n.children, n.id, curBranchIgnored);
                 }
@@ -2901,7 +3522,7 @@
         };
         expandP(projectData.data, selectedItem.id);
         selectNode(selectedItem); 
-        showToast(`🎲\n${selectedItem.name}`);
+        showToast(`随机抽中：${getNodeDisplayName(selectedItem)}`);
     }
 
     function showModalClear(title, msg, onConfirm = null) {
@@ -2909,44 +3530,53 @@
         document.getElementById('sysModalTextarea').style.display = 'none'; document.getElementById('sysModalSyncPanel').style.display = 'none';
         document.getElementById('sysModalDynamicPanel').style.display = 'none'; document.getElementById('sysModalClearBtn').style.display = 'none';
         document.getElementById('sysModalSearch').style.display = 'none';
-        document.getElementById('sysModalRevokeBtn').style.display = 'none'; 
+        const revokeBtn = document.getElementById('sysModalRevokeBtn');
+        revokeBtn.style.display = 'none';
+        revokeBtn.innerText = '撤销';
+        revokeBtn.onclick = handleGlobalRevoke;
 
-        document.getElementById('sysModalTitle').innerText = title; document.getElementById('sysModalMsg').innerText = msg;
+        document.getElementById('sysModalTitle').innerText = title;
+        const msgEl = document.getElementById('sysModalMsg');
+        msgEl.innerText = msg;
+        msgEl.style.display = msg ? 'block' : 'none';
+
         document.getElementById('sysModal').style.display = 'flex';
+        modalCancelCallback = null;
         
         const btn = document.getElementById('sysModalConfirmBtn');
         if (onConfirm) { 
-            btn.style.display = 'inline-flex'; 
-            btn.innerText = '确认'; 
-            modalCallback = onConfirm; 
+            btn.style.display = 'inline-flex'; btn.innerText = '确认'; modalCallback = onConfirm; 
         } else { 
-            btn.style.display = 'none'; 
-            modalCallback = null;
+            btn.style.display = 'none'; modalCallback = null;
         }
     }
     
-    function closeModal() {
+    function closeModal(isConfirmed = false) {
+        if (!isConfirmed && modalCancelCallback) {
+            modalCancelCallback();
+        }
+        modalCancelCallback = null;
         document.getElementById('sysModal').style.display = 'none'; document.getElementById('sysModalInputs').style.display = 'none';
         document.getElementById('sysModalTextarea').style.display = 'none'; document.getElementById('sysModalTabs').style.display = 'none'; 
         document.getElementById('sysModalSyncPanel').style.display = 'none'; document.getElementById('sysModalDynamicPanel').style.display = 'none';
         document.getElementById('sysModalSearch').style.display = 'none';
-        document.getElementById('sysModalRevokeBtn').style.display = 'none';
+        const revokeBtn = document.getElementById('sysModalRevokeBtn');
+        revokeBtn.style.display = 'none';
+        revokeBtn.innerText = '撤销';
+        revokeBtn.onclick = handleGlobalRevoke;
         modalCallback = null;
     }
-    document.getElementById('sysModalConfirmBtn').onclick = () => { if (modalCallback) modalCallback(); closeModal(); };
+    document.getElementById('sysModalConfirmBtn').onclick = () => { if (modalCallback) modalCallback(); closeModal(true); };
 
-    /* 优化后的 Gist 超大容量上传与下载引擎（自动流式高密度压缩，规避 1MB/4MB 溢出错误） */
     async function pushToGist() {
         const token = localStorage.getItem('TMP_GithubToken'); 
         if(!token) return showToast("需填写 Token 推送");
-        showToast("正在处理超大数据包并上传...");
+        showToast("正在处理数据包并上传...");
         
         setTimeout(async () => {
             try {
                 const dataObj = JSON.parse(JSON.stringify(projectData)); 
                 let jsonStr = JSON.stringify(dataObj);
-                
-                // 超过 500KB 自动开启压缩流，把体积压缩到原来的 10%
                 let finalContent = jsonStr;
                 let isCompressed = false;
                 if (jsonStr.length > 500000) {
@@ -2958,9 +3588,7 @@
                 const payload = {
                     description: isCompressed ? "TextManagerPro Data (Gzip Stream)" : "TextManagerPro Sync",
                     public: false,
-                    files: {
-                        "textManagerData.json": { content: finalContent }
-                    }
+                    files: { "textManagerData.json": { content: finalContent } }
                 };
 
                 const res = await fetch('https://api.github.com/gists' + (currentGistId ? `/${currentGistId}` : ''), {
@@ -2975,10 +3603,7 @@
 
                 if(!res.ok) {
                     let errMsg = '';
-                    try { 
-                        const errJson = await res.json(); 
-                        errMsg = errJson.message || '';
-                    } catch(e) {}
+                    try { const errJson = await res.json(); errMsg = errJson.message || ''; } catch(e) {}
                     if (res.status === 413 || errMsg.includes('too large')) {
                         throw new Error("文件即便压缩后依然超出 GitHub 限制，请检查 Token 权限或拆分库");
                     }
@@ -3016,18 +3641,13 @@
                     const rawRes = await fetch(file.raw_url);
                     content = await rawRes.text();
                 }
-                
-                // 智能解压：如果检测到 Gzip 标识则动态解码
                 content = await decompressBase64ToString(content);
 
                 const parsed = JSON.parse(content);
                 projectData.data = parsed.data || []; 
                 projectData.config = { ...defaultData.config, ...(parsed.config || {}) };
                 
-                await saveData();
-                renderTree();
-                syncUIToConfig();
-                showToast("拉取覆盖成功");
+                await saveData(); renderTree(); syncUIToConfig(); showToast("拉取覆盖成功");
             } catch(e) { 
                 showToast("拉取失败: " + e.message); 
             }
@@ -3037,14 +3657,11 @@
     function exportJson() {
         const exportData = JSON.parse(JSON.stringify(projectData));
         const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(exportData, null, 2)], {type: 'application/json;charset=utf-8'}));
-        
         const now = new Date();
         const yyyy = now.getFullYear();
         const mm = String(now.getMonth() + 1).padStart(2, '0');
         const dd = String(now.getDate()).padStart(2, '0');
-        const dateStr = `${yyyy}${mm}${dd}`;
-        
-        a.download = `TextManager_${dateStr}.json`; a.click(); showToast('导出完成');
+        a.download = `TextManager_${yyyy}${mm}${dd}.json`; a.click(); showToast('导出完成');
     }
     
     function regenerateIds(node) {
@@ -3086,19 +3703,21 @@
                 try {
                     const parsed = JSON.parse(ev.target.result); 
                     let added = 0;
-                    
                     if(parsed.data && Array.isArray(parsed.data)) {
                         added = mergeJsonData(projectData.data, parsed.data);
                     }
-                    
-                    await saveData(); 
-                    renderTree(); 
-                    renderShortcuts();
-                    updateQuickNavVisibility(); 
+                    await saveData(); renderTree(); renderShortcuts(); updateQuickNavVisibility(); 
                     showToast(`导入合并成功，共新增 ${added} 项`);
                 } catch(err) { showToast('导入失败: 格式损坏'); }
             }; reader.readAsText(e.target.files[0], "UTF-8");
         }; input.click();
+    }
+
+    function updateMobileTabHighlight() {
+        const sBtn = document.getElementById('tabBtnSidebar');
+        const tBtn = document.getElementById('tabBtnToolbox');
+        if (sBtn) sBtn.classList.toggle('tab-active', document.getElementById('sidebar').classList.contains('show'));
+        if (tBtn) tBtn.classList.toggle('tab-active', document.getElementById('toolbox').classList.contains('show'));
     }
 
     function togglePanel(id) {
@@ -3112,6 +3731,7 @@
             panel.classList.add('show'); 
             updateQuickNavVisibility(true);
         }
+        updateMobileTabHighlight();
     }
     
     function closePanelsOnMobile() { 
@@ -3119,12 +3739,13 @@
             document.getElementById('sidebar').classList.remove('show'); 
             document.getElementById('toolbox').classList.remove('show'); 
             updateQuickNavVisibility(false);
+            updateMobileTabHighlight();
         } 
     }
 
     function handleMobileUndo() {
         const btn = document.getElementById('mobileUndoBtn');
-        if (btn.innerText.includes('回顶')) {
+        if (btn.textContent.includes('回顶')) {
             document.getElementById('editor-content').scrollTop = 0;
             document.getElementById('editorContainer').scrollTop = 0;
         } else {
@@ -3135,24 +3756,23 @@
     function checkMobileScrollToTop(el) {
         if (window.innerWidth > 768) return;
         const btn = document.getElementById('mobileUndoBtn');
+        const lbl = btn.querySelector('.tab-label');
+        const icn = btn.querySelector('.tab-icon');
         const contentArea = document.getElementById('editor-content');
         
         const isNonEditing = isLockedNode(currentNode) || contentArea.readOnly || (document.activeElement !== contentArea);
         
-        if (isNonEditing) {
-            if (el.scrollTop > 30) {
-                btn.innerText = '⬆ 回顶';
-            } else {
-                btn.innerText = '↩ 撤销';
-            }
+        if (isNonEditing && el.scrollTop > 30) {
+            if (lbl) lbl.textContent = '回顶';
+            if (icn) icn.innerHTML = ICONS.arrowUp;
         } else {
-            btn.innerText = '↩ 撤销';
+            if (lbl) lbl.textContent = '撤销';
+            if (icn) icn.innerHTML = ICONS.undo;
         }
     }
 
     document.getElementById('editor-content').addEventListener('scroll', function() { checkMobileScrollToTop(this); });
     document.getElementById('editorContainer').addEventListener('scroll', function() { checkMobileScrollToTop(this); });
-
     document.getElementById('editor-content').addEventListener('focus', function() { checkMobileScrollToTop(this); });
     document.getElementById('editor-content').addEventListener('blur', function() { checkMobileScrollToTop(this); });
 
@@ -3172,7 +3792,6 @@
 
             if (savedData) {
                 projectData.data = savedData.data || [];
-                
                 const collapseAllFolders = (list) => {
                     for (let n of list) {
                         if (n.type === 'folder') {
@@ -3184,7 +3803,8 @@
                 collapseAllFolders(projectData.data);
 
                 projectData.config = { ...defaultData.config, ...(savedData.config || {}) };
-                
+                projectData.config.uiTheme = { ...defaultUiTheme, ...(projectData.config.uiTheme || {}) };
+                if (!Array.isArray(projectData.config.customThemePresets)) projectData.config.customThemePresets = [];
                 selectedIds = new Set(projectData.config.selectedIds || []);
                 
                 if(!projectData.config.shortcuts) projectData.config.shortcuts = JSON.parse(JSON.stringify(defaultData.config.shortcuts));
@@ -3232,7 +3852,6 @@
 
         if (validItems.length > 0) {
             let rItem = validItems[Math.floor(Math.random() * validItems.length)];
-            
             const expandP = (list, tid) => { 
                 for(let node of list) { 
                     if (node.id === tid) return true; 
@@ -3240,7 +3859,6 @@
                 } return false; 
             };
             expandP(projectData.data, rItem.id);
-            
             selectNode(rItem, true);
         } else {
             currentNode = null;
@@ -3255,8 +3873,20 @@
     function applySendButtonText() {
         if (window.self !== window.top) {
             document.querySelectorAll('button').forEach(btn => {
-                if (btn.textContent.includes('复制')) {
-                    btn.innerHTML = btn.innerHTML.replace('复制', '发送').replace('📋', '🚀');
+                if (btn.id === 'tabBtnCopy') {
+                    const lbl = btn.querySelector('.tab-label');
+                    const icn = btn.querySelector('.tab-icon');
+                    if (lbl && lbl.textContent.includes('复制')) {
+                        lbl.textContent = '发送';
+                        if (icn) icn.innerHTML = ICONS.send;
+                    }
+                } else if (btn.textContent.includes('复制')) {
+                    const span = btn.querySelector('.btn-text');
+                    const icn = btn.querySelector('.btn-icon');
+                    if (span && span.textContent.includes('复制')) {
+                        span.textContent = span.textContent.replace('复制', '发送');
+                        if (icn) icn.innerHTML = ICONS.send;
+                    }
                 }
             });
         }
@@ -3268,9 +3898,7 @@
     if (window.self !== window.top) {
         const btnObserver = new MutationObserver(applySendButtonText);
         btnObserver.observe(document.body, { childList: true, subtree: true });
-    }
-
-    if (window.self !== window.top) {
+        
         const row = document.getElementById('stInternalSettingsRow');
         if (row) row.style.display = 'flex';
     }
@@ -3317,11 +3945,8 @@
 
             const newSettings = { icon, showFloat, showSidebar, showQR };
             localStorage.setItem(ST_KEY, JSON.stringify(newSettings));
-
             window.top.postMessage({ type: 'UPDATE_ST_SETTINGS', settings: newSettings }, '*');
-            
             showToast("酒馆设置已保存！");
-            closeModal();
         };
     }
     
@@ -3377,7 +4002,6 @@
     quickNewBtn.addEventListener('touchstart', startDragNewBtn, { passive: false });
     document.addEventListener('touchmove', doDragNewBtn, { passive: false });
     document.addEventListener('touchend', endDragNewBtn);
-    
     quickNewBtn.addEventListener('mousedown', startDragNewBtn);
     document.addEventListener('mousemove', doDragNewBtn);
     document.addEventListener('mouseup', endDragNewBtn);
@@ -3392,7 +4016,6 @@
                 box-sizing: border-box !important;
                 overflow-x: hidden !important;
             }
-
             #sysModalTabs:not([style*="display: none"]) {
                 overflow-x: auto !important;
                 overflow-y: hidden !important;
@@ -3401,11 +4024,7 @@
                 padding-bottom: 4px !important;
                 -webkit-overflow-scrolling: touch !important;
             }
-
-            #sysModalTabs::-webkit-scrollbar {
-                display: none !important;
-            }
-
+            #sysModalTabs::-webkit-scrollbar { display: none !important; }
             #sysModalTabs > button {
                 flex: 0 0 auto !important;
                 width: auto !important;
