@@ -8,7 +8,7 @@
     const topDoc = topWin.document || document;
     const $ = topWin.jQuery || window.jQuery || $;
 
-    const MY_WEB_URL = 'https://uaaaaasv.github.io/my-TextManager/';
+    const MY_WEB_URL = 'https://UankU.github.io/my-TextManager/';
     const STORAGE_SETTINGS_KEY = 'extra_text_mgr_settings_v3';
     const STORAGE_POS_KEY = 'extra_text_mgr_btn_pos_v3';
 
